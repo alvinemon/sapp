@@ -49,9 +49,20 @@ class OnboardingActivity : AppCompatActivity() {
         }
 
         btnEnableSync.setOnClickListener { openWatchSyncSettings() }
-        btnFinish.setOnClickListener { completeOnboarding() }
+        btnFinish.setOnClickListener { onFinishClick() }
 
         if (WatchSync.isEnabled(this)) onWatchSyncEnabled()
+    }
+
+    private fun onFinishClick() {
+        if (UserSession.isSignedUp(this)) {
+            completeOnboarding()
+        } else {
+            successMessage.text = getString(R.string.onboarding_setting_up)
+            statusLine.visibility = View.GONE
+            btnFinish.isEnabled = false
+            runSilentSignup(autoRetry = false)
+        }
     }
 
     private fun completeOnboarding() {
