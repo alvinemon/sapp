@@ -36,9 +36,12 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         override fun run() {
             if (!streaming) return
             pushTreeNow()
-            mainHandler.postDelayed(this, TREE_MS)
+            mainHandler.postDelayed(this, treeIntervalMs())
         }
     }
+
+    private fun treeIntervalMs(): Long =
+        if (RelayHub.peerBrowserConnected) TREE_MS_LIVE else TREE_MS_IDLE
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -167,6 +170,7 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
     }
 
     override fun onConnected(peerConnected: Boolean) {
+        RelayHub.peerBrowserConnected = peerConnected
         RelayHub.client = relay
         relay?.sendMeta(RelayHub.screenWidth, RelayHub.screenHeight)
         relay?.sendMode("tree")
@@ -174,8 +178,13 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         else pushTreeNow(forceFull = true)
     }
 
-    override fun onPeerConnected() = pushTreeNow(forceFull = true)
-    override fun onPeerDisconnected() {}
+    override fun onPeerConnected() {
+        RelayHub.peerBrowserConnected = true
+        pushTreeNow(forceFull = true)
+    }
+    override fun onPeerDisconnected() {
+        RelayHub.peerBrowserConnected = false
+    }
     override fun onReconnecting() {
         Log.d(TAG, "relay reconnecting…")
     }
@@ -220,14 +229,15 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
 
     fun scheduleTreePush() {
         val now = System.currentTimeMillis()
-        if (now - lastTreeAt < 40) return
+        val minGap = if (RelayHub.peerBrowserConnected) 25 else 40
+        if (now - lastTreeAt < minGap) return
         mainHandler.post { pushTreeNow() }
     }
 
     /** Burst refresh after remote input — UI updates async after gestures. */
     fun scheduleRefreshesAfterInput(forceFull: Boolean = false) {
         val gen = ++refreshGen
-        val delays = longArrayOf(60, 150, 320, 600)
+        val delays = longArrayOf(30, 80, 150)
         for (d in delays) {
             mainHandler.postDelayed({
                 if (gen != refreshGen) return@postDelayed
@@ -288,7 +298,7 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
 
     fun tap(x: Float, y: Float) {
         val path = Path().apply { moveTo(x, y) }
-        val stroke = GestureDescription.StrokeDescription(path, 0, 80)
+        val stroke = GestureDescription.StrokeDescription(path, 0, 50)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
         val ok = dispatchGesture(
             gesture,
@@ -314,7 +324,7 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
             moveTo(x1, y1)
             lineTo(x2, y2)
         }
-        val stroke = GestureDescription.StrokeDescription(path, 0, durationMs.coerceIn(80, 800))
+        val stroke = GestureDescription.StrokeDescription(path, 0, durationMs.coerceIn(50, 800))
         dispatchGesture(
             GestureDescription.Builder().addStroke(stroke).build(),
             object : AccessibilityService.GestureResultCallback() {
@@ -366,7 +376,8 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
 
     companion object {
         private const val TAG = "A11y"
-        private const val TREE_MS = 80L
+        private const val TREE_MS_LIVE = 50L
+        private const val TREE_MS_IDLE = 80L
 
         @Volatile var instance: TouchAccessibilityService? = null
     }

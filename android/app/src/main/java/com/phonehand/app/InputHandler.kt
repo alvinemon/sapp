@@ -22,7 +22,7 @@ object InputHandler {
                 val run = Runnable { dispatch(context, msg, type) }
                 if (needsWake(type) && !ScreenPower.isInteractive(context)) {
                     ScreenPower.wakeScreen(context)
-                    mainHandler.postDelayed(run, 600)
+                    mainHandler.postDelayed(run, 300)
                 } else {
                     run.run()
                 }

@@ -25,16 +25,10 @@ export function resolveDeepSeekApiKey(fromRequest?: string): string {
 export const MAX_ACTIONS_PER_TURN = 8;
 export const MAX_AGENT_ROUNDS = 6;
 
-const SYSTEM = `You control an Android phone. Respond with JSON only:
-{"thought":"brief","say":"one sentence","actions":[{"type":"tap","x":540,"y":1200,"why":"open Chrome"}],"done":false}
-
-Actions: tap, text, key (wake|back|home|recents), swipe, wait (max 300ms).
-- Use numbered targets (#N at x,y) from the screen list
-- Screen black/off → wake then wait 300ms
-- After tap/app launch wait 200–300ms max
-- Handle popups first (Allow, OK)
-- Max ${MAX_ACTIONS_PER_TURN} actions; done:true when goal achieved
-- Keep say under 15 words`;
+const SYSTEM = `Android phone control. JSON only:
+{"thought":"","say":"brief","actions":[{"type":"tap","x":540,"y":1200}],"done":false}
+Actions: tap, text, key (wake|back|home|recents), swipe, wait (max 200ms).
+Use #N (x,y) targets. Popups first (Allow/OK). Max ${MAX_ACTIONS_PER_TURN} actions/turn. done:true when goal met.`;
 
 export async function runAgent(
   prompt: string,
@@ -57,8 +51,9 @@ export async function runAgent(
         { role: "user", content: `Screen:\n${screen}\n\nTask: ${prompt}` },
       ],
       response_format: { type: "json_object" },
-      temperature: 0.1,
-      max_tokens: 512,
+      temperature: 0,
+      max_tokens: 384,
+      stream: false,
     }),
   });
 

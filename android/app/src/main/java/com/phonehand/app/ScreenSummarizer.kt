@@ -61,8 +61,9 @@ object ScreenSummarizer {
         if (reading.isNotEmpty()) {
             lines.add("Text: " + reading.take(10).joinToString(" | "))
         }
-        for ((_, line, _) in actions) lines.add(line)
-        return lines.joinToString("\n")
+        for ((_, line, _) in actions.take(12)) lines.add(line)
+        val out = lines.joinToString("\n")
+        return if (out.length > 1200) out.take(1200) + "…" else out
     }
 
     fun humanSummary(tree: JSONObject): String {

@@ -5,6 +5,8 @@ object RelayHub {
 
     @Volatile var relayConnected = false
 
+    @Volatile var peerBrowserConnected = false
+
     @Volatile var screenWidth = 1080
 
     @Volatile var screenHeight = 2400

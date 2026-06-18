@@ -41,9 +41,10 @@ export default function App() {
     getTree,
     getTreeTick,
     waitForTree,
+    hasRecentTree,
   } = useLiveStream();
 
-  const agent = useAgent(send, getTree, waitForTree, getTreeTick);
+  const agent = useAgent(send, getTree, waitForTree, getTreeTick, phoneLive, hasRecentTree);
   const guide = useMemo(() => (tree ? buildScreenGuide(tree) : null), [tree, treeTick]);
   const canControl = connected && !!selectedDeviceId && (!!tree || phoneLive);
   const canSendKeys = connected && !!selectedDeviceId;
@@ -103,7 +104,7 @@ export default function App() {
         y: start.y,
         x2: coords.x,
         y2: coords.y,
-        duration: Math.min(Math.max(dt, 80), 600),
+        duration: Math.min(Math.max(dt, 50), 600),
       });
     }
   };

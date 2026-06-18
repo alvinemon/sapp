@@ -8,7 +8,10 @@ import java.util.concurrent.Executors
 object LocalAgent {
     private const val TAG = "LocalAgent"
     private const val MAX_ROUNDS = 6
-    private const val MAX_ACTIONS = 12
+    private const val MAX_ACTIONS = 8
+    private const val ACTION_GAP_MS = 40L
+    private const val ROUND_GAP_MS = 400L
+    private const val MAX_WAIT_MS = 200L
 
     private val executor = Executors.newSingleThreadExecutor()
 
@@ -35,7 +38,12 @@ object LocalAgent {
                     for (i in 0 until minOf(actions.length(), MAX_ACTIONS)) {
                         val a = actions.getJSONObject(i)
                         executeAction(context, a, cb)
-                        Thread.sleep(if (a.optString("type") == "wait") a.optLong("ms", 700) else 450)
+                        val gap = if (a.optString("type") == "wait") {
+                            a.optLong("ms", 100).coerceAtMost(MAX_WAIT_MS)
+                        } else {
+                            ACTION_GAP_MS
+                        }
+                        Thread.sleep(gap)
                     }
 
                     history.put(JSONObject().put("role", "user").put("content", "Task: $taskPrompt"))
@@ -50,7 +58,7 @@ object LocalAgent {
                     if (round < MAX_ROUNDS - 1) {
                         cb.onLog("Continuing (step ${round + 2}/$MAX_ROUNDS)…")
                         TouchAccessibilityService.instance?.scheduleRefreshesAfterInput()
-                        Thread.sleep(1500)
+                        Thread.sleep(ROUND_GAP_MS)
                         taskPrompt = "Continue: $prompt"
                     } else {
                         cb.onLog("Reached max steps")
@@ -99,7 +107,7 @@ object LocalAgent {
                 cb.onLog("swipe")
                 InputHandler.handle(context, cmd.toString())
             }
-            "wait" -> Thread.sleep(a.optLong("ms", 700))
+            "wait" -> Thread.sleep(a.optLong("ms", 100).coerceAtMost(MAX_WAIT_MS))
         }
     }
 }

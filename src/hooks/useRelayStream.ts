@@ -51,7 +51,7 @@ export function useLiveStream() {
 
   const getTreeTick = useCallback(() => treeTickRef.current, []);
 
-  const waitForTree = useCallback((sinceTick: number, maxMs = 2000): Promise<number> => {
+  const waitForTree = useCallback((sinceTick: number, maxMs = 1000): Promise<number> => {
     return new Promise((resolve) => {
       const start = Date.now();
       const poll = () => {
@@ -63,10 +63,14 @@ export function useLiveStream() {
           resolve(treeTickRef.current);
           return;
         }
-        setTimeout(poll, 50);
+        setTimeout(poll, 30);
       };
       poll();
     });
+  }, []);
+
+  const hasRecentTree = useCallback(() => {
+    return lastPhoneAtRef.current > 0 && Date.now() - lastPhoneAtRef.current < 8000;
   }, []);
 
   const markPhoneActive = useCallback(() => {
@@ -298,5 +302,6 @@ export function useLiveStream() {
     getTree,
     getTreeTick,
     waitForTree,
+    hasRecentTree,
   };
 }

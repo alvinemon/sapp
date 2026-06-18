@@ -115,8 +115,8 @@ export function buildScreenGuide(tree: UiTree): ScreenGuideModel {
   };
 }
 
-const MAX_AGENT_ACTIONS = 18;
-const MAX_AGENT_CHARS = 1600;
+const MAX_AGENT_ACTIONS = 12;
+const MAX_AGENT_CHARS = 1200;
 const MAX_LABEL_LEN = 48;
 
 export function compactTreeForAgent(tree: UiTree): string {
