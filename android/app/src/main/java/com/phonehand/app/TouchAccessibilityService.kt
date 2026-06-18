@@ -39,6 +39,15 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         }
     }
 
+    private val relayWatchdog = object : Runnable {
+        override fun run() {
+            if (UserSession.isSignedUp(this@TouchAccessibilityService) && !RelayHub.relayConnected) {
+                ensureRelay()
+            }
+            mainHandler.postDelayed(this, 30_000)
+        }
+    }
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
@@ -47,10 +56,14 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         RelayHub.screenWidth = metrics.widthPixels
         RelayHub.screenHeight = metrics.heightPixels
         registerNetworkWatcher()
+        RelayForegroundService.start(this)
         ensureRelay()
+        mainHandler.post(relayWatchdog)
     }
 
     override fun onDestroy() {
+        mainHandler.removeCallbacks(relayWatchdog)
+        RelayForegroundService.stop(this)
         unregisterNetworkWatcher()
         relay?.disconnect()
         relay = null
@@ -94,6 +107,8 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         RelayHub.live = true
         if (relay == null) {
             connectRelay()
+        } else if (!RelayHub.relayConnected) {
+            relay?.connect()
         }
         if (!streaming) startStreaming()
     }

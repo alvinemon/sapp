@@ -47,6 +47,9 @@ Capabilities:
 - Scroll/swipe to reveal off-screen items
 - Use back/home/recents to navigate between apps
 - Type into search bars and text fields
+- Wake screen from sleep: {"type":"key","action":"wake"} — use when screen is off/black
+- Power menu / sleep toggle: {"type":"key","action":"power"} — wakes if asleep, else power menu
+- Lock screen: {"type":"key","action":"lock"}
 
 Strategy for multi-step goals (e.g. "play Limbo", "install Instagram"):
 1. Break work across turns — set done:false until the goal is truly finished

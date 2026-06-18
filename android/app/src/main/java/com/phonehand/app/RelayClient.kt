@@ -125,7 +125,7 @@ class RelayClient(
         if (stopped) return
         listener.onReconnecting()
         reconnectAttempt++
-        val delay = (1000L * kotlin.math.min(reconnectAttempt, 10)).coerceAtMost(10_000L)
+        val delay = (500L * kotlin.math.min(reconnectAttempt, 20)).coerceAtMost(8_000L)
         handler.postDelayed({ connect() }, delay)
     }
 

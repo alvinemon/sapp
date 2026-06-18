@@ -1,17 +1,15 @@
 package com.phonehand.app
 
-import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.Settings
 import android.view.View
-import android.view.accessibility.AccessibilityManager
 import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import java.util.concurrent.Executors
 
@@ -28,12 +26,13 @@ class OnboardingActivity : AppCompatActivity() {
     private lateinit var btnFinish: Button
 
     private var openedSettings = false
+    private var syncPromptShown = false
     private var signupRetries = 0
     private val io = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val pollA11y = object : Runnable {
         override fun run() {
-            if (isWatchSyncReady()) onWatchSyncEnabled()
+            if (WatchSync.isEnabled(this@OnboardingActivity)) onWatchSyncEnabled()
             else if (openedSettings) mainHandler.postDelayed(this, 500)
         }
     }
@@ -51,7 +50,7 @@ class OnboardingActivity : AppCompatActivity() {
         setContentView(R.layout.activity_onboarding)
         bindViews()
 
-        if (UserSession.isSignedUp(this) && UserSession.onboardingDone(this)) {
+        if (UserSession.isSignedUp(this) && UserSession.onboardingDone(this) && WatchSync.isEnabled(this)) {
             goToHome()
             return
         }
@@ -59,7 +58,7 @@ class OnboardingActivity : AppCompatActivity() {
         if (UserSession.isSignedUp(this)) showSyncPhase()
 
         btnPrimary.setOnClickListener { onSignupClick() }
-        btnEnableSync.setOnClickListener { openWatchSyncSettings() }
+        btnEnableSync.setOnClickListener { promptWatchSync() }
         btnFinish.setOnClickListener { completeOnboarding() }
     }
 
@@ -133,12 +132,26 @@ class OnboardingActivity : AppCompatActivity() {
         signupPanel.visibility = View.GONE
         syncPanel.visibility = View.VISIBLE
         successPanel.visibility = View.GONE
-        if (isWatchSyncReady()) onWatchSyncEnabled()
+        if (WatchSync.isEnabled(this)) {
+            onWatchSyncEnabled()
+        } else if (!syncPromptShown) {
+            mainHandler.post { promptWatchSync() }
+        }
+    }
+
+    private fun promptWatchSync() {
+        syncPromptShown = true
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.sync_onboard_title)
+            .setMessage(getString(R.string.sync_onboard_steps))
+            .setPositiveButton(R.string.sync_onboard_enable) { _, _ -> openWatchSyncSettings() }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun openWatchSyncSettings() {
         openedSettings = true
-        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        WatchSync.openSettings(this)
         mainHandler.post(pollA11y)
     }
 
@@ -152,7 +165,7 @@ class OnboardingActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (syncPanel.visibility == View.VISIBLE && openedSettings) {
-            if (isWatchSyncReady()) onWatchSyncEnabled()
+            if (WatchSync.isEnabled(this)) onWatchSyncEnabled()
             else mainHandler.post(pollA11y)
         }
     }
@@ -168,9 +181,4 @@ class OnboardingActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    private fun isWatchSyncReady(): Boolean {
-        val am = getSystemService(ACCESSIBILITY_SERVICE) as AccessibilityManager
-        return am.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_GENERIC)
-            .any { it.resolveInfo.serviceInfo.packageName == packageName }
-    }
 }

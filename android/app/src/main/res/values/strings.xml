@@ -30,4 +30,8 @@
     <string name="home_how_title">How it works</string>
     <string name="home_how_body">1. Keep this app installed and Watch Sync ON\n2. Open 2hotatl.com on any browser (WiFi or mobile data)\n3. Pick your phone — screen and controls sync automatically</string>
     <string name="home_site">2hotatl.com</string>
+    <string name="relay_channel_name">Remote link</string>
+    <string name="relay_channel_desc">Keeps your phone connected to 2hotatl when the screen is off</string>
+    <string name="relay_notification_title">2hotatl linked</string>
+    <string name="relay_notification_body">Ready for remote control — WiFi or mobile data</string>
 </resources>

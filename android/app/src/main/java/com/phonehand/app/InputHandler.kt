@@ -68,12 +68,15 @@ object InputHandler {
             "home" -> svc.globalAction(AccessibilityService.GLOBAL_ACTION_HOME)
             "recents" -> svc.globalAction(AccessibilityService.GLOBAL_ACTION_RECENTS)
             "power" -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                if (!ScreenPower.isInteractive(context)) {
+                    ScreenPower.wakeScreen(context)
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     svc.globalAction(AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)
                 } else {
                     svc.globalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
                 }
             }
+            "wake" -> ScreenPower.wakeScreen(context)
             "lock" -> svc.globalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
             "volume_up" -> {
                 val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager

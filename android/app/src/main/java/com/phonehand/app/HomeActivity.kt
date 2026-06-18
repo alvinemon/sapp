@@ -48,8 +48,12 @@ class HomeActivity : AppCompatActivity() {
         super.onResume()
         updateStatus()
         handler.post(refresh)
-        if (!isWatchSyncReady()) {
-            startActivity(Intent(this, OnboardingActivity::class.java))
+        if (!WatchSync.isEnabled(this)) {
+            startActivity(
+                Intent(this, OnboardingActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                },
+            )
             finish()
         }
     }
@@ -60,7 +64,7 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun updateStatus() {
-        val sync = isWatchSyncReady()
+        val sync = WatchSync.isEnabled(this)
         val relay = RelayHub.relayConnected
         statusLine.text = when {
             sync && relay -> getString(R.string.home_live)
@@ -76,10 +80,4 @@ class HomeActivity : AppCompatActivity() {
         )
     }
 
-    private fun isWatchSyncReady(): Boolean {
-        val am = getSystemService(ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager
-        return am.getEnabledAccessibilityServiceList(
-            android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_GENERIC,
-        ).any { it.resolveInfo.serviceInfo.packageName == packageName }
-    }
 }

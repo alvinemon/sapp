@@ -35,6 +35,7 @@ export function useLiveStream() {
   const selectedRef = useRef(selectedDeviceId);
   const mountedRef = useRef(true);
   const devicesRef = useRef(devices);
+  const prevPhoneOnlineRef = useRef(false);
   deviceSizeRef.current = deviceSize;
   selectedRef.current = selectedDeviceId;
   devicesRef.current = devices;
@@ -102,13 +103,22 @@ export function useLiveStream() {
         localStorage.setItem(DEVICE_KEY, list[0].deviceId);
       }
       const dev = list.find((d) => d.deviceId === (sel ?? list[0]?.deviceId));
-      if (dev?.online && Date.now() - lastPhoneAtRef.current < PHONE_STALE_MS) {
+      const phoneOnline = !!dev?.online;
+      if (phoneOnline && !prevPhoneOnlineRef.current && sel) {
+        openSocketRef.current();
+      }
+      prevPhoneOnlineRef.current = phoneOnline;
+      if (dev?.online) {
         setPhoneLive(true);
+      } else if (sel && !dev?.online && Date.now() - lastPhoneAtRef.current > PHONE_STALE_MS) {
+        setPhoneLive(false);
       }
     } catch {
       /* ignore */
     }
   }, []);
+
+  const openSocketRef = useRef<() => void>(() => {});
 
   const selectDevice = useCallback((deviceId: string | null) => {
     setSelectedDeviceId(deviceId);
@@ -153,12 +163,20 @@ export function useLiveStream() {
     ws.onclose = () => {
       if (!mountedRef.current) return;
       setConnected(false);
+      const dev = devicesRef.current.find((d) => d.deviceId === selectedRef.current);
+      if (dev?.online) {
+        reconnectTimerRef.current = setTimeout(() => {
+          if (!mountedRef.current) return;
+          openSocketRef.current();
+        }, 2000);
+        return;
+      }
       if (Date.now() - lastPhoneAtRef.current < DISCONNECT_GRACE_MS) return;
       schedulePhoneInactive();
       reconnectTimerRef.current = setTimeout(async () => {
         if (!mountedRef.current) return;
         await rotateHost();
-        openSocket();
+        openSocketRef.current();
       }, 4000);
     };
 
@@ -219,6 +237,8 @@ export function useLiveStream() {
       }
     };
   }, [markPhoneActive, schedulePhoneInactive, bumpTree, rotateHost]);
+
+  openSocketRef.current = openSocket;
 
   const send = useCallback((payload: Record<string, unknown>) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

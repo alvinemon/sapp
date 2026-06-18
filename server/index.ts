@@ -70,7 +70,12 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: "256kb" }));
 
-app.get("/api/status", (_req, res) => res.json(status()));
+app.get("/api/status", (_req, res) =>
+  res.json({
+    ...status(),
+    agentConfigured: !!resolveDeepSeekApiKey(),
+  }),
+);
 app.get("/api/watch", (_req, res) => res.json(watchStatus()));
 app.get("/api/devices", (_req, res) => res.json({ devices: listDevices() }));
 app.get("/api/health", (_req, res) => {

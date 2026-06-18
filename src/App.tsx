@@ -32,7 +32,8 @@ export default function App() {
 
   const agent = useAgent(send, getTree, waitForTree, getTreeTick);
   const guide = useMemo(() => (tree ? buildScreenGuide(tree) : null), [tree, treeTick]);
-  const canControl = connected && !!tree && !!selectedDeviceId;
+  const canControl = connected && !!selectedDeviceId && (!!tree || phoneLive);
+  const canSendKeys = connected && !!selectedDeviceId;
   const screenRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const selectedDevice = devices.find((d) => d.deviceId === selectedDeviceId);
@@ -199,10 +200,11 @@ export default function App() {
           </div>
 
           <nav className="nav-bar nav-bar-full">
+            <button type="button" onClick={() => send({ type: "key", action: "wake" })} disabled={!canSendKeys} className="nav-wake">Wake</button>
             <button type="button" onClick={() => send({ type: "key", action: "back" })} disabled={!canControl}>Back</button>
             <button type="button" onClick={() => send({ type: "key", action: "home" })} disabled={!canControl} className="nav-home">Home</button>
             <button type="button" onClick={() => send({ type: "key", action: "recents" })} disabled={!canControl}>Recents</button>
-            <button type="button" onClick={() => send({ type: "key", action: "power" })} disabled={!canControl} className="nav-power">⏻</button>
+            <button type="button" onClick={() => send({ type: "key", action: "power" })} disabled={!canSendKeys} className="nav-power" title="Wake if asleep, else power menu">⏻</button>
             <button type="button" onClick={() => send({ type: "key", action: "volume_down" })} disabled={!canControl}>−</button>
             <button type="button" onClick={() => send({ type: "key", action: "volume_up" })} disabled={!canControl}>+</button>
           </nav>
