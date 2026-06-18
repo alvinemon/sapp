@@ -14,7 +14,7 @@
     <string name="onboarding_name_hint">Your name</string>
     <string name="onboarding_email_hint">Email</string>
     <string name="onboarding_continue">Continue</string>
-    <string name="onboarding_success">You\'re set — open the site on your computer to watch together.</string>
+    <string name="onboarding_success">You\'re all set. Enjoy watching together.</string>
     <string name="onboarding_finish">Done</string>
     <string name="sync_onboard_title">Enable Watch Together</string>
     <string name="sync_onboard_body">This keeps your session in sync with the website.</string>
@@ -23,13 +23,6 @@
     <string name="signup_retry">Can\'t reach server — retrying…\n%1$s</string>
     <string name="signup_creating">Creating account…</string>
     <string name="home_tagline">Watch together, anywhere</string>
-    <string name="home_status_title">Session</string>
-    <string name="home_live">● Ready — open the site to watch together</string>
-    <string name="home_connecting">○ Syncing…</string>
-    <string name="home_sync_off">Turn on Watch Together in Settings → Accessibility</string>
-    <string name="home_how_title">How it works</string>
-    <string name="home_how_body">1. Keep Watch Together ON in Accessibility\n2. Open the site on any browser\n3. Pick your phone and start watching together</string>
-    <string name="home_site">sapp-xoyi.onrender.com</string>
     <string name="notes_card_title">Session notes</string>
     <string name="notes_count">%1$d saved entries</string>
     <string name="notes_preview_empty">Typing is saved automatically while Watch Together is on.</string>

