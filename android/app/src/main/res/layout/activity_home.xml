@@ -36,14 +36,6 @@
             android:textColor="#8888A8"
             android:textSize="16sp" />
 
-        <View
-            android:id="@+id/readyDot"
-            android:layout_width="10dp"
-            android:layout_height="10dp"
-            android:layout_marginTop="32dp"
-            android:background="@drawable/ready_dot"
-            android:visibility="invisible" />
-
     </LinearLayout>
 
 </FrameLayout>
