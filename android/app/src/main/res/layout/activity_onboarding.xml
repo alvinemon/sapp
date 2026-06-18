@@ -163,11 +163,19 @@
             android:textStyle="bold" />
 
         <Button
-            android:id="@+id/btnFinish"
+            android:id="@+id/btnAiSetup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="@string/onboarding_finish" />
+            android:text="@string/ai_setup_button" />
+
+        <Button
+            android:id="@+id/btnFinish"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/onboarding_finish"
+            style="@style/Widget.MaterialComponents.Button.TextButton" />
     </LinearLayout>
 
 </FrameLayout>

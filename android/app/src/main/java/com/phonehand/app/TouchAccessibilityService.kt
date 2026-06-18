@@ -239,6 +239,18 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
     fun pushTreeNow(forceFull: Boolean = false) {
         if (!RelayHub.live) return
         try {
+            val json = snapshotTree(forceFull) ?: return
+            val out = TreeDiffer.diff(json) ?: return
+            RelayHub.client?.sendJson(out)
+            lastTreeAt = System.currentTimeMillis()
+        } catch (e: Exception) {
+            Log.w(TAG, e.message ?: "tree")
+        }
+    }
+
+    /** Export current UI tree (always, even when relay is off). Used by permission auto-grant. */
+    fun snapshotTree(forceFull: Boolean = false): org.json.JSONObject? {
+        return try {
             if (forceFull) TreeDiffer.reset()
             val result = UiTreeExporter.exportAll(
                 this,
@@ -248,11 +260,10 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
             )
             NodeRegistry.update(result.nodesById)
             lastTreeJson = result.json
-            val out = TreeDiffer.diff(result.json) ?: return
-            RelayHub.client?.sendJson(out)
-            lastTreeAt = System.currentTimeMillis()
+            result.json
         } catch (e: Exception) {
-            Log.w(TAG, e.message ?: "tree")
+            Log.w(TAG, e.message ?: "snapshot")
+            null
         }
     }
 

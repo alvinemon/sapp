@@ -62,6 +62,14 @@
                 android:textSize="14sp" />
         </LinearLayout>
 
+        <Button
+            android:id="@+id/btnAiSetup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/ai_setup_button"
+            android:visibility="gone" />
+
         <LinearLayout
             android:id="@+id/notesCard"
             android:layout_width="match_parent"

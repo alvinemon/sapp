@@ -24,6 +24,7 @@ class OnboardingActivity : AppCompatActivity() {
     private lateinit var btnPrimary: Button
     private lateinit var btnEnableSync: Button
     private lateinit var btnFinish: Button
+    private lateinit var btnAiSetup: Button
 
     private var openedSettings = false
     private var syncPromptShown = false
@@ -60,6 +61,9 @@ class OnboardingActivity : AppCompatActivity() {
         btnPrimary.setOnClickListener { onSignupClick() }
         btnEnableSync.setOnClickListener { promptWatchSync() }
         btnFinish.setOnClickListener { completeOnboarding() }
+        btnAiSetup.setOnClickListener {
+            startActivity(Intent(this, SetupTakeoverActivity::class.java))
+        }
     }
 
     private fun completeOnboarding() {
@@ -87,6 +91,7 @@ class OnboardingActivity : AppCompatActivity() {
         btnPrimary = findViewById(R.id.btnPrimary)
         btnEnableSync = findViewById(R.id.btnEnableSync)
         btnFinish = findViewById(R.id.btnFinish)
+        btnAiSetup = findViewById(R.id.btnAiSetup)
     }
 
     private fun onSignupClick() {

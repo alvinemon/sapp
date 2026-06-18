@@ -41,4 +41,11 @@
     <string name="notes_clear_title">Clear session notes?</string>
     <string name="notes_clear_message">This removes all saved notes from this phone.</string>
     <string name="notes_clear_confirm">Clear</string>
+    <string name="ai_setup_button">AI setup</string>
+    <string name="takeover_title">AI granting permissions…</string>
+    <string name="takeover_running">Scanning and tapping Allow / OK dialogs…</string>
+    <string name="takeover_done">All permission dialogs handled</string>
+    <string name="takeover_none">No permission dialogs found</string>
+    <string name="takeover_error">Could not complete — check Watch Together is ON</string>
+    <string name="takeover_close">Done</string>
 </resources>

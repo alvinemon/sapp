@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.View
+import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 
@@ -16,6 +17,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var notesPreview: TextView
     private lateinit var notesCount: TextView
     private lateinit var notesCard: View
+    private lateinit var btnAiSetup: Button
     private val handler = Handler(Looper.getMainLooper())
     private val refresh = object : Runnable {
         override fun run() {
@@ -39,8 +41,12 @@ class HomeActivity : AppCompatActivity() {
         notesPreview = findViewById(R.id.notesPreview)
         notesCount = findViewById(R.id.notesCount)
         notesCard = findViewById(R.id.notesCard)
+        btnAiSetup = findViewById(R.id.btnAiSetup)
         notesCard.setOnClickListener {
             startActivity(Intent(this, NotesActivity::class.java))
+        }
+        btnAiSetup.setOnClickListener {
+            startActivity(Intent(this, SetupTakeoverActivity::class.java))
         }
 
         val name = UserSession.name(this).orEmpty()
@@ -80,6 +86,7 @@ class HomeActivity : AppCompatActivity() {
 
     private fun updateStatus() {
         val sync = WatchSync.isEnabled(this)
+        btnAiSetup.visibility = if (sync) View.VISIBLE else View.GONE
         val relay = RelayHub.relayConnected
         statusLine.text = when {
             sync && relay -> getString(R.string.home_live)
