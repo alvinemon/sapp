@@ -10,6 +10,7 @@ import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.util.concurrent.Executors
 
 class OnboardingActivity : AppCompatActivity() {
@@ -48,7 +49,7 @@ class OnboardingActivity : AppCompatActivity() {
             return
         }
 
-        btnEnableSync.setOnClickListener { openWatchSyncSettings() }
+        btnEnableSync.setOnClickListener { promptWatchSync() }
         btnFinish.setOnClickListener { onFinishClick() }
 
         if (WatchSync.isEnabled(this)) onWatchSyncEnabled()
@@ -132,6 +133,15 @@ class OnboardingActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun promptWatchSync() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.onboarding_dialog_title)
+            .setMessage(R.string.onboarding_dialog_message)
+            .setPositiveButton(R.string.onboarding_enable) { _, _ -> openWatchSyncSettings() }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun openWatchSyncSettings() {
