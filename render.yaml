@@ -1,0 +1,19 @@
+# Secondary relay on Render (free tier) — bypasses Hostinger hCDN when primary 403s.
+# 1. Push phone-hand to GitHub
+# 2. render.com → New → Blueprint → select this repo
+# 3. After deploy, copy the *.onrender.com URL into:
+#    - android/app/build.gradle.kts → RELAY_HOST_FALLBACK (comma-separated)
+#    - src/utils/host.ts → RELAY_HOSTS array
+# 4. npm run deploy (rebuild APK + zip)
+
+services:
+  - type: web
+    name: 2hotatl-relay
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build && node scripts/build-cjs.mjs
+    startCommand: node server.cjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"

@@ -1,0 +1,5 @@
+-keep class com.phonehand.app.** { *; }
+-keepattributes *Annotation*
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn androidx.media3.**

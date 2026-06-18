@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0A0A12"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="2hotatl"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:textColor="#F0F0F8"
+            android:gravity="center" />
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="#3DE8FF"
+            android:textSize="15sp"
+            android:gravity="center" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/labelLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:hint="device name">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/labelInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:maxLines="1"
+                android:textColor="#F0F0F8" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:id="@+id/deviceIdText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="#666680"
+            android:textSize="11sp"
+            android:gravity="center" />
+
+        <LinearLayout
+            android:id="@+id/controlSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="Phone keys"
+                android:textColor="#8888A8"
+                android:textSize="12sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.08" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <Button android:id="@+id/btnBack" style="@style/NavKey" android:text="Back" />
+                <Button android:id="@+id/btnHome" style="@style/NavKey" android:text="Home" />
+                <Button android:id="@+id/btnRecents" style="@style/NavKey" android:text="Recents" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <Button android:id="@+id/btnPower" style="@style/NavKeyPower" android:text="⏻ Power" />
+                <Button android:id="@+id/btnVolDown" style="@style/NavKey" android:text="Vol −" />
+                <Button android:id="@+id/btnVolUp" style="@style/NavKey" android:text="Vol +" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="Current screen"
+                android:textColor="#8888A8"
+                android:textSize="12sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.08" />
+
+            <TextView
+                android:id="@+id/screenSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:padding="12dp"
+                android:background="#151520"
+                android:textColor="#C8C8E0"
+                android:textSize="13sp"
+                android:lineSpacingExtra="3dp"
+                android:text="reading screen…" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="AI on this phone"
+                android:textColor="#8888A8"
+                android:textSize="12sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.08" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Type a goal and hit Go — no setup needed."
+                android:textColor="#666680"
+                android:textSize="12sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/promptInput"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="e.g. play Limbo"
+                    android:inputType="text"
+                    android:maxLines="2"
+                    android:textColor="#F0F0F8"
+                    android:background="#151520"
+                    android:padding="12dp" />
+
+                <Button
+                    android:id="@+id/btnAiRun"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="Go"
+                    android:backgroundTint="#7C5CFF" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/aiLog"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:minHeight="80dp"
+                android:padding="10dp"
+                android:background="#101018"
+                android:textColor="#8888A8"
+                android:textSize="12sp"
+                android:fontFamily="monospace"
+                android:text="AI log…" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/setupHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Enable 2hotatl in Accessibility settings to unlock keys and AI."
+            android:textColor="#8888A8"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:lineSpacingExtra="4dp" />
+
+    </LinearLayout>
+</ScrollView>

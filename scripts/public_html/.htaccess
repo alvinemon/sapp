@@ -1,0 +1,9 @@
+# Optional: upload to public_html if Hostinger static layer blocks API paths.
+DirectoryIndex disabled
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{HTTP_HOST} ^www\.2hotatl\.com$ [NC]
+RewriteRule ^(.*)$ https://2hotatl.com/$1 [R=301,L]
+</IfModule>

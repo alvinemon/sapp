@@ -1,0 +1,11 @@
+# If public_html serves 403 while Node is down, this can help Hostinger route traffic.
+# Upload to public_html via File Manager only if hPanel support suggests it.
+DirectoryIndex disabled
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+# Send www to apex (Node app domain)
+RewriteCond %{HTTP_HOST} ^www\.2hotatl\.com$ [NC]
+RewriteRule ^(.*)$ https://2hotatl.com/$1 [R=301,L]
+</IfModule>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Install 2hotatl — bypass Play Protect</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0a0a12;
+      color: #f0f0f8;
+      line-height: 1.55;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+    }
+    h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
+    .sub { color: #8888a8; margin-bottom: 1.5rem; }
+    a { color: #3de8ff; }
+    .btn {
+      display: inline-block;
+      background: #7c5cff;
+      color: #fff;
+      text-decoration: none;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      margin: 8px 0 20px;
+    }
+    ol { padding-left: 1.2rem; }
+    li { margin-bottom: 0.75rem; }
+    .warn {
+      background: rgba(255, 180, 80, 0.12);
+      border: 1px solid rgba(255, 180, 80, 0.35);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin: 20px 0;
+      font-size: 0.95rem;
+    }
+    .ok {
+      background: rgba(61, 232, 255, 0.08);
+      border: 1px solid rgba(61, 232, 255, 0.25);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin: 20px 0;
+    }
+    code { background: #151520; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <h1>Install 2hotatl on Android</h1>
+  <p class="sub">Play Protect often blocks remote-control apps that are not from the Play Store. This is normal for sideloaded accessibility tools.</p>
+
+  <a class="btn" href="/download/2hotatl.apk">Download APK</a>
+
+  <div class="ok">
+    <strong>Works remotely</strong> — phone on WiFi or mobile data, website on any connection. No USB, no same network.
+  </div>
+
+  <div class="warn">
+    <strong>“App blocked to protect your device”</strong><br />
+    Google flags any app that uses Accessibility + internet for remote control. 2hotatl is signed and open — you install it for your own phones only.
+  </div>
+
+  <h2>Method 1 — Install anyway (most phones)</h2>
+  <ol>
+    <li>Download the APK above (use Chrome or Files).</li>
+    <li>When Play Protect warns, tap <strong>More details</strong>.</li>
+    <li>Tap <strong>Install anyway</strong> or <strong>Install without scanning</strong>.</li>
+    <li>Open <strong>2hotatl</strong> → enter name + email → turn on <strong>Watch Sync</strong> in Accessibility.</li>
+    <li>Open <strong>2hotatl.com</strong> on any computer — your phone appears automatically.</li>
+  </ol>
+
+  <h2>Method 2 — Pause Play Protect (if Method 1 is hidden)</h2>
+  <ol>
+    <li>Open <strong>Google Play Store</strong> → profile icon → <strong>Play Protect</strong>.</li>
+    <li>Tap the gear ⚙ → turn off <strong>Scan apps with Play Protect</strong>.</li>
+    <li>Install the APK, then turn scanning back on.</li>
+  </ol>
+
+  <h2>Method 3 — USB install (always works)</h2>
+  <ol>
+    <li>Enable <strong>Developer options</strong> → <strong>USB debugging</strong> on the phone.</li>
+    <li>On a computer: <code>adb install 2hotatl.apk</code></li>
+  </ol>
+
+  <div class="ok">
+    <strong>Why Accessibility?</strong> Android only allows remote taps through the official Accessibility API. No screen video is sent — only button positions and text.
+  </div>
+
+  <p><a href="/">← Back to remote control</a></p>
+  <script>
+    (async () => {
+      const hosts = ["2hotatl.com", "api.2hotatl.com"];
+      const btn = document.querySelector(".btn");
+      if (!btn) return;
+      for (const h of hosts) {
+        try {
+          const r = await fetch("https://" + h + "/api/health", {
+            headers: { Accept: "application/json" },
+          });
+          if (!r.ok) continue;
+          const ct = r.headers.get("content-type") || "";
+          if (!ct.includes("json")) continue;
+          const data = await r.json();
+          if (data && data.ok) {
+            btn.href = "https://" + h + "/download/2hotatl.apk";
+            return;
+          }
+        } catch (_) {}
+      }
+    })();
+  </script>
+</body>
+</html>

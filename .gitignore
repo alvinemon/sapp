@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.relay-url
+platform-tools/
+platform-tools.zip
+.DS_Store
+*.log
+.env
+.env.*
+android/local.properties
+server.cjs
+data/
+android/app/build/
+android/.gradle/
+

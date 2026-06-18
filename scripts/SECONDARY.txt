@@ -1,0 +1,21 @@
+2hotatl — secondary relay (Render.com)
+======================================
+
+Use this when Hostinger hCDN returns 403 on /api/health or /api/auth/signup.
+
+Steps (one-time):
+  1. Push phone-hand to a GitHub repo
+  2. Go to render.com → New → Blueprint → connect repo (uses render.yaml)
+  3. Wait for deploy; note URL like https://2hotatl-relay.onrender.com
+  4. Test: curl https://YOUR-APP.onrender.com/api/health
+
+  5. Add URL to fallback lists, then rebuild:
+     android/app/build.gradle.kts:
+       RELAY_HOST_FALLBACK = "api.2hotatl.com,YOUR-APP.onrender.com"
+     src/utils/host.ts:
+       RELAY_HOSTS = ["2hotatl.com", "api.2hotatl.com", "YOUR-APP.onrender.com"]
+
+  6. npm run deploy → upload new zip + install new APK
+
+Note: Render free tier sleeps after inactivity (~50s cold start).
+Device data on Render is separate from Hostinger — use one primary host for production.
