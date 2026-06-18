@@ -168,6 +168,14 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
     override fun onReconnecting() {
         Log.d(TAG, "relay reconnecting…")
     }
+
+    override fun onAuthRejected(reason: String) {
+        Log.w(TAG, "relay auth rejected: $reason")
+        SessionRepair.resync(this) { ok ->
+            if (ok) reconnectRelay()
+        }
+    }
+
     override fun onError(message: String) {
         Log.w(TAG, message)
     }

@@ -7,17 +7,24 @@ object RelayHost {
 
     fun hosts(context: Context): List<String> {
         val out = linkedSetOf<String>()
-        context.getSharedPreferences(UserSession.PREFS_NAME, Context.MODE_PRIVATE)
-            .getString(KEY, null)
-            ?.takeIf { it.isNotBlank() }
-            ?.let { out.add(it) }
         out.add(BuildConfig.RELAY_HOST)
         BuildConfig.RELAY_HOST_FALLBACK
             .split(",")
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .forEach { out.add(it) }
+        context.getSharedPreferences(UserSession.PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY, null)
+            ?.takeIf { it.isNotBlank() }
+            ?.let { out.add(it) }
         return out.toList()
+    }
+
+    fun clearSaved(context: Context) {
+        context.getSharedPreferences(UserSession.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY)
+            .apply()
     }
 
     fun save(context: Context, host: String) {

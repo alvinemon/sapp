@@ -49,12 +49,15 @@ class HomeActivity : AppCompatActivity() {
         updateStatus()
         handler.post(refresh)
         if (!WatchSync.isEnabled(this)) {
-            startActivity(
-                Intent(this, OnboardingActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                },
-            )
+            startActivity(Intent(this, OnboardingActivity::class.java))
             finish()
+            return
+        }
+        TouchAccessibilityService.instance?.ensureRelay()
+        if (UserSession.isSignedUp(this) && !RelayHub.relayConnected) {
+            SessionRepair.resync(this) {
+                TouchAccessibilityService.instance?.reconnectRelay()
+            }
         }
     }
 

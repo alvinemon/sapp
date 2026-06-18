@@ -1,5 +1,5 @@
 /** Known relay hosts — primary first, then fallback. */
-export const RELAY_HOSTS = ["sapp-xoyi.onrender.com", "2hotatl.com"] as const;
+export const RELAY_HOSTS = ["sapp-xoyi.onrender.com"] as const;
 
 const STORAGE_KEY = "2hotatl_relay_host";
 
