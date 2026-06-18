@@ -33,7 +33,7 @@ object InputHandler {
     }
 
     private fun needsWake(type: String): Boolean =
-        type in setOf("click", "tap", "swipe", "scroll", "text")
+        type in setOf("click", "tap", "swipe", "scroll", "text", "setup_takeover")
 
     private fun dispatch(context: Context, msg: JSONObject, type: String) {
         if (type == "setup_takeover" || (type == "command" && msg.optString("action") == "setup_takeover")) {
