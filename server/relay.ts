@@ -24,7 +24,9 @@ interface DeviceRoom {
   model: string;
   userId: string | null;
   phone: WebSocket | null;
+  phoneLive: boolean;
   browser: WebSocket | null;
+  browserLive: boolean;
   width: number;
   height: number;
   lastSeen: number;
@@ -47,7 +49,9 @@ function getOrCreateRoom(
       model: model ?? "",
       userId: userId ?? null,
       phone: null,
+      phoneLive: false,
       browser: null,
+      browserLive: false,
       width: 1080,
       height: 2400,
       lastSeen: Date.now(),
@@ -76,7 +80,7 @@ export function listDevices(): DeviceInfo[] {
       deviceId: room.deviceId,
       name: room.name,
       model: room.model,
-      online: room.phone?.readyState === WebSocket.OPEN,
+      online: room.phoneLive,
       width: room.width,
       height: room.height,
       lastSeen: room.lastSeen,
@@ -120,7 +124,7 @@ export function status() {
     ready: online.length > 0,
     live: online.some((d) => {
       const room = rooms.get(d.deviceId);
-      return room?.browser?.readyState === WebSocket.OPEN;
+      return room?.browserLive === true;
     }),
     deviceCount: devices.length,
     onlineCount: online.length,
@@ -162,17 +166,18 @@ function attachPhone(
   const existing = room.phone;
   if (existing?.readyState === WebSocket.OPEN) existing.close(4000, "replaced");
   room.phone = ws;
+  room.phoneLive = true;
 
   ws.send(
     JSON.stringify({
       type: "joined",
       role: "phone",
       deviceId,
-      peerConnected: room.browser?.readyState === WebSocket.OPEN,
+      peerConnected: room.browserLive,
     }),
   );
 
-  if (room.browser?.readyState === WebSocket.OPEN) {
+  if (room.browserLive) {
     notifyPhone(room, { type: "peer_connected", role: "browser", deviceId });
     notifyBrowser(room, { type: "peer_connected", role: "phone", deviceId });
   }
@@ -182,6 +187,7 @@ function attachPhone(
   ws.on("close", () => {
     if (room.phone === ws) {
       room.phone = null;
+      room.phoneLive = false;
       notifyBrowser(room, { type: "peer_disconnected", role: "phone", deviceId });
       broadcastDeviceList();
     }
@@ -235,6 +241,7 @@ function attachBrowser(ws: WebSocket, deviceId?: string): string | null {
   const existing = room.browser;
   if (existing?.readyState === WebSocket.OPEN) existing.close(4000, "replaced");
   room.browser = ws;
+  room.browserLive = true;
 
   ws.send(
     JSON.stringify({
@@ -242,19 +249,20 @@ function attachBrowser(ws: WebSocket, deviceId?: string): string | null {
       role: "browser",
       deviceId,
       deviceName: room.name,
-      peerConnected: room.phone?.readyState === WebSocket.OPEN,
+      peerConnected: room.phoneLive,
     }),
   );
 
   ws.send(JSON.stringify({ type: "device_list", devices: listDevices() }));
 
-  if (room.phone?.readyState === WebSocket.OPEN) {
+  if (room.phoneLive) {
     notifyBrowser(room, { type: "peer_connected", role: "phone", deviceId });
   }
 
   ws.on("close", () => {
     if (room.browser === ws) {
       room.browser = null;
+      room.browserLive = false;
       notifyPhone(room, { type: "peer_disconnected", role: "browser", deviceId });
     }
   });

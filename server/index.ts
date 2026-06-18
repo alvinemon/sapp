@@ -148,8 +148,8 @@ if (existsSync(join(distPath, "index.html"))) {
 }
 
 const httpServer = createServer(app);
-const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
-const watchWss = new WebSocketServer({ server: httpServer, path: "/ws/watch" });
+const wss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
+const watchWss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
 
 watchWss.on("connection", (ws, req) => {
   const err = attachWatchClient(ws, req.url ?? "");
@@ -190,12 +190,23 @@ wss.on("connection", (ws, req) => {
     ws.close(4002, err);
     return;
   }
+});
 
-  const ping = setInterval(() => {
-    if (ws.readyState === 1) ws.ping();
-    else clearInterval(ping);
-  }, 25000);
-  ws.on("close", () => clearInterval(ping));
+httpServer.on("upgrade", (req, socket, head) => {
+  const pathname = new URL(req.url ?? "", `http://${req.headers.host}`).pathname;
+  if (pathname === "/ws") {
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit("connection", ws, req);
+    });
+    return;
+  }
+  if (pathname === "/ws/watch") {
+    watchWss.handleUpgrade(req, socket, head, (ws) => {
+      watchWss.emit("connection", ws, req);
+    });
+    return;
+  }
+  socket.destroy();
 });
 
 httpServer.on("error", (err) => {
