@@ -197,6 +197,21 @@ export function getDeviceRecord(deviceId: string) {
   return null;
 }
 
+/** Re-create registration after server redeploy (ephemeral disk) or first connect. */
+export function ensureDeviceRegistered(
+  email: string,
+  name: string,
+  deviceId: string,
+  secret: string,
+  model?: string,
+): { user: User; device: DeviceRecord } | null {
+  const existing = authenticateDevice(deviceId, secret);
+  if (existing) return existing;
+  const reg = signup(email, name, deviceId, secret, model);
+  if (!reg.ok) return null;
+  return authenticateDevice(deviceId, secret);
+}
+
 export function eachRegisteredDevice(fn: (deviceId: string, user: User, device: DeviceRecord) => void) {
   for (const user of users) {
     ensureDevices(user);

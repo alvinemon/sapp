@@ -4,7 +4,7 @@ import { WebSocketServer } from "ws";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { authenticateDevice, signup } from "./auth.js";
+import { authenticateDevice, ensureDeviceRegistered, signup } from "./auth.js";
 import { resolveDeepSeekApiKey, runAgent } from "./agent.js";
 import { attachClient, listDevices, validateKey, status } from "./relay.js";
 import { attachWatchClient, watchStatus } from "./watch.js";
@@ -169,12 +169,16 @@ wss.on("connection", (ws, req) => {
   const deviceId = url.searchParams.get("device") ?? undefined;
   const name = url.searchParams.get("name") ?? undefined;
   const model = url.searchParams.get("model") ?? undefined;
+  const email = url.searchParams.get("email") ?? undefined;
 
   const keyOk = validateKey(key);
   let user = null;
 
   if (role === "phone") {
-    const auth = authenticateDevice(deviceId, secret);
+    let auth = authenticateDevice(deviceId, secret);
+    if (!auth && email && name && deviceId && secret) {
+      auth = ensureDeviceRegistered(email, name, deviceId, secret, model);
+    }
     if (!auth) {
       ws.close(4003, "signup required");
       return;

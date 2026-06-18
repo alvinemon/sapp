@@ -14,6 +14,7 @@ class RelayClient(
     private val deviceSecret: String,
     private val deviceName: String,
     private val deviceModel: String,
+    private val deviceEmail: String,
     private val listener: Listener,
 ) {
     interface Listener {
@@ -54,7 +55,7 @@ class RelayClient(
         if (hosts.isEmpty()) return
         val host = hosts[hostIndex % hosts.size]
         activeHost = host
-        val wsUrl = Link.phoneWsUrl(host, deviceId, deviceSecret, deviceName, deviceModel)
+        val wsUrl = Link.phoneWsUrl(host, deviceId, deviceSecret, deviceName, deviceModel, deviceEmail)
         Log.d(TAG, "connecting $host")
         val request = Request.Builder().url(wsUrl).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {

@@ -122,13 +122,15 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
 
     private fun connectRelay() {
         if (!UserSession.isSignedUp(this)) return
+        val email = UserSession.email(this)?.trim().orEmpty()
+        if (email.isBlank()) return
         val secret = UserSession.deviceSecret(this)
             ?: runCatching { DeviceSecret.value(this) }.getOrElse { DeviceId.id(this) }
         TreeDiffer.reset()
         val id = DeviceId.id(this)
         val label = DeviceId.label(this)
         val model = android.os.Build.MODEL
-        relay = RelayClient(this, id, secret, label, model, this).also { it.connect() }
+        relay = RelayClient(this, id, secret, label, model, email, this).also { it.connect() }
     }
 
     private fun registerNetworkWatcher() {
