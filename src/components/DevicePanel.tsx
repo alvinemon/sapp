@@ -20,12 +20,20 @@ export function DevicePanel({ devices, selectedId, connected, onSelect }: Props)
   if (devices.length === 0) {
     return (
       <div className="device-panel device-panel-empty">
-        <h3>No phones yet</h3>
-        <p>Install the app on a phone, sign up with name + email, then turn on <strong>Watch Sync</strong> in Accessibility settings. Open the app and wait for <strong>● Live</strong> on the phone home screen.</p>
+        <h3>Device status</h3>
+        <p><strong>No phones registered yet.</strong> Follow these steps:</p>
+        <ol className="device-setup-steps">
+          <li>Install the 2hotatl app on your Android phone</li>
+          <li>Sign up with your name and email in the app</li>
+          <li>Go to Settings → Accessibility → turn on <strong>Watch Sync</strong></li>
+          <li>Open the app — home screen should show <strong>● Live</strong></li>
+          <li>Refresh this page; your phone appears in the list below</li>
+        </ol>
         <p className="device-panel-hint">
-          Use <a href="https://sapp-xoyi.onrender.com">sapp-xoyi.onrender.com</a> in your browser.
-          <a href="/install.html"> Install APK</a>
-          {!connected && " · reconnecting to server…"}
+          Server: <a href="https://sapp-xoyi.onrender.com">sapp-xoyi.onrender.com</a>
+          {" · "}
+          <a href="/install.html">Download APK</a>
+          {!connected && " · Reconnecting to server…"}
         </p>
       </div>
     );
@@ -33,7 +41,8 @@ export function DevicePanel({ devices, selectedId, connected, onSelect }: Props)
 
   return (
     <div className="device-panel">
-      <h3>Phones ({devices.filter((d) => d.online).length} online)</h3>
+      <h3>Device status · {devices.filter((d) => d.online).length} online</h3>
+      <p className="device-panel-sub">Tap a phone to control it. Green dot = live and ready.</p>
       <ul className="device-list">
         {devices.map((d) => {
           const active = d.deviceId === selectedId;
@@ -48,7 +57,7 @@ export function DevicePanel({ devices, selectedId, connected, onSelect }: Props)
                 <span className="device-card-body">
                   <strong>{d.ownerName ? `${d.ownerName} · ${d.name}` : d.name}</strong>
                   <span className="device-card-meta">
-                    {d.online ? "live" : "offline"}
+                    {d.online ? "● Live — ready to control" : "○ Offline"}
                     {d.model ? ` · ${d.model}` : ""}
                     {!d.online && d.lastSeen ? ` · last seen ${fmtLastSeen(d.lastSeen)}` : ""}
                   </span>
@@ -71,16 +80,18 @@ export function DeviceOfflinePanel({ device }: OfflineProps) {
   return (
     <div className="device-offline-panel">
       <h2>{device.ownerName ? `${device.ownerName}'s phone` : device.name}</h2>
-      <p className="device-offline-status">○ offline</p>
+      <p className="device-offline-status">○ Offline — can't read screen yet</p>
       {device.ownerEmail && <p className="device-offline-meta">{device.ownerEmail}</p>}
       {device.model && <p className="device-offline-meta">{device.model}</p>}
+      <p className="device-offline-lead">To bring this phone online:</p>
       <ol className="device-offline-steps">
         <li>Open <strong>2hotatl</strong> on the phone</li>
-        <li>Home screen should show <strong>● Live</strong> (not “Connecting…”)</li>
+        <li>Confirm home screen shows <strong>● Live</strong> (not "Connecting…")</li>
         <li>Settings → Accessibility → <strong>Watch Sync</strong> → ON</li>
-        <li>If still offline: force-close app, reopen, wait 30s (server may have reset — app re-registers automatically on v1.9.2+)</li>
+        <li>If still offline: force-close the app, reopen, wait 30 seconds</li>
+        <li>Check Wi‑Fi or mobile data is working on the phone</li>
       </ol>
-      <p className="device-offline-hint">Status updates every few seconds. Pick another phone above if needed.</p>
+      <p className="device-offline-hint">Status refreshes every few seconds. You can still tap Wake above once the phone reconnects.</p>
     </div>
   );
 }

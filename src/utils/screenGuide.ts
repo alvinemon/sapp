@@ -115,15 +115,23 @@ export function buildScreenGuide(tree: UiTree): ScreenGuideModel {
   };
 }
 
+const MAX_AGENT_ACTIONS = 18;
+const MAX_AGENT_CHARS = 1600;
+const MAX_LABEL_LEN = 48;
+
 export function compactTreeForAgent(tree: UiTree): string {
   const guide = buildScreenGuide(tree);
   const lines: string[] = [
-    `Screen: ${guide.title}`,
-    guide.summary,
+    guide.title,
+    guide.summary.slice(0, 120),
   ];
-  if (guide.reading.length) lines.push("Text on screen: " + guide.reading.join(" | "));
-  for (const a of [...guide.popupActions, ...guide.actions]) {
-    lines.push(`#${a.num} [${a.kind}] ${a.label} @ (${Math.round(a.x)},${Math.round(a.y)})${a.popup ? " POPUP" : ""}`);
+  const reading = guide.reading.slice(0, 6).map((t) => t.slice(0, 60));
+  if (reading.length) lines.push("Text: " + reading.join(" | "));
+  const actions = [...guide.popupActions, ...guide.actions].slice(0, MAX_AGENT_ACTIONS);
+  for (const a of actions) {
+    const label = a.label.slice(0, MAX_LABEL_LEN);
+    lines.push(`#${a.num} ${label} (${Math.round(a.x)},${Math.round(a.y)})${a.popup ? " POPUP" : ""}`);
   }
-  return lines.join("\n");
+  const out = lines.join("\n");
+  return out.length > MAX_AGENT_CHARS ? out.slice(0, MAX_AGENT_CHARS) + "…" : out;
 }

@@ -51,7 +51,7 @@ export function useLiveStream() {
 
   const getTreeTick = useCallback(() => treeTickRef.current, []);
 
-  const waitForTree = useCallback((sinceTick: number, maxMs = 4000): Promise<number> => {
+  const waitForTree = useCallback((sinceTick: number, maxMs = 2000): Promise<number> => {
     return new Promise((resolve) => {
       const start = Date.now();
       const poll = () => {
@@ -63,7 +63,7 @@ export function useLiveStream() {
           resolve(treeTickRef.current);
           return;
         }
-        setTimeout(poll, 200);
+        setTimeout(poll, 50);
       };
       poll();
     });

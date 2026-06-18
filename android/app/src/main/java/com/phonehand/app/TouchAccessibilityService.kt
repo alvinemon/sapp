@@ -355,7 +355,7 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
 
     companion object {
         private const val TAG = "A11y"
-        private const val TREE_MS = 120L
+        private const val TREE_MS = 80L
 
         @Volatile var instance: TouchAccessibilityService? = null
     }

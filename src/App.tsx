@@ -9,6 +9,19 @@ import { clientToDevice } from "./utils/coords";
 import { buildScreenGuide } from "./utils/screenGuide";
 import type { ScreenAction } from "./utils/screenGuide";
 
+function statusLabel(
+  selectedDeviceId: string | null,
+  phoneLive: boolean,
+  connected: boolean,
+  activeName: string,
+  deviceName: string,
+) {
+  if (!selectedDeviceId) return { text: "No device selected", tone: "muted" as const };
+  if (phoneLive) return { text: `Live · ${activeName || deviceName}`, tone: "live" as const };
+  if (connected) return { text: "Connecting to phone…", tone: "warn" as const };
+  return { text: "Server offline", tone: "muted" as const };
+}
+
 export default function App() {
   const [showMap, setShowMap] = useState(false);
   const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([]);
@@ -37,6 +50,16 @@ export default function App() {
   const screenRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const selectedDevice = devices.find((d) => d.deviceId === selectedDeviceId);
+  const status = statusLabel(
+    selectedDeviceId,
+    phoneLive,
+    connected,
+    activeDeviceName,
+    selectedDevice?.name ?? "phone",
+  );
+
+  const onWake = () => send({ type: "key", action: "wake" });
+  const onPower = () => send({ type: "key", action: "power" });
 
   const onAction = (action: ScreenAction) => {
     send({ type: "tap", x: action.x, y: action.y });
@@ -95,16 +118,16 @@ export default function App() {
           <span className="logo-icon">◉</span>
           <div>
             <h1>2hotatl</h1>
-            <p className="tagline">guide + AI control</p>
+            <p className="tagline">remote phone control</p>
           </div>
         </div>
         <div className="status-pills">
           <a className="pill pill-link" href="/watch">watch</a>
           <a className="pill pill-link" href="/install.html">install</a>
           <label className="device-picker">
-            <span className="device-picker-label">device</span>
+            <span className="device-picker-label">Phone</span>
             <select value={selectedDeviceId ?? ""} onChange={(e) => selectDevice(e.target.value || null)}>
-              <option value="">pick phone…</option>
+              <option value="">Choose device…</option>
               {devices.map((d) => (
                 <option key={d.deviceId} value={d.deviceId}>
                   {d.online ? "● " : "○ "}
@@ -115,23 +138,64 @@ export default function App() {
               ))}
             </select>
           </label>
-          <button type="button" className={`pill pill-toggle ${showMap ? "pill-live" : "pill-muted"}`} onClick={() => setShowMap((v) => !v)}>
-            {showMap ? "map on" : "map off"}
-          </button>
-          <span className={`pill ${phoneLive ? "pill-live" : connected ? "pill-warn" : "pill-muted"}`}>
-            {!selectedDeviceId
-              ? "select device"
-              : phoneLive
-                ? `● ${activeDeviceName || selectedDevice?.name || "live"}`
-                : connected
-                  ? "syncing…"
-                  : "offline"}
+          <span className={`pill pill-status pill-${status.tone}`} title="Connection to selected phone">
+            {status.text}
           </span>
+          <button
+            type="button"
+            className={`pill pill-toggle ${showMap ? "pill-live" : "pill-muted"}`}
+            onClick={() => setShowMap((v) => !v)}
+            title="Show interactive screen map on the phone preview"
+          >
+            {showMap ? "Screen map: ON" : "Screen map: OFF"}
+          </button>
         </div>
       </header>
 
+      {canSendKeys && !tree && (
+        <div className="wake-banner">
+          <span>Phone screen asleep or not synced?</span>
+          <button type="button" className="btn-wake" onClick={onWake} disabled={!canSendKeys}>
+            ⏻ Wake phone
+          </button>
+        </div>
+      )}
+
+      <div className="control-bar">
+        <span className="control-bar-label">Screen controls</span>
+        <button
+          type="button"
+          className="ctrl-btn ctrl-wake"
+          onClick={onWake}
+          disabled={!canSendKeys}
+          title="Turn screen on (works even when screen map is empty)"
+        >
+          ⏻ Wake
+        </button>
+        <button
+          type="button"
+          className="ctrl-btn ctrl-power"
+          onClick={onPower}
+          disabled={!canSendKeys}
+          title="Wake if asleep, otherwise open power menu"
+        >
+          Power
+        </button>
+        <span className="control-bar-sep" />
+        <button type="button" className="ctrl-btn" onClick={() => send({ type: "key", action: "back" })} disabled={!canControl}>← Back</button>
+        <button type="button" className="ctrl-btn ctrl-home" onClick={() => send({ type: "key", action: "home" })} disabled={!canControl}>⌂ Home</button>
+        <button type="button" className="ctrl-btn" onClick={() => send({ type: "key", action: "recents" })} disabled={!canControl}>▢ Recents</button>
+        <span className="control-bar-sep" />
+        <button type="button" className="ctrl-btn" onClick={() => send({ type: "key", action: "volume_down" })} disabled={!canControl}>Vol −</button>
+        <button type="button" className="ctrl-btn" onClick={() => send({ type: "key", action: "volume_up" })} disabled={!canControl}>Vol +</button>
+        {!canSendKeys && (
+          <span className="control-bar-hint">Select a phone to enable controls</span>
+        )}
+      </div>
+
       <main className="main main-split">
         <aside className="guide-panel">
+          <p className="section-label">Your controls</p>
           <DevicePanel
             devices={devices}
             selectedId={selectedDeviceId}
@@ -140,7 +204,8 @@ export default function App() {
           />
           {!selectedDeviceId ? (
             <div className="guide-empty">
-              <p>Select a phone above to control it when it comes online.</p>
+              <strong>Step 1:</strong> Pick a phone from the list or header dropdown.
+              <p className="guide-empty-sub">Install the app, enable Watch Sync, then select your device here.</p>
             </div>
           ) : !phoneLive && selectedDevice ? (
             <DeviceOfflinePanel device={selectedDevice} />
@@ -148,13 +213,15 @@ export default function App() {
             <ScreenGuide guide={guide} onAction={onAction} />
           ) : selectedDevice ? (
             <div className="guide-empty">
-              <p>Reading screen on {selectedDevice.name}…</p>
+              <p>Reading screen on <strong>{selectedDevice.name}</strong>…</p>
+              <p className="guide-empty-sub">If the screen is black, tap <strong>Wake</strong> in the bar above.</p>
             </div>
           ) : null}
-          <AiPanel agent={agent} tree={tree} disabled={!phoneLive || !selectedDeviceId} />
+          <AiPanel agent={agent} tree={tree} disabled={!canSendKeys || agent.running} connected={connected} phoneLive={phoneLive} />
         </aside>
 
         <div className="phone-stage">
+          <p className="section-label section-label-center">Remote phone</p>
           <div className="phone-shadow" />
           <div className="phone-frame">
             <div className="phone-notch" />
@@ -168,7 +235,8 @@ export default function App() {
               {!selectedDeviceId ? (
                 <div className="screen-placeholder">
                   <span className="placeholder-emoji">◉</span>
-                  <p>select a device</p>
+                  <p>Select a device to start</p>
+                  <p className="placeholder-sub">Choose from the list on the left</p>
                 </div>
               ) : showMap && canControl && tree ? (
                 <SemanticUiView tree={tree} treeTick={treeTick} onActivate={(x, y) => send({ type: "tap", x, y })} />
@@ -180,15 +248,18 @@ export default function App() {
               ) : canControl ? (
                 <div className="screen-placeholder">
                   <span className="placeholder-emoji">◉</span>
-                  <p>{guide?.title ?? "connected"}</p>
-                  <p className="placeholder-sub">use the action list ← or AI</p>
+                  <p>{guide?.title ?? "Connected"}</p>
+                  <p className="placeholder-sub">Tap actions on the left, or turn on Screen map</p>
                 </div>
               ) : (
                 <div className="screen-placeholder">
                   <span className="placeholder-emoji">{phoneLive ? "◉" : "○"}</span>
-                  <p>{phoneLive ? "syncing…" : selectedDevice ? `${selectedDevice.name} offline` : "phone offline"}</p>
+                  <p>{phoneLive ? "Syncing screen…" : selectedDevice ? `${selectedDevice.name} offline` : "Phone offline"}</p>
                   {!phoneLive && selectedDevice && (
                     <p className="placeholder-sub">Open the app · enable Watch Sync</p>
+                  )}
+                  {canSendKeys && !phoneLive && (
+                    <button type="button" className="btn-wake-inline" onClick={onWake}>Wake phone</button>
                   )}
                 </div>
               )}
@@ -200,13 +271,13 @@ export default function App() {
           </div>
 
           <nav className="nav-bar nav-bar-full">
-            <button type="button" onClick={() => send({ type: "key", action: "wake" })} disabled={!canSendKeys} className="nav-wake">Wake</button>
+            <button type="button" onClick={onWake} disabled={!canSendKeys} className="nav-wake" title="Turn screen on">⏻ Wake</button>
             <button type="button" onClick={() => send({ type: "key", action: "back" })} disabled={!canControl}>Back</button>
             <button type="button" onClick={() => send({ type: "key", action: "home" })} disabled={!canControl} className="nav-home">Home</button>
             <button type="button" onClick={() => send({ type: "key", action: "recents" })} disabled={!canControl}>Recents</button>
-            <button type="button" onClick={() => send({ type: "key", action: "power" })} disabled={!canSendKeys} className="nav-power" title="Wake if asleep, else power menu">⏻</button>
-            <button type="button" onClick={() => send({ type: "key", action: "volume_down" })} disabled={!canControl}>−</button>
-            <button type="button" onClick={() => send({ type: "key", action: "volume_up" })} disabled={!canControl}>+</button>
+            <button type="button" onClick={onPower} disabled={!canSendKeys} className="nav-power" title="Wake if asleep, else power menu">⏻ Power</button>
+            <button type="button" onClick={() => send({ type: "key", action: "volume_down" })} disabled={!canControl}>Vol −</button>
+            <button type="button" onClick={() => send({ type: "key", action: "volume_up" })} disabled={!canControl}>Vol +</button>
           </nav>
         </div>
       </main>
