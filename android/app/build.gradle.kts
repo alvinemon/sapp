@@ -11,11 +11,10 @@ android {
         applicationId = "com.phonehand.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 21
-        versionName = "1.8.7"
-        buildConfigField("String", "RELAY_HOST", "\"2hotatl.com\"")
-        // Comma-separated CDN-bypass / secondary relay hosts (add Render URL after deploy)
-        buildConfigField("String", "RELAY_HOST_FALLBACK", "\"api.2hotatl.com\"")
+        versionCode = 22
+        versionName = "1.8.8"
+        buildConfigField("String", "RELAY_HOST", "\"sapp-xoyi.onrender.com\"")
+        buildConfigField("String", "RELAY_HOST_FALLBACK", "\"2hotatl.com\"")
     }
 
     buildFeatures {

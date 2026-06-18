@@ -17,3 +17,5 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
+      # Add in Render dashboard (do not commit the key):
+      # DEEPSEEK_API_KEY = your key

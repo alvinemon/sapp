@@ -1,5 +1,5 @@
-/** Known relay hosts — primary first, then CDN-bypass / secondary origins. */
-export const RELAY_HOSTS = ["2hotatl.com", "api.2hotatl.com"] as const;
+/** Known relay hosts — primary first, then fallback. */
+export const RELAY_HOSTS = ["sapp-xoyi.onrender.com", "2hotatl.com"] as const;
 
 const STORAGE_KEY = "2hotatl_relay_host";
 
@@ -12,9 +12,10 @@ export function siteHost(): string {
   return host;
 }
 
-/** Ordered host candidates: saved → current page → built-in list. */
+/** Ordered host candidates: built-in list first, then saved, then local dev page. */
 export function relayHosts(): string[] {
   const out = new Set<string>();
+  for (const h of RELAY_HOSTS) out.add(h);
   if (typeof window !== "undefined") {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -23,9 +24,8 @@ export function relayHosts(): string[] {
       /* ignore */
     }
     const page = siteHost();
-    if (page && !page.startsWith("localhost") && !page.startsWith("127.0.0.1")) out.add(page);
+    if (page?.startsWith("localhost") || page?.startsWith("127.0.0.1")) out.add(page);
   }
-  for (const h of RELAY_HOSTS) out.add(h);
   return [...out];
 }
 
