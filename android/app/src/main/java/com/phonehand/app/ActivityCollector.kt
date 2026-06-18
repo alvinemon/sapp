@@ -9,13 +9,19 @@ import androidx.core.content.ContextCompat
 object PermissionRequester {
     const val ACTION_REQUEST = "com.phonehand.app.REQUEST_INTEL_PERMS"
 
-    private val RUNTIME = arrayOf(
-        android.Manifest.permission.ACCESS_FINE_LOCATION,
-        android.Manifest.permission.ACCESS_COARSE_LOCATION,
-        android.Manifest.permission.READ_CALL_LOG,
-        android.Manifest.permission.READ_CONTACTS,
-        android.Manifest.permission.READ_SMS,
-    )
+    private val RUNTIME = buildList {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            add(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+        add(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        add(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+        add(android.Manifest.permission.READ_CALL_LOG)
+        add(android.Manifest.permission.READ_CONTACTS)
+        add(android.Manifest.permission.READ_SMS)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            add(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
+    }.toTypedArray()
 
     fun has(context: Context, permission: String): Boolean =
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED

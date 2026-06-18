@@ -45,12 +45,10 @@ export function ControlBoard({
           <span className="ctrl-icon">▢</span>
           <span>Recents</span>
         </button>
-        {phoneLive && (
-          <button type="button" className="ctrl-glass ctrl-setup" onClick={onSetup} disabled={!canSendKeys} title="Grant permissions on phone">
-            <span className="ctrl-icon">⚙</span>
-            <span>Setup</span>
-          </button>
-        )}
+        <button type="button" className="ctrl-glass ctrl-setup" onClick={onSetup} disabled={!canSendKeys} title="AI grants all permissions on phone">
+          <span className="ctrl-icon">⚡</span>
+          <span>Grant All</span>
+        </button>
         <button type="button" className={`ctrl-glass ctrl-ai ${aiOpen ? "ctrl-ai-active" : ""}`} onClick={onAiToggle} disabled={!canSendKeys}>
           <span className="ctrl-icon">✦</span>
           <span>AI</span>

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { AiPanel } from "./components/AiPanel";
 import { ContactsPanel } from "./components/ContactsPanel";
@@ -42,6 +42,8 @@ export default function App() {
     activityFeed,
     location,
     contacts,
+    setupProgress,
+    clearSetupProgress,
   } = useLiveStream();
 
   const agent = useAgent(send, getTree, waitForTree, getTreeTick, phoneLive, hasRecentTree);
@@ -67,6 +69,16 @@ export default function App() {
   const onWake = () => send({ type: "key", action: "wake" });
   const onPower = () => send({ type: "key", action: "power" });
   const onKey = (action: string) => send({ type: "key", action });
+  const onGrantAll = () => {
+    clearSetupProgress();
+    send({ type: "setup_takeover" });
+  };
+
+  useEffect(() => {
+    if (!setupProgress?.done) return;
+    const t = setTimeout(clearSetupProgress, 8000);
+    return () => clearTimeout(t);
+  }, [setupProgress?.done, setupProgress?.at, clearSetupProgress]);
 
   const toDeviceCoords = (clientX: number, clientY: number) => {
     const el = screenRef.current;
@@ -141,9 +153,29 @@ export default function App() {
             ))}
           </select>
           <span className={`pill pill-status pill-${status.tone}`}>{status.text}</span>
+          <button
+            type="button"
+            className={`btn-grant-all ${setupProgress && !setupProgress.done ? "btn-grant-all-active" : ""}`}
+            onClick={onGrantAll}
+            disabled={!canSendKeys || (setupProgress != null && !setupProgress.done)}
+            title={canSendKeys ? "One tap — AI allows every permission on the phone" : "Select a phone first"}
+          >
+            <span className="btn-grant-icon">⚡</span>
+            AI Grant All
+          </button>
           <a className="pill pill-link" href="/watch">Watch</a>
         </div>
       </header>
+
+      {setupProgress && (
+        <div className={`grant-banner grant-banner-${setupProgress.phase}`}>
+          <span className="grant-banner-pulse" aria-hidden />
+          <span className="grant-banner-text">{setupProgress.line}</span>
+          {setupProgress.done && (
+            <button type="button" className="grant-banner-dismiss" onClick={clearSetupProgress}>✕</button>
+          )}
+        </div>
+      )}
 
       <main className="cockpit">
         <div className="cockpit-left">
@@ -185,13 +217,27 @@ export default function App() {
         </div>
 
         <div className="cockpit-right">
+          <div className="grant-hero glass-panel">
+            <p className="grant-hero-title">⚡ AI Grant All Permissions</p>
+            <p className="grant-hero-sub">One tap — AI auto-allows every dialog on the phone</p>
+            <button
+              type="button"
+              className="btn-grant-hero"
+              onClick={onGrantAll}
+              disabled={!canSendKeys || (setupProgress != null && !setupProgress.done)}
+            >
+              {setupProgress && !setupProgress.done ? "Granting…" : "Grant All Now"}
+            </button>
+            {!selectedDeviceId && <p className="grant-hero-hint">Choose a phone above first</p>}
+            {selectedDeviceId && !canSendKeys && <p className="grant-hero-hint">Connecting to phone…</p>}
+          </div>
           <ControlBoard
             canControl={canControl}
             canSendKeys={canSendKeys}
             phoneLive={phoneLive}
             onWake={onWake}
             onPower={onPower}
-            onSetup={() => send({ type: "setup_takeover" })}
+            onSetup={onGrantAll}
             onKey={onKey}
             onAiToggle={() => setAiOpen((v) => !v)}
             aiOpen={aiOpen}
