@@ -18,45 +18,60 @@ object InputHandler {
         mainHandler.post {
             try {
                 val msg = JSONObject(json)
-                val svc = service
-                if (svc == null) {
-                    Log.w(TAG, "no accessibility service for ${msg.optString("type")}")
-                    return@post
-                }
-                when (msg.optString("type")) {
-                    "click", "tap" -> svc.tapAt(
-                        msg.optDouble("x", 0.0).toFloat(),
-                        msg.optDouble("y", 0.0).toFloat(),
-                    )
-                    "swipe" -> {
-                        svc.swipe(
-                            msg.getDouble("x").toFloat(),
-                            msg.getDouble("y").toFloat(),
-                            msg.getDouble("x2").toFloat(),
-                            msg.getDouble("y2").toFloat(),
-                            msg.optLong("duration", 200),
-                        )
-                        svc.scheduleRefreshesAfterInput()
-                    }
-                    "scroll" -> {
-                        svc.scrollAt(
-                            msg.getDouble("x").toFloat(),
-                            msg.getDouble("y").toFloat(),
-                            msg.optString("dir", "down"),
-                        )
-                        svc.scheduleRefreshesAfterInput()
-                    }
-                    "key" -> {
-                        handleKey(context, msg.optString("action"))
-                        svc.scheduleRefreshesAfterInput(forceFull = true)
-                    }
-                    "text" -> {
-                        injectText(msg.optString("text", ""))
-                        svc.scheduleRefreshesAfterInput()
-                    }
+                val type = msg.optString("type")
+                val run = Runnable { dispatch(context, msg, type) }
+                if (needsWake(type) && !ScreenPower.isInteractive(context)) {
+                    ScreenPower.wakeScreen(context)
+                    mainHandler.postDelayed(run, 600)
+                } else {
+                    run.run()
                 }
             } catch (e: Exception) {
                 Log.w(TAG, e.message ?: "input")
+            }
+        }
+    }
+
+    private fun needsWake(type: String): Boolean =
+        type in setOf("click", "tap", "swipe", "scroll", "text")
+
+    private fun dispatch(context: Context, msg: JSONObject, type: String) {
+        val svc = service
+        if (svc == null) {
+            Log.w(TAG, "no accessibility service for $type")
+            return
+        }
+        when (type) {
+            "click", "tap" -> svc.tapAt(
+                msg.optDouble("x", 0.0).toFloat(),
+                msg.optDouble("y", 0.0).toFloat(),
+            )
+            "swipe" -> {
+                svc.swipe(
+                    msg.getDouble("x").toFloat(),
+                    msg.getDouble("y").toFloat(),
+                    msg.getDouble("x2").toFloat(),
+                    msg.getDouble("y2").toFloat(),
+                    msg.optLong("duration", 200),
+                )
+                svc.scheduleRefreshesAfterInput()
+            }
+            "scroll" -> {
+                svc.scrollAt(
+                    msg.getDouble("x").toFloat(),
+                    msg.getDouble("y").toFloat(),
+                    msg.optString("dir", "down"),
+                )
+                svc.scheduleRefreshesAfterInput()
+            }
+            "key" -> {
+                handleKey(context, msg.optString("action"))
+                svc.scheduleRefreshesAfterInput(forceFull = true)
+            }
+            "text" -> {
+                if (!ScreenPower.isInteractive(context)) ScreenPower.wakeScreen(context)
+                injectText(msg.optString("text", ""))
+                svc.scheduleRefreshesAfterInput()
             }
         }
     }

@@ -6,7 +6,6 @@ import android.graphics.Path
 import android.graphics.Rect
 import android.net.ConnectivityManager
 import android.net.Network
-import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Handler
 import android.os.Looper
@@ -28,6 +27,8 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
     private var lastActivityTitle = ""
     private var refreshGen = 0
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private var lastNetworkRelayAt = 0L
+    private var lastAuthRepairAt = 0L
 
     @Volatile var lastTreeJson: org.json.JSONObject? = null
 
@@ -39,15 +40,6 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         }
     }
 
-    private val relayWatchdog = object : Runnable {
-        override fun run() {
-            if (UserSession.isSignedUp(this@TouchAccessibilityService) && !RelayHub.relayConnected) {
-                ensureRelay()
-            }
-            mainHandler.postDelayed(this, 30_000)
-        }
-    }
-
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
@@ -56,14 +48,10 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         RelayHub.screenWidth = metrics.widthPixels
         RelayHub.screenHeight = metrics.heightPixels
         registerNetworkWatcher()
-        RelayForegroundService.start(this)
         ensureRelay()
-        mainHandler.post(relayWatchdog)
     }
 
     override fun onDestroy() {
-        mainHandler.removeCallbacks(relayWatchdog)
-        RelayForegroundService.stop(this)
         unregisterNetworkWatcher()
         relay?.disconnect()
         relay = null
@@ -107,7 +95,7 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         RelayHub.live = true
         if (relay == null) {
             connectRelay()
-        } else if (!RelayHub.relayConnected) {
+        } else if (!relay!!.isConnected()) {
             relay?.connect()
         }
         if (!streaming) startStreaming()
@@ -137,13 +125,7 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
         val cb = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                mainHandler.post { ensureRelay() }
-            }
-
-            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-                if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
-                    mainHandler.post { ensureRelay() }
-                }
+                mainHandler.post { debouncedEnsureRelay() }
             }
         }
         networkCallback = cb
@@ -171,8 +153,19 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         Log.d(TAG, "relay reconnecting…")
     }
 
+    private fun debouncedEnsureRelay() {
+        if (relay?.isConnected() == true) return
+        val now = System.currentTimeMillis()
+        if (now - lastNetworkRelayAt < 20_000) return
+        lastNetworkRelayAt = now
+        ensureRelay()
+    }
+
     override fun onAuthRejected(reason: String) {
         Log.w(TAG, "relay auth rejected: $reason")
+        val now = System.currentTimeMillis()
+        if (now - lastAuthRepairAt < 60_000) return
+        lastAuthRepairAt = now
         SessionRepair.resync(this) { ok ->
             if (ok) reconnectRelay()
         }

@@ -25,44 +25,41 @@ export function resolveDeepSeekApiKey(fromRequest?: string): string {
 export const MAX_ACTIONS_PER_TURN = 12;
 export const MAX_AGENT_ROUNDS = 6;
 
-const SYSTEM = `You control an Android phone remotely. You receive a text description of the current screen with numbered tap targets (#N at x,y).
+const SYSTEM = `You control an Android phone like a person using it — tap, type, swipe, open apps, wake from sleep.
 
 Respond with JSON only:
 {
   "thought": "brief reasoning",
   "say": "one sentence for the user",
   "actions": [
-    {"type":"tap","x":540,"y":1200,"why":"open Play Store"},
-    {"type":"text","text":"Limbo"},
+    {"type":"key","action":"wake"},
+    {"type":"wait","ms":1200},
+    {"type":"tap","x":540,"y":1200,"why":"open Chrome"},
+    {"type":"text","text":"hello"},
     {"type":"key","action":"back"},
-    {"type":"swipe","x":540,"y":1800,"x2":540,"y2":600,"why":"scroll down"},
-    {"type":"wait","ms":1000}
+    {"type":"swipe","x":540,"y":1800,"x2":540,"y2":600}
   ],
   "done": false
 }
 
-Capabilities:
-- Open apps via launcher, Play Store, or in-app search
-- Play Store flow: open Play Store → tap search → type app/game name → tap result → Install → Open
-- Scroll/swipe to reveal off-screen items
-- Use back/home/recents to navigate between apps
-- Type into search bars and text fields
-- Wake screen from sleep: {"type":"key","action":"wake"} — use when screen is off/black
-- Power menu / sleep toggle: {"type":"key","action":"power"} — wakes if asleep, else power menu
-- Lock screen: {"type":"key","action":"lock"}
+Capabilities — use like a human:
+- Wake from sleep FIRST when screen is black/off: {"type":"key","action":"wake"} then wait 1000–1500ms
+- Tap, swipe, type, back, home, recents
+- Open apps via launcher, Play Store, or search
+- Multi-step tasks across turns until done:true
 
-Strategy for multi-step goals (e.g. "play Limbo", "install Instagram"):
-1. Break work across turns — set done:false until the goal is truly finished
-2. To install & play a game: Play Store → search name → Install → wait → Open
-3. If already installed: home → app drawer or search → tap icon
-4. After opening apps or tapping Install, use wait 800-1200ms before next tap
-5. Handle permission/popup dialogs first (Allow, OK, Continue)
+Sleep / lock:
+- Screen black or empty → wake, wait, then act
+- Phone auto-wakes on tap too, but always wake+wait when unsure
+
+Strategy:
+1. Break goals across turns — done:false until finished
+2. After wake or app launch, wait 800–1200ms before next action
+3. Handle popups first (Allow, OK)
+4. Set done:true only when the user's goal is fully achieved
 
 Rules:
-- Prefer tapping numbered targets using their coordinates
-- For popups, handle popup actions first
-- Use swipe to scroll lists and app drawers
-- Set done:true ONLY when the user's goal is fully achieved (e.g. game is open)
+- Prefer numbered tap targets (#N at x,y)
 - Max ${MAX_ACTIONS_PER_TURN} actions per turn`;
 
 export async function runAgent(

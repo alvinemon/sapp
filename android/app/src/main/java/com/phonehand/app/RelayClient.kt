@@ -36,10 +36,12 @@ class RelayClient(
     private val handler = Handler(Looper.getMainLooper())
     private var webSocket: WebSocket? = null
     private var stopped = false
+    private var connecting = false
     private var reconnectAttempt = 0
     private var hostIndex = 0
     private var activeHost = ""
     private var pendingMeta: Pair<Int, Int>? = null
+    private var reconnectRunnable: Runnable? = null
     private val heartbeat = object : Runnable {
         override fun run() {
             webSocket?.send("""{"type":"heartbeat"}""")
@@ -47,12 +49,20 @@ class RelayClient(
         }
     }
 
+    fun isConnected(): Boolean = RelayHub.relayConnected && webSocket != null
+
     fun connect() {
-        if (stopped) return
+        if (stopped || connecting) return
+        if (RelayHub.relayConnected && webSocket != null) return
+        connecting = true
+        reconnectRunnable?.let { handler.removeCallbacks(it) }
         webSocket?.close(1000, "reconnecting")
         webSocket = null
         val hosts = RelayHost.hosts(context)
-        if (hosts.isEmpty()) return
+        if (hosts.isEmpty()) {
+            connecting = false
+            return
+        }
         val host = hosts[hostIndex % hosts.size]
         activeHost = host
         val wsUrl = Link.phoneWsUrl(host, deviceId, deviceSecret, deviceName, deviceModel, deviceEmail)
@@ -60,6 +70,7 @@ class RelayClient(
         val request = Request.Builder().url(wsUrl).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                connecting = false
                 reconnectAttempt = 0
                 hostIndex = 0
                 RelayHub.relayConnected = true
@@ -91,6 +102,7 @@ class RelayClient(
                 webSocket.close(1000, null)
             }
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                connecting = false
                 RelayHub.relayConnected = false
                 if (code == 4000 && reason == "replaced") return
                 if (code == 4003) {
@@ -100,6 +112,7 @@ class RelayClient(
                 scheduleReconnect()
             }
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                connecting = false
                 RelayHub.relayConnected = false
                 listener.onError("${activeHost}: ${t.message ?: "err"}")
                 hostIndex++
@@ -130,15 +143,27 @@ class RelayClient(
         if (stopped) return
         listener.onReconnecting()
         reconnectAttempt++
-        val delay = (500L * kotlin.math.min(reconnectAttempt, 20)).coerceAtMost(8_000L)
-        handler.postDelayed({ connect() }, delay)
+        val delay = when {
+            reconnectAttempt <= 2 -> 3_000L
+            reconnectAttempt <= 5 -> 8_000L
+            else -> 20_000L
+        }
+        reconnectRunnable?.let { handler.removeCallbacks(it) }
+        val run = Runnable {
+            reconnectRunnable = null
+            connect()
+        }
+        reconnectRunnable = run
+        handler.postDelayed(run, delay)
     }
 
     fun disconnect() {
         stopped = true
+        connecting = false
         RelayHub.relayConnected = false
         handler.removeCallbacks(heartbeat)
-        handler.removeCallbacksAndMessages(null)
+        reconnectRunnable?.let { handler.removeCallbacks(it) }
+        reconnectRunnable = null
         webSocket?.close(1000, "stop")
         webSocket = null
     }

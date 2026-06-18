@@ -74,35 +74,50 @@ export function useAgent(
     [send, addLog],
   );
 
+  const wakePhone = useCallback(async () => {
+    send({ type: "key", action: "wake" });
+    await new Promise((r) => setTimeout(r, 1500));
+  }, [send]);
+
   const runPrompt = useCallback(
     async (goal: string, _tree: UiTree | null) => {
-      let tree = getTree() ?? (await waitForLiveTree(6000));
-      if (!tree) {
-        addLog("error", "No screen data — wait for device to connect");
-        return;
-      }
       setRunning(true);
       addLog("user", goal);
       historyRef.current = [];
 
       try {
+        let tree = getTree();
+        if (!tree) {
+          addLog("agent", "Waking phone…");
+          await wakePhone();
+          tree = await waitForLiveTree(10_000);
+        }
+        if (!tree) {
+          addLog("error", "No screen yet — make sure Watch Together is ON on the phone");
+          return;
+        }
+
         let taskPrompt = goal;
 
         for (let round = 0; round < MAX_AGENT_ROUNDS; round++) {
           let currentTree = getTree();
           if (!currentTree) {
-            addLog("agent", "Waiting for screen…");
-            currentTree = await waitForLiveTree(8000);
+            addLog("agent", "Screen asleep — waking…");
+            await wakePhone();
+            currentTree = await waitForLiveTree(10_000);
           }
           if (!currentTree) {
-            addLog("error", "Lost screen data — phone may be asleep. Try Wake, then retry.");
+            addLog("error", "Could not read screen — phone may be locked");
             break;
           }
 
           const screen = compactTreeForAgent(currentTree);
+          const screenHint = screen.includes("black") || screen.length < 40
+            ? `${screen}\n\n(Screen appears off — use wake key first, then continue the task.)`
+            : screen;
           let result: AgentResult;
           try {
-            result = await runDeepSeekAgent(taskPrompt, screen, historyRef.current);
+            result = await runDeepSeekAgent(taskPrompt, screenHint, historyRef.current);
           } catch (e) {
             const msg = e instanceof Error ? e.message : "Agent failed";
             if (msg.includes("not configured") || msg.includes("503")) {
@@ -142,7 +157,7 @@ export function useAgent(
         setRunning(false);
       }
     },
-    [getTree, getTreeTick, waitForTree, waitForLiveTree, addLog, execAction],
+    [getTree, getTreeTick, waitForTree, waitForLiveTree, wakePhone, addLog, execAction],
   );
 
   const clearLogs = useCallback(() => {

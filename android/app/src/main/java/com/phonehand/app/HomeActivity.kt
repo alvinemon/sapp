@@ -16,7 +16,7 @@ class HomeActivity : AppCompatActivity() {
     private val refresh = object : Runnable {
         override fun run() {
             updateStatus()
-            handler.postDelayed(this, 2000)
+            handler.postDelayed(this, 5000)
         }
     }
 
@@ -51,13 +51,6 @@ class HomeActivity : AppCompatActivity() {
         if (!WatchSync.isEnabled(this)) {
             startActivity(Intent(this, OnboardingActivity::class.java))
             finish()
-            return
-        }
-        TouchAccessibilityService.instance?.ensureRelay()
-        if (UserSession.isSignedUp(this) && !RelayHub.relayConnected) {
-            SessionRepair.resync(this) {
-                TouchAccessibilityService.instance?.reconnectRelay()
-            }
         }
     }
 

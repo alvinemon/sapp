@@ -105,7 +105,10 @@ export function useLiveStream() {
       const dev = list.find((d) => d.deviceId === (sel ?? list[0]?.deviceId));
       const phoneOnline = !!dev?.online;
       if (phoneOnline && !prevPhoneOnlineRef.current && sel) {
-        openSocketRef.current();
+        const state = wsRef.current?.readyState;
+        if (state !== WebSocket.OPEN && state !== WebSocket.CONNECTING) {
+          openSocketRef.current();
+        }
       }
       prevPhoneOnlineRef.current = phoneOnline;
       if (dev?.online) {
@@ -144,6 +147,8 @@ export function useLiveStream() {
   }, []);
 
   const openSocket = useCallback(() => {
+    const state = wsRef.current?.readyState;
+    if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return;
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
@@ -167,17 +172,19 @@ export function useLiveStream() {
       if (dev?.online) {
         reconnectTimerRef.current = setTimeout(() => {
           if (!mountedRef.current) return;
+          if (wsRef.current?.readyState === WebSocket.OPEN) return;
           openSocketRef.current();
-        }, 2000);
+        }, 8000);
         return;
       }
       if (Date.now() - lastPhoneAtRef.current < DISCONNECT_GRACE_MS) return;
       schedulePhoneInactive();
       reconnectTimerRef.current = setTimeout(async () => {
         if (!mountedRef.current) return;
+        if (wsRef.current?.readyState === WebSocket.OPEN) return;
         await rotateHost();
         openSocketRef.current();
-      }, 4000);
+      }, 15000);
     };
 
     ws.onmessage = (ev) => {
@@ -256,7 +263,7 @@ export function useLiveStream() {
       openSocket();
       refreshDevices();
     })();
-    const poll = setInterval(refreshDevices, 5000);
+    const poll = setInterval(refreshDevices, 12000);
     const tick = setInterval(() => {
       const dev = devicesRef.current.find((d) => d.deviceId === selectedRef.current);
       const recentTree = lastPhoneAtRef.current > 0 && Date.now() - lastPhoneAtRef.current < PHONE_STALE_MS;
