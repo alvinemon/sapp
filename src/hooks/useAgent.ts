@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import type { DeviceState } from "../types/device";
 import type { AgentAction, AgentResult } from "../utils/agent";
 import { MAX_AGENT_ROUNDS, runDeepSeekAgent } from "../utils/agent";
 import type { UiTree } from "../types/uiTree";
@@ -7,7 +8,8 @@ import { compactTreeForAgent } from "../utils/screenGuide";
 const POLL_MS = 40;
 const ACTION_GAP_MS = 40;
 const BATCH_TAP_GAP_MS = 30;
-const WAKE_SETTLE_MS = 250;
+const WAKE_SETTLE_MS = 350;
+const UNLOCK_SETTLE_MS = 800;
 const ROUND_GAP_MS = 50;
 const MAX_WAIT_MS = 200;
 const SWIPE_MS = 180;
@@ -29,6 +31,8 @@ export function useAgent(
   getTreeTick: () => number,
   phoneLive: boolean,
   hasRecentTree: () => boolean,
+  getDeviceState: () => DeviceState | null,
+  waitForReady: (maxMs?: number) => Promise<boolean>,
 ) {
   const [running, setRunning] = useState(false);
   const [logs, setLogs] = useState<AgentLog[]>([]);
@@ -49,16 +53,28 @@ export function useAgent(
     setLogs((l) => [...l.slice(-40), { id: ++logId.current, role, text }]);
   }, []);
 
-  const wakePhone = useCallback(async () => {
-    if (getTree()) return;
-    if (phoneLive && hasRecentTree()) {
-      await waitForLiveTree(500);
-      return;
+  const ensureReady = useCallback(async () => {
+    const state = getDeviceState();
+    if (state?.ready && getTree()) return;
+
+    if (!ScreenPowerNeedsWake(state)) {
+      if (getTree()) return;
     }
+
+    addLog("agent", "Waking phone…");
     send({ type: "key", action: "wake" });
     await new Promise((r) => setTimeout(r, WAKE_SETTLE_MS));
-    await waitForLiveTree(2000);
-  }, [send, getTree, waitForLiveTree, phoneLive, hasRecentTree]);
+
+    const locked = getDeviceState()?.locked ?? state?.locked;
+    if (locked || !getTree()) {
+      addLog("agent", "Unlocking…");
+      send({ type: "key", action: "unlock" });
+      await new Promise((r) => setTimeout(r, UNLOCK_SETTLE_MS));
+      await waitForReady(5000);
+    }
+
+    await waitForLiveTree(3000);
+  }, [send, getTree, getDeviceState, waitForReady, waitForLiveTree, addLog]);
 
   const execSingleAction = useCallback(
     async (action: AgentAction) => {
@@ -79,11 +95,8 @@ export function useAgent(
           if (action.action) {
             send({ type: "key", action: action.action });
             addLog("action", `key ${action.action}`);
-            if (
-              (action.action === "wake" || action.action === "power") &&
-              !(phoneLive && hasRecentTree())
-            ) {
-              await new Promise((r) => setTimeout(r, WAKE_SETTLE_MS));
+            if (action.action === "wake" || action.action === "unlock") {
+              await new Promise((r) => setTimeout(r, action.action === "unlock" ? UNLOCK_SETTLE_MS : WAKE_SETTLE_MS));
             }
           }
           break;
@@ -99,7 +112,7 @@ export function useAgent(
       }
       await new Promise((r) => setTimeout(r, ACTION_GAP_MS));
     },
-    [send, addLog, phoneLive, hasRecentTree],
+    [send, addLog],
   );
 
   const execActions = useCallback(
@@ -138,37 +151,39 @@ export function useAgent(
       historyRef.current = [];
 
       try {
-        let tree = getTree();
+        await ensureReady();
+        let tree = await waitForLiveTree(5000);
         if (!tree) {
-          addLog("agent", "Waking phone…");
-          await wakePhone();
-          tree = await waitForLiveTree(5000);
-        }
-        if (!tree) {
-          addLog("error", "No screen yet — tap Wake above or enable Watch Sync on the phone");
+          addLog("error", "No screen — tap Unlock or enable Watch Together on the phone");
           return;
         }
 
         let taskPrompt = goal;
-
         let nextAgentPromise: Promise<AgentResult> | null = null;
 
         for (let round = 0; round < MAX_AGENT_ROUNDS; round++) {
+          const state = getDeviceState();
+          if (state?.locked || !getTree()) {
+            addLog("agent", "Phone locked — unlocking…");
+            await ensureReady();
+          }
+
           let currentTree = getTree();
           if (!currentTree) {
-            addLog("agent", "Screen asleep — waking…");
-            await wakePhone();
+            await ensureReady();
             currentTree = await waitForLiveTree(3000);
           }
           if (!currentTree) {
-            addLog("error", "Could not read screen — tap Wake or unlock the phone");
+            addLog("error", "Could not read screen — tap Unlock on the portal");
             break;
           }
 
           const screen = compactTreeForAgent(currentTree);
+          const lockedHint = state?.locked ? "\n\n(Phone is LOCKED — use key unlock or swipe first.)" : "";
           const screenHint = screen.includes("black") || screen.length < 40
-            ? `${screen}\n\n(Screen appears off — use wake key first, then continue the task.)`
-            : screen;
+            ? `${screen}${lockedHint}\n\n(Screen appears off — wake and unlock first.)`
+            : screen + lockedHint;
+
           let result: AgentResult;
           try {
             result = nextAgentPromise ?? await runDeepSeekAgent(taskPrompt, screenHint, historyRef.current);
@@ -192,7 +207,7 @@ export function useAgent(
 
           if (result.done) {
             await actionsPromise;
-            addLog("agent", "✓ Task complete");
+            addLog("agent", "Task complete");
             break;
           }
 
@@ -202,8 +217,7 @@ export function useAgent(
             taskPrompt = `Continue: ${goal}`;
             const nextTree = getTree();
             if (nextTree) {
-              const nextScreen = compactTreeForAgent(nextTree);
-              nextAgentPromise = runDeepSeekAgent(taskPrompt, nextScreen, historyRef.current);
+              nextAgentPromise = runDeepSeekAgent(taskPrompt, compactTreeForAgent(nextTree), historyRef.current);
             }
           } else {
             await actionsPromise;
@@ -216,7 +230,7 @@ export function useAgent(
         setRunning(false);
       }
     },
-    [getTree, getTreeTick, waitForTree, waitForLiveTree, wakePhone, addLog, execActions],
+    [getTree, getTreeTick, waitForTree, waitForLiveTree, ensureReady, getDeviceState, addLog, execActions],
   );
 
   const clearLogs = useCallback(() => {
@@ -224,5 +238,10 @@ export function useAgent(
     historyRef.current = [];
   }, []);
 
-  return { running, logs, runPrompt, clearLogs };
+  return { running, logs, runPrompt, clearLogs, ensureReady };
+}
+
+function ScreenPowerNeedsWake(state: DeviceState | null): boolean {
+  if (!state) return true;
+  return !state.awake;
 }

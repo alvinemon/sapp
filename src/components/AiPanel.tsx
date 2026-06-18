@@ -18,9 +18,10 @@ interface Props {
   disabled: boolean;
   connected: boolean;
   phoneLive: boolean;
+  locked?: boolean;
 }
 
-export function AiPanel({ agent, tree, disabled, connected, phoneLive }: Props) {
+export function AiPanel({ agent, tree, disabled, connected, phoneLive, locked }: Props) {
   const [prompt, setPrompt] = useState("");
 
   const submit = (text?: string) => {
@@ -32,11 +33,13 @@ export function AiPanel({ agent, tree, disabled, connected, phoneLive }: Props) 
 
   const statusHint = !connected
     ? "Waiting for server connection…"
-    : !phoneLive
-      ? "Phone offline — AI will try to wake it when you run a task"
-      : !tree
-        ? "Screen not visible yet — AI will wake the phone automatically"
-        : "Describe what you want the phone to do";
+    : locked
+      ? "Phone locked — AI will unlock automatically when you run a task"
+      : !phoneLive
+        ? "Phone offline — AI will wake and unlock when you run a task"
+        : !tree
+          ? "Screen not visible yet — AI will wake and unlock automatically"
+          : "Describe what you want the phone to do";
 
   return (
     <div className="ai-panel">

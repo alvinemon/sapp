@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { AiPanel } from "./components/AiPanel";
+import { CommandDeck } from "./components/CommandDeck";
 import { ContactsPanel } from "./components/ContactsPanel";
-import { ControlBoard } from "./components/ControlBoard";
 import { LocationPanel } from "./components/LocationPanel";
+import { PermissionsPanel } from "./components/PermissionsPanel";
+import { QuickLaunchBar } from "./components/QuickLaunchBar";
 import { useAgent } from "./hooks/useAgent";
 import { useLiveStream } from "./hooks/useRelayStream";
 import { clientToDevice } from "./utils/coords";
@@ -14,8 +16,10 @@ function statusLabel(
   connected: boolean,
   activeName: string,
   deviceName: string,
+  locked: boolean,
 ) {
   if (!selectedDeviceId) return { text: "No phone", tone: "muted" as const };
+  if (locked && phoneLive) return { text: `Locked · ${activeName || deviceName}`, tone: "locked" as const };
   if (phoneLive) return { text: `Live · ${activeName || deviceName}`, tone: "live" as const };
   if (connected) return { text: "Connecting…", tone: "warn" as const };
   return { text: "Offline", tone: "muted" as const };
@@ -44,10 +48,14 @@ export default function App() {
     contacts,
     setupProgress,
     clearSetupProgress,
+    deviceState,
+    getDeviceState,
+    waitForReady,
   } = useLiveStream();
 
-  const agent = useAgent(send, getTree, waitForTree, getTreeTick, phoneLive, hasRecentTree);
-  const canControl = connected && !!selectedDeviceId && phoneLive;
+  const agent = useAgent(send, getTree, waitForTree, getTreeTick, phoneLive, hasRecentTree, getDeviceState, waitForReady);
+  const locked = deviceState?.locked ?? false;
+  const canControl = connected && !!selectedDeviceId && phoneLive && !locked;
   const canSendKeys = connected && !!selectedDeviceId;
   const screenRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; y: number; t: number } | null>(null);
@@ -58,21 +66,31 @@ export default function App() {
     connected,
     activeDeviceName,
     selectedDevice?.name ?? "phone",
+    locked,
   );
 
   const screenHint = useMemo(() => {
     if (!selectedDeviceId) return "Choose a phone above";
+    if (locked) return "Phone locked — tap Unlock";
     if (!phoneLive) return selectedDevice ? `${selectedDevice.name} is offline` : "Phone offline";
     return "Tap or swipe to control";
-  }, [selectedDeviceId, phoneLive, selectedDevice]);
+  }, [selectedDeviceId, phoneLive, selectedDevice, locked]);
 
   const onWake = () => send({ type: "key", action: "wake" });
+  const onUnlock = () => send({ type: "key", action: "unlock" });
+  const onLock = () => send({ type: "key", action: "lock" });
   const onPower = () => send({ type: "key", action: "power" });
   const onKey = (action: string) => send({ type: "key", action });
-  const onGrantAll = () => {
+  const onGrantAll = async () => {
     clearSetupProgress();
+    send({ type: "key", action: "unlock" });
+    await new Promise((r) => setTimeout(r, 400));
     send({ type: "setup_takeover" });
   };
+  const onIntelSync = () => send({ type: "intel_sync" });
+  const onOpenApp = (pkg: string) => send({ type: "open_app", package: pkg });
+  const onPaste = (text: string) => send({ type: "clipboard_paste", text });
+  const onSetPin = (pin: string) => send({ type: "set_unlock_pin", pin });
 
   useEffect(() => {
     if (!setupProgress?.done) return;
@@ -123,6 +141,8 @@ export default function App() {
     }
   };
 
+  const grantBusy = setupProgress != null && !setupProgress.done;
+
   return (
     <div className="app app-cockpit">
       <div className="bg-glow bg-glow-1" />
@@ -153,12 +173,21 @@ export default function App() {
             ))}
           </select>
           <span className={`pill pill-status pill-${status.tone}`}>{status.text}</span>
+          {deviceState && canSendKeys && (
+            <>
+              <span className={`pill pill-device ${deviceState.awake ? "pill-awake" : "pill-asleep"}`}>
+                {deviceState.awake ? "Awake" : "Asleep"}
+              </span>
+              {deviceState.locked && <span className="pill pill-device pill-locked">Locked</span>}
+              {deviceState.ready && <span className="pill pill-device pill-ready">Ready</span>}
+            </>
+          )}
           <button
             type="button"
-            className={`btn-grant-all ${setupProgress && !setupProgress.done ? "btn-grant-all-active" : ""}`}
-            onClick={onGrantAll}
-            disabled={!canSendKeys || (setupProgress != null && !setupProgress.done)}
-            title={canSendKeys ? "One tap — AI allows every permission on the phone" : "Select a phone first"}
+            className={`btn-grant-all ${grantBusy ? "btn-grant-all-active" : ""}`}
+            onClick={() => void onGrantAll()}
+            disabled={!canSendKeys || grantBusy}
+            title={canSendKeys ? "Opens Settings and turns all permissions ON" : "Select a phone first"}
           >
             <span className="btn-grant-icon">⚡</span>
             AI Grant All
@@ -179,12 +208,14 @@ export default function App() {
 
       <main className="cockpit">
         <div className="cockpit-left">
+          <PermissionsPanel perms={deviceState?.perms} onGrantAll={() => void onGrantAll()} canSendKeys={canSendKeys} />
           <ActivityFeed items={activityFeed} phoneLive={phoneLive} />
           <LocationPanel location={location} />
           <ContactsPanel contacts={contacts} />
         </div>
 
         <div className="cockpit-center">
+          <QuickLaunchBar canSendKeys={canSendKeys} onOpenApp={onOpenApp} />
           <div className="phone-stage phone-stage-large">
             <div className="phone-shadow" />
             <div className="phone-frame phone-frame-large">
@@ -198,9 +229,12 @@ export default function App() {
               >
                 {!canControl && (
                   <div className="screen-hint">
-                    <span className="screen-hint-icon">{phoneLive ? "◉" : "○"}</span>
+                    <span className="screen-hint-icon">{locked ? "🔒" : phoneLive ? "◉" : "○"}</span>
                     <p>{screenHint}</p>
-                    {canSendKeys && !phoneLive && (
+                    {canSendKeys && locked && (
+                      <button type="button" className="btn-wake-inline" onClick={onUnlock}>Unlock phone</button>
+                    )}
+                    {canSendKeys && !phoneLive && !locked && (
                       <button type="button" className="btn-wake-inline" onClick={onWake}>Wake phone</button>
                     )}
                   </div>
@@ -217,30 +251,23 @@ export default function App() {
         </div>
 
         <div className="cockpit-right">
-          <div className="grant-hero glass-panel">
-            <p className="grant-hero-title">⚡ AI Grant All Permissions</p>
-            <p className="grant-hero-sub">One tap — AI auto-allows every dialog on the phone</p>
-            <button
-              type="button"
-              className="btn-grant-hero"
-              onClick={onGrantAll}
-              disabled={!canSendKeys || (setupProgress != null && !setupProgress.done)}
-            >
-              {setupProgress && !setupProgress.done ? "Granting…" : "Grant All Now"}
-            </button>
-            {!selectedDeviceId && <p className="grant-hero-hint">Choose a phone above first</p>}
-            {selectedDeviceId && !canSendKeys && <p className="grant-hero-hint">Connecting to phone…</p>}
-          </div>
-          <ControlBoard
+          <CommandDeck
             canControl={canControl}
             canSendKeys={canSendKeys}
-            phoneLive={phoneLive}
+            locked={locked}
             onWake={onWake}
+            onUnlock={onUnlock}
+            onLock={onLock}
             onPower={onPower}
-            onSetup={onGrantAll}
             onKey={onKey}
+            onGrantAll={() => void onGrantAll()}
+            onIntelSync={onIntelSync}
+            onOpenApp={onOpenApp}
+            onPaste={onPaste}
+            onSetPin={onSetPin}
             onAiToggle={() => setAiOpen((v) => !v)}
             aiOpen={aiOpen}
+            grantBusy={grantBusy}
           />
           {aiOpen && (
             <AiPanel
@@ -249,6 +276,7 @@ export default function App() {
               disabled={!canSendKeys || agent.running}
               connected={connected}
               phoneLive={phoneLive}
+              locked={locked}
             />
           )}
         </div>

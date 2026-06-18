@@ -2439,3 +2439,201 @@ input[type="range"] {
   }
 }
 
+.pill-locked {
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+}
+
+.pill-awake {
+  border-color: rgba(74, 222, 128, 0.35);
+  color: #bbf7d0;
+}
+
+.pill-asleep {
+  border-color: rgba(148, 163, 184, 0.35);
+  color: var(--muted);
+}
+
+.pill-ready {
+  border-color: rgba(61, 232, 255, 0.35);
+  color: var(--cyan);
+}
+
+.pill-device {
+  font-size: 0.72rem;
+}
+
+.pill-status.pill-locked {
+  border-color: rgba(248, 113, 113, 0.5);
+  color: #fecaca;
+}
+
+.command-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.command-section {
+  padding: 0.65rem 0.75rem;
+}
+
+.command-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.command-row .ctrl-glass {
+  flex: 1;
+  min-width: 4.5rem;
+}
+
+.command-hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin: 0.45rem 0 0;
+}
+
+.command-hint.warn {
+  color: #fecaca;
+}
+
+.command-sub {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin: 0 0 0.5rem;
+  line-height: 1.35;
+}
+
+.ctrl-unlock {
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+.clipboard-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.clipboard-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+.clipboard-send {
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid rgba(124, 92, 255, 0.4);
+  background: rgba(124, 92, 255, 0.15);
+  color: inherit;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.clipboard-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.quick-launch {
+  padding: 0.55rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.quick-launch-scroll,
+.quick-launch-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.quick-launch-btn {
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.quick-launch-btn:hover:not(:disabled) {
+  border-color: rgba(124, 92, 255, 0.45);
+}
+
+.permissions-panel {
+  padding: 0.65rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.permissions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.permissions-fix-btn {
+  font-size: 0.72rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  background: rgba(74, 222, 128, 0.1);
+  color: #bbf7d0;
+  cursor: pointer;
+}
+
+.permissions-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+
+.perm-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0;
+  font-size: 0.8rem;
+}
+
+.perm-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.perm-ok .perm-dot { background: #4ade80; }
+.perm-miss .perm-dot { background: #f87171; }
+
+.perm-status {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.perm-ok .perm-status { color: #4ade80; }
+.perm-miss .perm-status { color: #f87171; }
+
+.permissions-empty,
+.permissions-all-ok {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: 0.35rem 0 0;
+}
+
+.permissions-all-ok {
+  color: #4ade80;
+}
+

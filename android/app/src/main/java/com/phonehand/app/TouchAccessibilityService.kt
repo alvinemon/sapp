@@ -40,6 +40,13 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         }
     }
 
+    private val stateLoop = object : Runnable {
+        override fun run() {
+            if (RelayHub.relayConnected) DeviceStateReporter.send(this@TouchAccessibilityService)
+            mainHandler.postDelayed(this, 3000)
+        }
+    }
+
     private fun treeIntervalMs(): Long =
         if (RelayHub.peerBrowserConnected) TREE_MS_LIVE else TREE_MS_IDLE
 
@@ -205,13 +212,17 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         streaming = true
         TreeDiffer.reset()
         mainHandler.removeCallbacks(treeLoop)
+        mainHandler.removeCallbacks(stateLoop)
         mainHandler.post(treeLoop)
+        mainHandler.post(stateLoop)
         pushTreeNow(forceFull = true)
+        DeviceStateReporter.send(this)
     }
 
     private fun stopStreaming() {
         streaming = false
         mainHandler.removeCallbacks(treeLoop)
+        mainHandler.removeCallbacks(stateLoop)
         NodeRegistry.clear()
         TreeDiffer.reset()
     }

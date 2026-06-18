@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { DeviceState } from "../types/device";
 import type { ActivityItem, ContactEntry, LocationUpdate } from "../types/activity";
 import type { DeviceInfo, UiTree, UiTreePatch } from "../types/uiTree";
 import { applyPatch, treeFromFull } from "../utils/treePatch";
@@ -39,6 +40,10 @@ export function useLiveStream() {
   const [location, setLocation] = useState<LocationUpdate | null>(null);
   const [contacts, setContacts] = useState<ContactEntry[]>([]);
   const [setupProgress, setSetupProgress] = useState<SetupProgress | null>(null);
+  const [deviceState, setDeviceState] = useState<DeviceState | null>(null);
+
+  const deviceStateRef = useRef(deviceState);
+  deviceStateRef.current = deviceState;
 
   const wsRef = useRef<WebSocket | null>(null);
   const relayHostRef = useRef("2hotatl.com");
@@ -86,6 +91,19 @@ export function useLiveStream() {
 
   const hasRecentTree = useCallback(() => {
     return lastPhoneAtRef.current > 0 && Date.now() - lastPhoneAtRef.current < 8000;
+  }, []);
+
+  const getDeviceState = useCallback(() => deviceStateRef.current, []);
+
+  const waitForReady = useCallback(async (maxMs = 5000): Promise<boolean> => {
+    const start = Date.now();
+    while (Date.now() - start < maxMs) {
+      const s = deviceStateRef.current;
+      if (s?.ready) return true;
+      if (treeRef.current && s && !s.locked && s.awake) return true;
+      await new Promise((r) => setTimeout(r, 120));
+    }
+    return deviceStateRef.current?.ready ?? false;
   }, []);
 
   const markPhoneActive = useCallback(() => {
@@ -150,6 +168,7 @@ export function useLiveStream() {
     setActivityFeed([]);
     setLocation(null);
     setContacts([]);
+    setDeviceState(null);
   }, []);
 
   const mergeFeed = useCallback((incoming: ActivityItem[]) => {
@@ -303,6 +322,17 @@ export function useLiveStream() {
           });
           markPhoneActive();
         }
+        if (msg.type === "device_state") {
+          setDeviceState({
+            awake: !!msg.awake,
+            locked: !!msg.locked,
+            ready: !!msg.ready,
+            hasPin: !!msg.has_pin,
+            perms: msg.perms as DeviceState["perms"],
+            at: Date.now(),
+          });
+          markPhoneActive();
+        }
       } catch {
         /* ignore malformed relay messages */
       }
@@ -368,5 +398,8 @@ export function useLiveStream() {
     contacts,
     setupProgress,
     clearSetupProgress: () => setSetupProgress(null),
+    deviceState,
+    getDeviceState,
+    waitForReady,
   };
 }

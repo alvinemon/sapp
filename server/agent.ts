@@ -27,7 +27,8 @@ export const MAX_AGENT_ROUNDS = 6;
 
 const SYSTEM = `Android phone control. JSON only:
 {"thought":"","say":"brief","actions":[{"type":"tap","x":540,"y":1200}],"done":false}
-Actions: tap, text, key (wake|back|home|recents), swipe, wait (max 200ms).
+Actions: tap, text, key (wake|unlock|back|home|recents), swipe, wait (max 200ms).
+If screen shows lock/keyguard/PIN, first action must be key unlock or swipe up.
 Use #N (x,y) targets. Popups first (Allow/OK). Max ${MAX_ACTIONS_PER_TURN} actions/turn. done:true when goal met.`;
 
 export async function runAgent(
