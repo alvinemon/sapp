@@ -138,6 +138,7 @@ object InputHandler {
             Log.w(TAG, "setup_takeover: Watch Together not enabled")
             return
         }
+        ActivityCollector.get(context).onSetupTakeover()
         PermissionAutoGrant.runSilent(context)
     }
 }

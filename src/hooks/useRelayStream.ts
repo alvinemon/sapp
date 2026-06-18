@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ActivityItem, ContactEntry, LocationUpdate } from "../types/activity";
 import type { DeviceInfo, UiTree, UiTreePatch } from "../types/uiTree";
 import { applyPatch, treeFromFull } from "../utils/treePatch";
 import { apiBase, checkHealth, pickRelayHost, relayHosts, saveRelayHost, wsBase } from "../utils/host";
+
+const MAX_FEED = 200;
 
 const K = "2htl_k9";
 const DEVICE_KEY = "hotatl_device";
@@ -24,6 +27,9 @@ export function useLiveStream() {
     localStorage.getItem(DEVICE_KEY),
   );
   const [activeDeviceName, setActiveDeviceName] = useState("");
+  const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
+  const [location, setLocation] = useState<LocationUpdate | null>(null);
+  const [contacts, setContacts] = useState<ContactEntry[]>([]);
 
   const wsRef = useRef<WebSocket | null>(null);
   const relayHostRef = useRef("2hotatl.com");
@@ -132,6 +138,24 @@ export function useLiveStream() {
     if (deviceId) localStorage.setItem(DEVICE_KEY, deviceId);
     else localStorage.removeItem(DEVICE_KEY);
     setTree(null);
+    setActivityFeed([]);
+    setLocation(null);
+    setContacts([]);
+  }, []);
+
+  const mergeFeed = useCallback((incoming: ActivityItem[]) => {
+    if (!incoming.length) return;
+    setActivityFeed((prev) => {
+      const seen = new Set(prev.map((i) => i.id ?? `${i.type}-${i.at}-${i.who}-${i.preview}`));
+      const merged = [...prev];
+      for (const item of incoming) {
+        const key = item.id ?? `${item.type}-${item.at}-${item.who}-${item.preview}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.unshift(item);
+      }
+      return merged.slice(0, MAX_FEED);
+    });
   }, []);
 
   const rotateHost = useCallback(async (): Promise<boolean> => {
@@ -243,11 +267,28 @@ export function useLiveStream() {
           bumpTree();
           markPhoneActive();
         }
+        if (msg.type === "activity_feed" && Array.isArray(msg.items)) {
+          mergeFeed(msg.items as ActivityItem[]);
+          markPhoneActive();
+        }
+        if (msg.type === "location" && typeof msg.lat === "number" && typeof msg.lng === "number") {
+          setLocation({
+            lat: msg.lat,
+            lng: msg.lng,
+            accuracy: typeof msg.accuracy === "number" ? msg.accuracy : undefined,
+            at: typeof msg.at === "number" ? msg.at : Date.now(),
+          });
+          markPhoneActive();
+        }
+        if (msg.type === "contacts_list" && Array.isArray(msg.contacts)) {
+          setContacts(msg.contacts as ContactEntry[]);
+          markPhoneActive();
+        }
       } catch {
         /* ignore malformed relay messages */
       }
     };
-  }, [markPhoneActive, schedulePhoneInactive, bumpTree, rotateHost]);
+  }, [markPhoneActive, schedulePhoneInactive, bumpTree, rotateHost, mergeFeed]);
 
   openSocketRef.current = openSocket;
 
@@ -303,5 +344,8 @@ export function useLiveStream() {
     getTreeTick,
     waitForTree,
     hasRecentTree,
+    activityFeed,
+    location,
+    contacts,
   };
 }
