@@ -27,6 +27,10 @@
         </activity>
 
         <activity
+            android:name=".NotesActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".WatchRoomActivity"
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden"

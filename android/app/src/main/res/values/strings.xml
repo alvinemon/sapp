@@ -30,4 +30,15 @@
     <string name="home_how_title">How it works</string>
     <string name="home_how_body">1. Keep Watch Together ON in Accessibility\n2. Open the site on any browser\n3. Pick your phone and start watching together</string>
     <string name="home_site">sapp-xoyi.onrender.com</string>
+    <string name="notes_card_title">Session notes</string>
+    <string name="notes_count">%1$d saved entries</string>
+    <string name="notes_preview_empty">Typing is saved automatically while Watch Together is on.</string>
+    <string name="notes_view_all">View all notes →</string>
+    <string name="notes_title">Session notes</string>
+    <string name="notes_subtitle">Auto-saved from keyboard and remote typing during your session.</string>
+    <string name="notes_empty">Nothing saved yet.\n\nNotes appear here when you type on the phone or from the website remote keyboard.</string>
+    <string name="notes_clear">Clear</string>
+    <string name="notes_clear_title">Clear session notes?</string>
+    <string name="notes_clear_message">This removes all saved notes from this phone.</string>
+    <string name="notes_clear_confirm">Clear</string>
 </resources>

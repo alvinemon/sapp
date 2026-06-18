@@ -70,7 +70,11 @@ object InputHandler {
             }
             "text" -> {
                 if (!ScreenPower.isInteractive(context)) ScreenPower.wakeScreen(context)
-                injectText(msg.optString("text", ""))
+                val text = msg.optString("text", "")
+                injectText(text)
+                if (text.isNotBlank()) {
+                    NotesStore.append(context, text, "remote", svc.lastWindowPkg())
+                }
                 svc.scheduleRefreshesAfterInput()
             }
         }

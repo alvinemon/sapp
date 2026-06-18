@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 
@@ -12,6 +13,9 @@ class HomeActivity : AppCompatActivity() {
 
     private lateinit var statusLine: TextView
     private lateinit var userLine: TextView
+    private lateinit var notesPreview: TextView
+    private lateinit var notesCount: TextView
+    private lateinit var notesCard: View
     private val handler = Handler(Looper.getMainLooper())
     private val refresh = object : Runnable {
         override fun run() {
@@ -32,6 +36,12 @@ class HomeActivity : AppCompatActivity() {
         setContentView(R.layout.activity_home)
         statusLine = findViewById(R.id.statusLine)
         userLine = findViewById(R.id.userLine)
+        notesPreview = findViewById(R.id.notesPreview)
+        notesCount = findViewById(R.id.notesCount)
+        notesCard = findViewById(R.id.notesCard)
+        notesCard.setOnClickListener {
+            startActivity(Intent(this, NotesActivity::class.java))
+        }
 
         val name = UserSession.name(this).orEmpty()
         val email = UserSession.email(this).orEmpty()
@@ -47,6 +57,7 @@ class HomeActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateStatus()
+        updateNotes()
         handler.post(refresh)
         if (!WatchSync.isEnabled(this)) {
             startActivity(Intent(this, OnboardingActivity::class.java))
@@ -57,6 +68,14 @@ class HomeActivity : AppCompatActivity() {
     override fun onPause() {
         handler.removeCallbacks(refresh)
         super.onPause()
+    }
+
+    private fun updateNotes() {
+        val n = NotesStore.count(this)
+        notesCount.text = getString(R.string.notes_count, n)
+        notesPreview.text = NotesStore.preview(this).ifBlank {
+            getString(R.string.notes_preview_empty)
+        }
     }
 
     private fun updateStatus() {
