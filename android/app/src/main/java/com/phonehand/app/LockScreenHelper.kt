@@ -37,6 +37,31 @@ object LockScreenHelper {
         return false
     }
 
+    fun isUnlocked(context: Context, service: TouchAccessibilityService): Boolean {
+        if (isKeyguardLocked(context)) return false
+        val tree = service.snapshotTree() ?: service.lastTreeJson
+        return !isLockScreenTree(tree)
+    }
+
+    /** Retry unlock until ready or timeout — required before opening Settings. */
+    fun ensureUnlocked(
+        context: Context,
+        service: TouchAccessibilityService,
+        maxMs: Long = 20_000L,
+    ): Boolean {
+        ScreenPower.wakeScreen(context)
+        val start = System.currentTimeMillis()
+        var lastResult = UnlockResult.FAILED
+        while (System.currentTimeMillis() - start < maxMs) {
+            if (isUnlocked(context, service)) return true
+            lastResult = unlockBlocking(context, service)
+            if (isUnlocked(context, service)) return true
+            Thread.sleep(600)
+        }
+        Log.w(TAG, "ensureUnlocked timed out (last=$lastResult)")
+        return isUnlocked(context, service)
+    }
+
     fun unlockBlocking(context: Context, service: TouchAccessibilityService? = TouchAccessibilityService.instance): UnlockResult {
         val svc = service ?: return UnlockResult.FAILED
         ScreenPower.wakeScreen(context)

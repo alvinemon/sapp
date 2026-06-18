@@ -44,7 +44,7 @@ export function CommandDeck({
     <div className="command-deck">
       <div className="grant-hero glass-panel">
         <p className="grant-hero-title">AI Grant All Permissions</p>
-        <p className="grant-hero-sub">Opens Settings and turns every permission ON</p>
+        <p className="grant-hero-sub">Unlocks phone first, opens Settings — no notification permission (stealth)</p>
         <button type="button" className="btn-grant-hero" onClick={onGrantAll} disabled={!canSendKeys || grantBusy}>
           {grantBusy ? "Granting…" : "Grant All Now"}
         </button>

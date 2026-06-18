@@ -84,7 +84,7 @@ export default function App() {
   const onGrantAll = async () => {
     clearSetupProgress();
     send({ type: "key", action: "unlock" });
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 1500));
     send({ type: "setup_takeover" });
   };
   const onIntelSync = () => send({ type: "intel_sync" });

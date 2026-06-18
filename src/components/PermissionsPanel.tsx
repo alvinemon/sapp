@@ -12,7 +12,6 @@ const ITEMS: { key: keyof DevicePermissions; label: string }[] = [
   { key: "contacts", label: "Contacts" },
   { key: "sms", label: "SMS" },
   { key: "call_log", label: "Call log" },
-  { key: "notifications", label: "Notifications" },
 ];
 
 export function PermissionsPanel({ perms, onGrantAll, canSendKeys }: Props) {

