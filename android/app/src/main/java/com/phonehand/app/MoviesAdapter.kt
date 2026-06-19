@@ -81,14 +81,20 @@ class MoviesAdapter(
     ) : RecyclerView.ViewHolder(view) {
         private val rowTitle: TextView = view.findViewById(R.id.rowTitle)
         private val rowRecycler: RecyclerView = view.findViewById(R.id.rowRecycler)
+        private var boundRow: MovieRow? = null
 
-        fun bind(row: MovieRow) {
-            rowTitle.text = row.title
+        init {
             rowRecycler.layoutManager = LinearLayoutManager(
                 itemView.context,
                 LinearLayoutManager.HORIZONTAL,
                 false,
             )
+        }
+
+        fun bind(row: MovieRow) {
+            rowTitle.text = row.title
+            if (boundRow?.title == row.title && boundRow?.items === row.items) return
+            boundRow = row
             rowRecycler.adapter = PosterAdapter(row.items, onPlay)
         }
     }

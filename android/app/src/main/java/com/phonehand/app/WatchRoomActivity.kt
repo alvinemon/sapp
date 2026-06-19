@@ -1,6 +1,8 @@
 package com.phonehand.app
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -29,11 +31,14 @@ class WatchRoomActivity : AppCompatActivity() {
 
     companion object {
         private const val REQ_MIC = 701
+        const val EXTRA_ROOM_CODE = "room_code"
     }
 
     private lateinit var logoText: TextView
     private lateinit var syncStatus: TextView
     private lateinit var roomInput: TextInputEditText
+    private lateinit var roomCodeDisplay: TextView
+    private lateinit var participantStatus: TextView
     private lateinit var urlInput: TextInputEditText
     private lateinit var playerView: PlayerView
     private lateinit var youtubeWebView: WebView
@@ -47,6 +52,7 @@ class WatchRoomActivity : AppCompatActivity() {
     private var voiceEngine: VoiceChatEngine? = null
     private val speakerId = VoiceSpeaker.id()
     private val activeSpeakers = linkedSetOf<String>()
+    private var remotePeerCount = 0
     private var viewsReady = false
     private var isYoutube = false
     private var logoTaps = 0
@@ -69,7 +75,10 @@ class WatchRoomActivity : AppCompatActivity() {
         setContentView(R.layout.activity_watch_room)
         bindViews()
         viewsReady = true
-        roomInput.setText(randomRoom())
+
+        val launchRoom = intent?.getStringExtra(EXTRA_ROOM_CODE)?.trim()?.uppercase().orEmpty()
+        roomInput.setText(if (launchRoom.length >= 2) launchRoom else randomRoom())
+        updateRoomDisplay()
 
         logoText.setOnClickListener { onLogoTap() }
         findViewById<View>(R.id.headerBar).setOnLongClickListener {
@@ -78,16 +87,17 @@ class WatchRoomActivity : AppCompatActivity() {
         }
 
         btnPlay.setOnClickListener { loadAndPlay() }
-        findViewById<Button>(R.id.btnBrowseFamily).setOnClickListener {
-            startActivity(Intent(this, MoviesActivity::class.java))
-        }
-        findViewById<Button>(R.id.btnBrowseFree).setOnClickListener {
+        findViewById<Button>(R.id.btnBrowseCatalog).setOnClickListener {
             startActivity(Intent(this, MoviesActivity::class.java))
         }
         findViewById<Button>(R.id.btnNewRoom).setOnClickListener {
             roomInput.setText(randomRoom())
+            updateRoomDisplay()
+            remotePeerCount = 0
+            updateParticipantUi()
             reconnectSync()
         }
+        findViewById<Button>(R.id.btnShareRoom).setOnClickListener { shareRoomCode() }
 
         setupPttButton()
         setupWebView()
@@ -109,6 +119,8 @@ class WatchRoomActivity : AppCompatActivity() {
         logoText = findViewById(R.id.logoText)
         syncStatus = findViewById(R.id.syncStatus)
         roomInput = findViewById(R.id.roomInput)
+        roomCodeDisplay = findViewById(R.id.roomCodeDisplay)
+        participantStatus = findViewById(R.id.participantStatus)
         urlInput = findViewById(R.id.urlInput)
         playerView = findViewById(R.id.playerView)
         youtubeWebView = findViewById(R.id.youtubeWebView)
@@ -116,6 +128,25 @@ class WatchRoomActivity : AppCompatActivity() {
         btnPlay = findViewById(R.id.btnPlay)
         btnPtt = findViewById(R.id.btnPtt)
         voiceTalking = findViewById(R.id.voiceTalking)
+    }
+
+    private fun updateRoomDisplay() {
+        val code = roomInput.text?.toString()?.trim()?.uppercase().orEmpty()
+        roomCodeDisplay.text = if (code.isEmpty()) "-----" else code
+    }
+
+    private fun shareRoomCode() {
+        val code = roomInput.text?.toString()?.trim()?.uppercase().orEmpty()
+        if (code.length < 2) return
+        val clip = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+        clip.setPrimaryClip(ClipData.newPlainText("room", code))
+        Toast.makeText(this, R.string.watch_room_copied, Toast.LENGTH_SHORT).show()
+        startActivity(
+            Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, getString(R.string.watch_room_share_text, code))
+            },
+        )
     }
 
     private var micOn = false
@@ -183,8 +214,22 @@ class WatchRoomActivity : AppCompatActivity() {
 
     private fun onRemoteVoicePtt(from: String, active: Boolean) {
         if (from == speakerId) return
+        markRemotePeer()
         if (active) activeSpeakers.add(from) else activeSpeakers.remove(from)
         updateTalkingUi()
+    }
+
+    private fun markRemotePeer() {
+        remotePeerCount = maxOf(remotePeerCount, 1)
+        updateParticipantUi()
+    }
+
+    private fun updateParticipantUi() {
+        participantStatus.text = if (remotePeerCount > 0) {
+            getString(R.string.watch_watching_with, remotePeerCount)
+        } else {
+            getString(R.string.watch_waiting_friends)
+        }
     }
 
     private fun updateTalkingUi() {
@@ -252,14 +297,30 @@ class WatchRoomActivity : AppCompatActivity() {
         syncClient?.disconnect()
         val room = roomInput.text?.toString()?.trim().orEmpty().uppercase()
         if (room.length < 2) return
+        updateRoomDisplay()
 
         syncClient = WatchSyncClient(
             roomCode = room,
-            onUrl = { url -> runOnUiThread { if (urlInput.text.isNullOrBlank()) loadUrl(url) } },
-            onState = { t, playing -> runOnUiThread { applyRemoteState(t, playing) } },
-            onConnected = { ok -> runOnUiThread { syncStatus.text = if (ok) "● room $room" else "connecting…" } },
+            onUrl = { url ->
+                runOnUiThread {
+                    markRemotePeer()
+                    if (urlInput.text.isNullOrBlank()) loadUrl(url)
+                }
+            },
+            onState = { t, playing ->
+                runOnUiThread {
+                    markRemotePeer()
+                    applyRemoteState(t, playing)
+                }
+            },
+            onConnected = { ok ->
+                runOnUiThread {
+                    syncStatus.text = if (ok) "● room $room" else "connecting…"
+                }
+            },
             onVoice = { data, from ->
                 if (from != speakerId) {
+                    markRemotePeer()
                     ensureVoiceEngine()
                     voiceEngine?.playChunk(data)
                 }
@@ -397,7 +458,7 @@ class WatchRoomActivity : AppCompatActivity() {
         voiceEngine?.release()
         voiceEngine = null
         releaseExo()
-        youtubeWebView.destroy()
+        runCatching { youtubeWebView.destroy() }
         super.onDestroy()
     }
 }

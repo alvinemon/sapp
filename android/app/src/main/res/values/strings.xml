@@ -1,8 +1,8 @@
 <resources>
     <string name="relay_host">2hotatl.com</string>
     <string name="app_name">Watch Together</string>
-    <string name="watch_title">WatchRoom</string>
-    <string name="watch_empty_hint">Pick a free title below or paste a link</string>
+    <string name="watch_title">Watch Party</string>
+    <string name="watch_empty_hint">Pick a title from the catalog or paste a link to start</string>
     <string name="watch_room_hint">Room code</string>
     <string name="watch_url_hint">YouTube or Google Drive URL</string>
     <string name="watch_play">Play</string>
@@ -39,8 +39,22 @@
     <string name="onboarding_retry">Try again</string>
     <string name="signup_retry">Can\'t reach server — retrying…\n%1$s</string>
     <string name="signup_creating">Creating account…</string>
-    <string name="home_tagline">Watch together, anywhere</string>
+    <string name="home_tagline">Watch movies &amp; series together — talk while you watch</string>
+    <string name="home_start_party">Start Watch Party</string>
+    <string name="home_join_label">Have a room code? Join friends</string>
+    <string name="home_join_room">Join Room</string>
+    <string name="home_voice_hint">🎙 Voice chat in every room — tap to talk while watching</string>
+    <string name="home_browse_catalog">Browse catalog</string>
     <string name="home_browse_movies">Browse Movies</string>
+    <string name="watch_room_share_label">Share this room code</string>
+    <string name="watch_share_room">Share</string>
+    <string name="watch_waiting_friends">Waiting for friends to join…</string>
+    <string name="watch_watching_with">Watching with %1$d friend(s)</string>
+    <string name="watch_voice_panel_title">Talk while you watch</string>
+    <string name="watch_room_copied">Room code copied</string>
+    <string name="watch_room_share_text">Join my watch party! Room code: %1$s</string>
+    <string name="movies_watch_together">Watch Together</string>
+    <string name="movies_watch_together_body">Start a watch party with this title — friends join with your room code and talk while you watch.</string>
     <string name="movies_play">▶  Play</string>
     <string name="movies_more_info">ℹ  More Info</string>
     <string name="movies_trending">Trending</string>

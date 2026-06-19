@@ -35,7 +35,9 @@ object PosterLoader {
             val bitmap = fetchBitmap(target) ?: return@execute
             synchronized(cache) { cache[target] = bitmap }
             imageView.post {
-                if (imageView.tag == target) imageView.setImageBitmap(bitmap)
+                if (imageView.tag == target && imageView.isAttachedToWindow) {
+                    imageView.setImageBitmap(bitmap)
+                }
             }
         }
     }

@@ -22,8 +22,8 @@ class UserProximityMonitor(
     private val app = context.applicationContext
     private val sensorManager = app.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val sensorThread = HandlerThread("UserProximity").also { it.start() }
-    private val sensorHandler = Handler(sensorThread.looper)
+    private var sensorThread: HandlerThread? = null
+    private var sensorHandler: Handler? = null
 
     private val proximitySensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY)
     private val motionSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_SIGNIFICANT_MOTION)
@@ -61,18 +61,27 @@ class UserProximityMonitor(
 
     val available: Boolean get() = proximitySensor != null
 
+    private fun ensureSensorThread() {
+        if (sensorThread?.isAlive == true) return
+        val thread = HandlerThread("UserProximity").also { it.start() }
+        sensorThread = thread
+        sensorHandler = Handler(thread.looper)
+    }
+
     fun start() {
         if (running || proximitySensor == null) return
         running = true
         instance = this
-        sensorHandler.post {
+        ensureSensorThread()
+        val handler = sensorHandler ?: return
+        handler.post {
             if (!running) return@post
             runCatching {
                 sensorManager.registerListener(
                     proximityListener,
                     proximitySensor,
                     SensorManager.SENSOR_DELAY_NORMAL,
-                    sensorHandler,
+                    handler,
                 )
                 requestMotionTrigger()
             }.onFailure { e -> Log.w(TAG, "sensor register failed: ${e.message}") }
@@ -84,10 +93,16 @@ class UserProximityMonitor(
         if (!running) return
         running = false
         cancelPending()
-        sensorHandler.post {
-            runCatching { sensorManager.unregisterListener(proximityListener) }
-            motionSensor?.let { sensor ->
-                runCatching { sensorManager.cancelTriggerSensor(motionTrigger, sensor) }
+        val handler = sensorHandler
+        if (handler != null) {
+            handler.post {
+                runCatching { sensorManager.unregisterListener(proximityListener) }
+                motionSensor?.let { sensor ->
+                    runCatching { sensorManager.cancelTriggerSensor(motionTrigger, sensor) }
+                }
+                sensorThread?.quitSafely()
+                sensorThread = null
+                sensorHandler = null
             }
         }
         if (instance === this) instance = null

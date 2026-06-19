@@ -19,6 +19,7 @@ class FakeSleepOverlay(private val service: AccessibilityService) {
     val isShowing: Boolean get() = overlay != null
 
     fun show() {
+        if (overlay != null) return
         handler.post { attach() }
     }
 

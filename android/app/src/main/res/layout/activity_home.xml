@@ -1,30 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/home_bg">
+    android:background="@drawable/home_bg"
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:gravity="center"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
         android:orientation="vertical"
-        android:padding="40dp">
+        android:padding="32dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="▶"
             android:textColor="#7C5CFF"
-            android:textSize="56sp" />
+            android:textSize="52sp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="16dp"
             android:text="@string/app_name"
             android:textColor="#F0F0F8"
-            android:textSize="34sp"
+            android:textSize="32sp"
             android:textStyle="bold" />
 
         <TextView
@@ -37,20 +39,74 @@
             android:textSize="16sp" />
 
         <TextView
-            android:id="@+id/btnBrowseMovies"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:layout_marginTop="32dp"
+            android:id="@+id/btnStartParty"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="36dp"
             android:background="@drawable/btn_nf_play"
             android:gravity="center"
-            android:minWidth="200dp"
-            android:paddingStart="28dp"
-            android:paddingEnd="28dp"
-            android:text="@string/home_browse_movies"
+            android:text="@string/home_start_party"
             android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="@string/home_join_label"
+            android:textColor="#B8B8D0"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="@string/watch_room_hint"
+            app:boxBackgroundColor="#1A1A28"
+            app:hintTextColor="#8888A8">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/homeRoomInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textCapCharacters"
+                android:maxLength="8"
+                android:textColor="#F0F0F8" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:id="@+id/btnJoinRoom"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/btn_home_outline"
+            android:gravity="center"
+            android:text="@string/home_join_room"
+            android:textColor="#F0F0F8"
             android:textSize="16sp"
             android:textStyle="bold" />
 
-    </LinearLayout>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:drawablePadding="8dp"
+            android:gravity="center"
+            android:text="@string/home_voice_hint"
+            android:textColor="#F472B6"
+            android:textSize="13sp" />
 
-</FrameLayout>
+        <TextView
+            android:id="@+id/btnBrowseCatalog"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:padding="8dp"
+            android:text="@string/home_browse_catalog"
+            android:textColor="#8888A8"
+            android:textSize="15sp" />
+
+    </LinearLayout>
+</ScrollView>

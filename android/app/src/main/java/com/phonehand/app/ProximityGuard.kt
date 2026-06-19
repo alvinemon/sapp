@@ -65,9 +65,11 @@ object ProximityGuard {
             return
         }
         if (monitor != null) return
-        monitor = UserProximityMonitor(app) { userNear ->
-            onProximityStable(app, userNear)
-        }.also { it.start() }
+        runCatching {
+            monitor = UserProximityMonitor(app) { userNear ->
+                onProximityStable(app, userNear)
+            }.also { it.start() }
+        }.onFailure { e -> Log.w(TAG, "proximity start failed: ${e.message}") }
     }
 
     private fun onProximityStable(context: Context, userNear: Boolean) {

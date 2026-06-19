@@ -8,9 +8,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.util.concurrent.Executors
 
-/** Netflix-style movie browse home for the Android app. */
+/** Catalog browse — titles launch a watch party, not solo playback. */
 class MoviesActivity : AppCompatActivity() {
 
     private val io = Executors.newSingleThreadExecutor()
@@ -18,6 +19,7 @@ class MoviesActivity : AppCompatActivity() {
     private lateinit var loading: ProgressBar
     private lateinit var adapter: MoviesAdapter
     private var myListItems: List<MovieBrowseItem> = emptyList()
+    @Volatile private var destroyed = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,7 +27,7 @@ class MoviesActivity : AppCompatActivity() {
 
         moviesList = findViewById(R.id.moviesList)
         loading = findViewById(R.id.moviesLoading)
-        adapter = MoviesAdapter { item -> openPlayer(item) }
+        adapter = MoviesAdapter { item -> offerWatchTogether(item) }
         moviesList.layoutManager = LinearLayoutManager(this)
         moviesList.adapter = adapter
 
@@ -51,20 +53,24 @@ class MoviesActivity : AppCompatActivity() {
         loading.visibility = View.VISIBLE
         val freeItems = FreeCatalog.load(this)
         io.execute {
-            val familyItems = FamilyLibraryClient.fetch().map { it.toBrowseItem() }
-            val continueItems = ContinueWatchingStore.load(this)
+            val familyItems = runCatching { FamilyLibraryClient.fetch().map { it.toBrowseItem() } }
+                .getOrElse { emptyList() }
+            val continueItems = ContinueWatchingStore.load(this@MoviesActivity)
             myListItems = familyItems
 
             val movies = freeItems.filter { it.kind == "movie" }.map { it.toBrowseItem() }
             val shows = freeItems.filter { it.kind == "tv" }.map { it.toBrowseItem() }
-            val trending = freeItems.shuffled().map { it.toBrowseItem() }
+            val trending = if (freeItems.isNotEmpty()) freeItems.shuffled().map { it.toBrowseItem() }
+            else emptyList()
             val featured = trending.firstOrNull() ?: movies.firstOrNull() ?: shows.firstOrNull()
 
             val rows = buildList {
                 if (continueItems.isNotEmpty()) {
                     add(MoviesListItem.Row(MovieRow(getString(R.string.movies_continue), continueItems)))
                 }
-                add(MoviesListItem.Row(MovieRow(getString(R.string.movies_trending), trending)))
+                if (trending.isNotEmpty()) {
+                    add(MoviesListItem.Row(MovieRow(getString(R.string.movies_trending), trending)))
+                }
                 if (movies.isNotEmpty()) {
                     add(MoviesListItem.Row(MovieRow(getString(R.string.movies_free), movies)))
                 }
@@ -82,6 +88,7 @@ class MoviesActivity : AppCompatActivity() {
             }
 
             runOnUiThread {
+                if (destroyed || isFinishing) return@runOnUiThread
                 loading.visibility = View.GONE
                 adapter.submit(list)
             }
@@ -100,7 +107,16 @@ class MoviesActivity : AppCompatActivity() {
         )
     }
 
-    private fun openPlayer(item: MovieBrowseItem) {
+    private fun offerWatchTogether(item: MovieBrowseItem) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(item.title)
+            .setMessage(R.string.movies_watch_together_body)
+            .setPositiveButton(R.string.movies_watch_together) { _, _ -> openWatchRoom(item) }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun openWatchRoom(item: MovieBrowseItem) {
         ContinueWatchingStore.save(this, item)
         startActivity(
             Intent(this, WatchRoomActivity::class.java).apply {
@@ -111,7 +127,8 @@ class MoviesActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        io.shutdown()
+        destroyed = true
+        io.shutdownNow()
         super.onDestroy()
     }
 }
