@@ -414,6 +414,9 @@ export function useLiveStream() {
             ready: !!msg.ready,
             hasPin: !!msg.has_pin,
             perms: msg.perms as DeviceState["perms"],
+            userNear: typeof msg.user_near === "boolean" ? msg.user_near : null,
+            proximityAutoSleep: !!msg.proximity_auto_sleep,
+            proximityAvailable: !!msg.proximity_available,
             at: Date.now(),
           });
           markPhoneActive();

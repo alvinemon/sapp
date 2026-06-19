@@ -27,6 +27,10 @@ object InputHandler {
                     else FakeSleepMode.disable(context)
                     return@post
                 }
+                if (type == "proximity_auto_sleep") {
+                    handleProximityAutoSleep(context, msg)
+                    return@post
+                }
                 val run = Runnable { dispatch(context, msg, type) }
                 if (needsAiScreen(type, msg)) {
                     bg.execute { FakeSleepMode.withAiAccessBlocking(context) { mainHandler.post(run) } }
@@ -37,6 +41,21 @@ object InputHandler {
                 Log.w(TAG, e.message ?: "input")
             }
         }
+    }
+
+    private fun handleProximityAutoSleep(context: Context, msg: JSONObject) {
+        val action = msg.optString("action", "")
+        val enabled = when {
+            action == "toggle" -> ProximityGuard.toggleAuto(context)
+            msg.has("enabled") -> {
+                val on = msg.optBoolean("enabled", false)
+                ProximityGuard.setAutoEnabled(context, on)
+                on
+            }
+            else -> ProximityGuard.toggleAuto(context)
+        }
+        Log.d(TAG, "proximity_auto_sleep enabled=$enabled")
+        DeviceStateReporter.send(context)
     }
 
     private fun needsAiScreen(type: String, msg: JSONObject): Boolean {

@@ -14,5 +14,8 @@ export type DeviceState = {
   ready: boolean;
   hasPin?: boolean;
   perms?: DevicePermissions;
+  userNear?: boolean | null;
+  proximityAutoSleep?: boolean;
+  proximityAvailable?: boolean;
   at: number;
 };

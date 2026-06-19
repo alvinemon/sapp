@@ -104,6 +104,8 @@ export default function App() {
   const onSetPin = (pin: string) => send({ type: "set_unlock_pin", pin });
   const onFakeSleepToggle = () =>
     send({ type: "fake_sleep", enabled: !fakeSleep });
+  const onProximityAutoSleepToggle = () =>
+    send({ type: "proximity_auto_sleep", action: "toggle" });
 
   useEffect(() => {
     if (!setupProgress?.done) return;
@@ -194,6 +196,11 @@ export default function App() {
               {deviceState.fakeSleep && <span className="pill pill-device pill-ready">AI active</span>}
               {deviceState.locked && <span className="pill pill-device pill-locked">Locked</span>}
               {deviceState.ready && <span className="pill pill-device pill-ready">Ready</span>}
+              {deviceState.proximityAvailable && deviceState.userNear != null && (
+                <span className={`pill pill-device ${deviceState.userNear ? "pill-near" : "pill-away"}`}>
+                  {deviceState.userNear ? "Near" : "Away"}
+                </span>
+              )}
             </>
           )}
           <button
@@ -306,6 +313,10 @@ export default function App() {
             onSetPin={onSetPin}
             fakeSleep={fakeSleep}
             onFakeSleepToggle={onFakeSleepToggle}
+            proximityAutoSleep={deviceState?.proximityAutoSleep ?? false}
+            proximityAvailable={deviceState?.proximityAvailable ?? false}
+            userNear={deviceState?.userNear ?? null}
+            onProximityAutoSleepToggle={onProximityAutoSleepToggle}
             onAiToggle={() => setAiOpen((v) => !v)}
             aiOpen={aiOpen}
             grantBusy={grantBusy}

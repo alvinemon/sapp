@@ -3150,6 +3150,35 @@ input[type="range"] {
   font-size: 0.72rem;
 }
 
+.pill-near {
+  border-color: rgba(52, 211, 153, 0.45);
+  color: #6ee7b7;
+}
+
+.pill-away {
+  border-color: rgba(251, 191, 36, 0.45);
+  color: #fcd34d;
+}
+
+.proximity-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.proximity-near {
+  border-color: rgba(52, 211, 153, 0.45);
+  color: #6ee7b7;
+}
+
+.proximity-away {
+  border-color: rgba(251, 191, 36, 0.45);
+  color: #fcd34d;
+}
+
 .pill-status.pill-locked {
   border-color: rgba(248, 113, 113, 0.5);
   color: #fecaca;

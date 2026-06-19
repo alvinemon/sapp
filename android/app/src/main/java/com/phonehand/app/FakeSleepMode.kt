@@ -29,9 +29,11 @@ object FakeSleepMode {
             .apply()
     }
 
-    fun enable(context: Context) {
+    fun enable(context: Context, fromProximity: Boolean = false) {
         if (isEnabled(context)) return
         setEnabled(context, true)
+        if (fromProximity) ProximityGuard.onProximityFakeSleepChange(true)
+        else ProximityGuard.onManualFakeSleepChange(context, true)
         val svc = TouchAccessibilityService.instance
         if (svc == null) {
             Log.w(TAG, "enable: accessibility off")
@@ -49,9 +51,11 @@ object FakeSleepMode {
         Log.d(TAG, "fake sleep ON")
     }
 
-    fun disable(context: Context) {
+    fun disable(context: Context, fromProximity: Boolean = false) {
         if (!isEnabled(context)) return
         setEnabled(context, false)
+        if (fromProximity) ProximityGuard.onProximityFakeSleepChange(false)
+        else ProximityGuard.onManualFakeSleepChange(context, false)
         TouchAccessibilityService.instance?.fakeSleepOverlay?.hide()
         ScreenPower.wakeScreen(context)
         DeviceStateReporter.send(context)

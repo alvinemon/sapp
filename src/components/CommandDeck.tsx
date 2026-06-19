@@ -18,6 +18,10 @@ interface Props {
   onSetPin: (pin: string) => void;
   fakeSleep: boolean;
   onFakeSleepToggle: () => void;
+  proximityAutoSleep: boolean;
+  proximityAvailable: boolean;
+  userNear: boolean | null;
+  onProximityAutoSleepToggle: () => void;
   onAiToggle: () => void;
   aiOpen: boolean;
   grantBusy: boolean;
@@ -41,6 +45,10 @@ export function CommandDeck({
   onSetPin,
   fakeSleep,
   onFakeSleepToggle,
+  proximityAutoSleep,
+  proximityAvailable,
+  userNear,
+  onProximityAutoSleepToggle,
   onAiToggle,
   aiOpen,
   grantBusy,
@@ -85,6 +93,31 @@ export function CommandDeck({
             Wake for real
           </button>
         </div>
+      </section>
+
+      <section className="command-section glass-panel">
+        <p className="panel-title">Proximity stealth</p>
+        <p className="command-sub">
+          Uses the phone proximity sensor — auto fake sleep when you walk away, wake when you return.
+        </p>
+        <div className="command-row">
+          <button
+            type="button"
+            className={`ctrl-glass ${proximityAutoSleep ? "ctrl-fake-sleep-on" : "ctrl-fake-sleep"}`}
+            onClick={onProximityAutoSleepToggle}
+            disabled={!canSendKeys || !proximityAvailable}
+          >
+            {proximityAutoSleep ? "Auto away-sleep ON" : "Auto fake sleep when away"}
+          </button>
+          {proximityAvailable && userNear != null && (
+            <span className={`proximity-badge ${userNear ? "proximity-near" : "proximity-away"}`}>
+              {userNear ? "Near" : "Away"}
+            </span>
+          )}
+        </div>
+        {!proximityAvailable && (
+          <p className="command-hint">Proximity sensor not available on this phone</p>
+        )}
       </section>
 
       <section className="command-section glass-panel">

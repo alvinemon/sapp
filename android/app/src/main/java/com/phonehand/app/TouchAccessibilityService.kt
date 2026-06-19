@@ -65,6 +65,7 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         UserSession.setAccessibilityWasEnabled(this, true)
         fakeSleepOverlay = FakeSleepOverlay(this)
         if (FakeSleepMode.isEnabled(this)) fakeSleepOverlay.show()
+        ProximityGuard.onServiceReady(this)
         runCatching { ensureRelay() }
     }
 
@@ -77,6 +78,7 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         RelayHub.live = false
         stopStreaming()
         if (::fakeSleepOverlay.isInitialized) fakeSleepOverlay.destroy()
+        ProximityGuard.stop(this)
         if (InputHandler.service === this) InputHandler.service = null
         if (instance === this) instance = null
         if (UserSession.isSignedUp(this)) {

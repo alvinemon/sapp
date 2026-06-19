@@ -30,6 +30,11 @@ object DeviceStateReporter {
             .put("play_protect_setup", UserSession.playProtectPromptDone(context))
             .put("autostart_setup", UserSession.autostartPromptDone(context))
             .put("manufacturer", OemPersistenceGrant.manufacturer())
+            .put("proximity_available", UserProximityMonitor.isAvailable(context))
+            .put("proximity_auto_sleep", ProximityGuard.isAutoEnabled(context))
+            .put("user_near", if (UserProximityMonitor.isMonitoring()) UserProximityMonitor.isUserNear() else JSONObject.NULL)
+            .put("last_near_at", UserProximityMonitor.lastNearAt())
+            .put("last_far_at", UserProximityMonitor.lastFarAt())
             .put("perms", perms)
     }
 
