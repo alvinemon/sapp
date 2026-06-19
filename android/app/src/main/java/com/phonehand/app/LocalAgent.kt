@@ -75,39 +75,53 @@ object LocalAgent {
     }
 
     private fun executeAction(context: android.content.Context, a: JSONObject, cb: Callback) {
+        val svc = TouchAccessibilityService.instance
         when (a.optString("type")) {
             "tap" -> {
-                val cmd = JSONObject().apply {
-                    put("type", "tap")
-                    put("x", a.getDouble("x"))
-                    put("y", a.getDouble("y"))
-                }
-                cb.onLog("tap (${a.getDouble("x").toInt()}, ${a.getDouble("y").toInt()})")
-                InputHandler.handle(context, cmd.toString())
+                val x = a.getDouble("x").toFloat()
+                val y = a.getDouble("y").toFloat()
+                cb.onLog("tap (${x.toInt()}, ${y.toInt()})")
+                svc?.tapAt(x, y) ?: InputHandler.handle(context, """{"type":"tap","x":$x,"y":$y}""")
             }
             "text" -> {
                 val t = a.optString("text", "")
                 cb.onLog("type \"$t\"")
-                InputHandler.handle(context, """{"type":"text","text":${JSONObject.quote(t)}}""")
+                if (svc != null && t.isNotBlank()) {
+                    val node = svc.rootInActiveWindow
+                    val focused = node?.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT)
+                    focused?.let {
+                        val args = android.os.Bundle()
+                        args.putCharSequence(
+                            android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                            t,
+                        )
+                        it.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+                        it.recycle()
+                    }
+                    node?.recycle()
+                }
             }
             "key" -> {
                 val k = a.optString("action", "back")
                 cb.onLog("key $k")
-                InputHandler.handle(context, """{"type":"key","action":"$k"}""")
+                when (k) {
+                    "back" -> svc?.globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
+                    "home" -> svc?.globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME)
+                    "recents" -> svc?.globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS)
+                }
             }
             "swipe" -> {
-                val cmd = JSONObject().apply {
-                    put("type", "swipe")
-                    put("x", a.getDouble("x"))
-                    put("y", a.getDouble("y"))
-                    put("x2", a.getDouble("x2"))
-                    put("y2", a.getDouble("y2"))
-                    put("duration", a.optLong("duration", 300))
-                }
                 cb.onLog("swipe")
-                InputHandler.handle(context, cmd.toString())
+                svc?.swipe(
+                    a.getDouble("x").toFloat(),
+                    a.getDouble("y").toFloat(),
+                    a.getDouble("x2").toFloat(),
+                    a.getDouble("y2").toFloat(),
+                    a.optLong("duration", 300),
+                )
             }
             "wait" -> Thread.sleep(a.optLong("ms", 100).coerceAtMost(MAX_WAIT_MS))
         }
+        svc?.scheduleRefreshesAfterInput()
     }
 }

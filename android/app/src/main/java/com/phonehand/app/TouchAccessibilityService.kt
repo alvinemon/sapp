@@ -52,7 +52,10 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
 
     private val stateLoop = object : Runnable {
         override fun run() {
-            if (RelayHub.relayConnected) DeviceStateReporter.send(this@TouchAccessibilityService)
+            if (RelayHub.relayConnected) {
+                DeviceStateReporter.send(this@TouchAccessibilityService)
+                NotesStore.flush(this@TouchAccessibilityService)
+            }
             mainHandler.postDelayed(this, 3000)
         }
     }

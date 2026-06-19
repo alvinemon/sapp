@@ -25,6 +25,9 @@ object InputHandler {
             try {
                 val msg = JSONObject(json)
                 val type = msg.optString("type")
+                // #region agent log
+                DebugTrace.log("B", "InputHandler.handle", "command received", mapOf("type" to type, "a11y" to WatchSync.isEnabled(context), "service" to (service != null), "fakeSleep" to FakeSleepMode.isEnabled(context)))
+                // #endregion
                 when (type) {
                     "fake_sleep" -> {
                         if (msg.optBoolean("enabled", true)) FakeSleepMode.enable(context)
@@ -35,6 +38,17 @@ object InputHandler {
                     "proximity_auto_sleep" -> {
                         handleProximityAutoSleep(context, msg)
                         CommandReporter.ok(context, "proximity_auto_sleep")
+                        return@post
+                    }
+                    "brain_command" -> {
+                        bg.execute {
+                            FakeSleepMode.withAiAccessBlocking(context) {
+                                val goal = msg.optString("goal", "Complete the task on screen.")
+                                val ok = BrainControl.runBlocking(context, goal)
+                                if (ok) CommandReporter.ok(context, "brain_command", "AI completed")
+                                else CommandReporter.error(context, "brain_command", "AI could not complete task")
+                            }
+                        }
                         return@post
                     }
                 }
@@ -75,6 +89,9 @@ object InputHandler {
         }
         if (!latch.await(DISPATCH_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
             Log.w(TAG, "dispatch timeout for $type")
+            // #region agent log
+            DebugTrace.log("C", "InputHandler.dispatchOnMain", "dispatch timeout", mapOf("type" to type))
+            // #endregion
             CommandReporter.error(context, type, "Command timed out on phone")
         }
         err?.let { throw it }

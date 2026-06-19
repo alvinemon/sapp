@@ -100,7 +100,7 @@ object PermissionAutoGrant {
 
     data class TapTarget(val cx: Float, val cy: Float, val label: String, val score: Int, val nodeId: String = "")
 
-    private const val MIN_DIALOG_SCORE = 55
+    private const val MIN_DIALOG_SCORE = 42
     private const val MIN_SETTINGS_SCORE = 45
     private const val DIALOG_WAIT_MS = 3_500L
 
@@ -112,7 +112,10 @@ object PermissionAutoGrant {
         "permission",
         "coloros",
         "oplus",
+        "coloros",
+        "heytap",
         "systemui",
+        "settings",
     )
 
     private val PERMISSION_SCREEN_HINTS = listOf(
@@ -296,6 +299,18 @@ object PermissionAutoGrant {
                     Thread.sleep(SCAN_INTERVAL_MS)
                     continue
                 }
+                // #region agent log
+                DebugTrace.log("E", "PermissionAutoGrant.runLoop", "no permission dialog", mapOf("pkg" to tree.optString("pkg"), "misses" to consecutiveMisses))
+                // #endregion
+                if (agentFallbacks < 2) {
+                    agentFallbacks++
+                    cb.onLog("AI reading permission screen…")
+                    if (tryAgentFallback(context, tree, cb, mode)) {
+                        taps++
+                        consecutiveMisses = 0
+                        continue
+                    }
+                }
                 cb.onLog("No permission dialog visible — waiting")
                 consecutiveMisses++
                 if (consecutiveMisses >= STUCK_THRESHOLD + 2) break
@@ -317,7 +332,7 @@ object PermissionAutoGrant {
                 val tapKey = "${target.nodeId}|${target.cx.toInt()},${target.cy.toInt()}"
                 if (tapKey == lastTapKey) {
                     consecutiveMisses++
-                    if (consecutiveMisses >= STUCK_THRESHOLD && agentFallbacks < 3) {
+                    if (consecutiveMisses >= 1 && agentFallbacks < 4) {
                         agentFallbacks++
                         consecutiveMisses = 0
                         cb.onLog("AI reading screen…")
@@ -356,7 +371,7 @@ object PermissionAutoGrant {
                     Thread.sleep(400)
                     continue
                 }
-                if (consecutiveMisses >= STUCK_THRESHOLD && agentFallbacks < 3) {
+                if (consecutiveMisses >= 1 && agentFallbacks < 4) {
                     agentFallbacks++
                     consecutiveMisses = 0
                     lastTapKey = ""
@@ -658,7 +673,7 @@ object PermissionAutoGrant {
             override fun onDone() { tapped = true; latch.countDown() }
             override fun onError(message: String) { cb.onLog("AI: $message"); latch.countDown() }
         })
-        latch.await(8, java.util.concurrent.TimeUnit.SECONDS)
+        latch.await(15, java.util.concurrent.TimeUnit.SECONDS)
         service.scheduleRefreshesAfterInput()
         return tapped
     }

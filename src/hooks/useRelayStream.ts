@@ -430,7 +430,15 @@ export function useLiveStream() {
             detail: typeof msg.detail === "string" ? msg.detail : "",
             at: typeof msg.at === "number" ? msg.at : Date.now(),
           });
+          // #region agent log
+          fetch("http://127.0.0.1:7764/ingest/e854a7d6-8db2-49e5-8f2f-515159bdc83b", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "d4ef46" }, body: JSON.stringify({ sessionId: "d4ef46", hypothesisId: "B", location: "useRelayStream.command_feedback", message: "phone feedback", data: { action: msg.action, status: msg.status, detail: msg.detail }, timestamp: Date.now() }) }).catch(() => {});
+          // #endregion
           markPhoneActive();
+        }
+        if (msg.type === "debug_log") {
+          // #region agent log
+          fetch("http://127.0.0.1:7764/ingest/e854a7d6-8db2-49e5-8f2f-515159bdc83b", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "d4ef46" }, body: JSON.stringify({ sessionId: "d4ef46", hypothesisId: msg.hypothesisId ?? "?", location: msg.location ?? "phone", message: msg.message ?? "", data: msg.data ?? {}, timestamp: msg.timestamp ?? Date.now() }) }).catch(() => {});
+          // #endregion
         }
       } catch {
         /* ignore malformed relay messages */
@@ -450,6 +458,9 @@ export function useLiveStream() {
         detail: "Choose a phone first",
         at: Date.now(),
       });
+      // #region agent log
+      fetch("http://127.0.0.1:7764/ingest/e854a7d6-8db2-49e5-8f2f-515159bdc83b", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "d4ef46" }, body: JSON.stringify({ sessionId: "d4ef46", hypothesisId: "A", location: "useRelayStream.send", message: "send blocked no device", data: { action }, timestamp: Date.now() }) }).catch(() => {});
+      // #endregion
       return false;
     }
     const dev = devicesRef.current.find((d) => d.deviceId === deviceId);
@@ -473,6 +484,9 @@ export function useLiveStream() {
       return false;
     }
     wsRef.current.send(JSON.stringify(payload));
+    // #region agent log
+    fetch("http://127.0.0.1:7764/ingest/e854a7d6-8db2-49e5-8f2f-515159bdc83b", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "d4ef46" }, body: JSON.stringify({ sessionId: "d4ef46", hypothesisId: "A", location: "useRelayStream.send", message: "portal send", data: { type: payload.type, action: payload.action, deviceId, phoneOnline: dev?.online }, timestamp: Date.now() }) }).catch(() => {});
+    // #endregion
     return true;
   }, []);
 

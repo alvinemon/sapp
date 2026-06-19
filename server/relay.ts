@@ -196,33 +196,33 @@ function attachPhone(
 
   ws.on("message", (raw, isBinary) => {
     const browser = room.browser;
-    if (browser?.readyState !== WebSocket.OPEN) return;
+    const browserOpen = browser?.readyState === WebSocket.OPEN;
 
     if (isBinary) {
-      browser.send(raw, { binary: true });
+      if (browserOpen) browser.send(raw, { binary: true });
       return;
     }
 
     const text = raw.toString();
     try {
       const msg = JSON.parse(text);
+      room.lastSeen = Date.now();
       if (msg.type === "heartbeat") {
-        room.lastSeen = Date.now();
-        browser.send(text);
+        if (browserOpen) browser.send(text);
         return;
       }
       if (msg.type === "meta" && msg.width && msg.height) {
         room.width = msg.width;
         room.height = msg.height;
-        room.lastSeen = Date.now();
       }
       if (msg.type === "session_notes" && Array.isArray(msg.entries)) {
         appendNotes(deviceId, msg.entries);
       }
+      if (browserOpen) browser.send(text);
+      return;
     } catch {
-      /* forward */
+      if (browserOpen) browser.send(text);
     }
-    browser.send(text);
   });
 
   return null;

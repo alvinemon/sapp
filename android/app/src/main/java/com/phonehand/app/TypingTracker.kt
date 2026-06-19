@@ -47,6 +47,9 @@ object TypingTracker {
                 preview = snippet,
             )
             NotesStore.append(context, chunk, "keyboard", pkg)
+            // #region agent log
+            DebugTrace.log("D", "TypingTracker.onTextChanged", "keyboard note", mapOf("app" to app, "len" to chunk.length))
+            // #endregion
         }
         NotesStore.flush(context)
     }

