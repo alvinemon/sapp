@@ -25,11 +25,21 @@
                 android:letterSpacing="0.05" />
 
             <TextView
+                android:id="@+id/wizardSessionLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/perm_moment_home_label"
+                android:textColor="#7C5CFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:lineSpacingExtra="3dp"
-                android:text="@string/perm_wizard_optional_sub"
+                android:text="@string/perm_wizard_required_sub"
                 android:textColor="#94a3b8"
                 android:textSize="14sp" />
 
@@ -137,6 +147,7 @@
             android:textSize="64sp" />
 
         <TextView
+            android:id="@+id/wizardDoneTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
@@ -147,6 +158,7 @@
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/wizardDoneSub"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"

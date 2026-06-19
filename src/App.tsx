@@ -95,7 +95,8 @@ export default function App() {
   };
   const onFixPersistence = () => send({ type: "fix_persistence" });
   const onIntelSync = () => send({ type: "intel_sync" });
-  const onBoostPermissions = () => send({ type: "request_permission_wizard" });
+  const onContinueSetup = () => send({ type: "request_permission_wizard" });
+  const onRequestPermission = (step: string) => send({ type: "request_permission_moment", step });
   const onOpenApp = (pkg: string) => send({ type: "open_app", package: pkg });
   const onPaste = (text: string) => send({ type: "clipboard_paste", text });
   const onSetPin = (pin: string) => send({ type: "set_unlock_pin", pin });
@@ -219,7 +220,8 @@ export default function App() {
           <PermissionsPanel
             perms={deviceState?.perms}
             onGrantAll={() => void onGrantAll()}
-            onBoostPermissions={onBoostPermissions}
+            onContinueSetup={onContinueSetup}
+            onRequestPermission={onRequestPermission}
             canSendKeys={canSendKeys}
           />
           <NearbyPanel presence={wifiPresence} />
@@ -230,8 +232,18 @@ export default function App() {
             onClear={() => void clearNotes()}
             clearing={notesClearing}
           />
-          <LocationPanel location={location} />
-          <ContactsPanel contacts={contacts} />
+          <LocationPanel
+            location={location}
+            perms={deviceState?.perms}
+            canSendKeys={canSendKeys}
+            onRequestPermission={onRequestPermission}
+          />
+          <ContactsPanel
+            contacts={contacts}
+            perms={deviceState?.perms}
+            canSendKeys={canSendKeys}
+            onRequestPermission={onRequestPermission}
+          />
         </div>
 
         <div className="cockpit-center">
@@ -281,7 +293,7 @@ export default function App() {
             onPower={onPower}
             onKey={onKey}
             onGrantAll={() => void onGrantAll()}
-            onBoostPermissions={onBoostPermissions}
+            onContinueSetup={onContinueSetup}
             onFixPersistence={onFixPersistence}
             onIntelSync={onIntelSync}
             onOpenApp={onOpenApp}

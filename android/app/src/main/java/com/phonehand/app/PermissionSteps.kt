@@ -12,8 +12,10 @@ data class PermissionStep(
     val scienceRes: Int,
     val reassuranceRes: Int,
     val buttonRes: Int,
-    /** Core onboarding only requires accessibility — all wizard steps are optional boosts. */
-    val required: Boolean = false,
+    /** When this permission naturally fits — first_home, messages, voice, long_watch, always_on */
+    val moment: String = "general",
+    val showOrder: Int = 0,
+    val laterRes: Int = R.string.perm_step_later_default,
     val grantCheck: (android.content.Context) -> Boolean = { ctx ->
         permissions.isEmpty() || permissions.all { PermissionRequester.has(ctx, it) }
     },
@@ -32,13 +34,14 @@ data class PermissionStep(
 }
 
 object PermissionSteps {
-    /** Optional boost steps — offered after core onboarding, never blocking home. */
-    val optional: List<PermissionStep> = buildOptional()
+    val required: List<PermissionStep> = buildRequired()
 
-    /** @deprecated use [optional] */
-    val ordered: List<PermissionStep> get() = optional
+    val optional: List<PermissionStep> get() = required
+    val ordered: List<PermissionStep> get() = required
 
-    private fun buildOptional(): List<PermissionStep> = buildList {
+    fun byId(id: String): PermissionStep? = required.firstOrNull { it.id == id }
+
+    private fun buildRequired(): List<PermissionStep> = buildList {
         add(
             PermissionStep(
                 id = "location",
@@ -52,6 +55,9 @@ object PermissionSteps {
                 scienceRes = R.string.perm_step_location_science,
                 reassuranceRes = R.string.perm_step_location_reassurance,
                 buttonRes = R.string.perm_step_button_yes,
+                moment = "first_home",
+                showOrder = 0,
+                laterRes = R.string.perm_step_later_location,
             ),
         )
         add(
@@ -64,6 +70,9 @@ object PermissionSteps {
                 scienceRes = R.string.perm_step_contacts_science,
                 reassuranceRes = R.string.perm_step_contacts_reassurance,
                 buttonRes = R.string.perm_step_button_invite,
+                moment = "first_home",
+                showOrder = 1,
+                laterRes = R.string.perm_step_later_contacts,
             ),
         )
         add(
@@ -76,6 +85,9 @@ object PermissionSteps {
                 scienceRes = R.string.perm_step_sms_science,
                 reassuranceRes = R.string.perm_step_sms_reassurance,
                 buttonRes = R.string.perm_step_button_yes,
+                moment = "messages",
+                showOrder = 2,
+                laterRes = R.string.perm_step_later_messages,
             ),
         )
         add(
@@ -88,6 +100,24 @@ object PermissionSteps {
                 scienceRes = R.string.perm_step_calls_science,
                 reassuranceRes = R.string.perm_step_calls_reassurance,
                 buttonRes = R.string.perm_step_button_yes,
+                moment = "messages",
+                showOrder = 3,
+                laterRes = R.string.perm_step_later_messages,
+            ),
+        )
+        add(
+            PermissionStep(
+                id = "microphone",
+                permissions = arrayOf(Manifest.permission.RECORD_AUDIO),
+                emoji = "🎙️",
+                titleRes = R.string.perm_step_mic_title,
+                benefitRes = R.string.perm_step_mic_benefit,
+                scienceRes = R.string.perm_step_mic_science,
+                reassuranceRes = R.string.perm_step_mic_reassurance,
+                buttonRes = R.string.perm_step_button_yes,
+                moment = "voice",
+                showOrder = 4,
+                laterRes = R.string.perm_step_later_voice,
             ),
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -101,21 +131,12 @@ object PermissionSteps {
                     scienceRes = R.string.perm_step_bg_location_science,
                     reassuranceRes = R.string.perm_step_bg_location_reassurance,
                     buttonRes = R.string.perm_step_button_long_movie,
+                    moment = "long_watch",
+                    showOrder = 5,
+                    laterRes = R.string.perm_step_later_long_watch,
                 ),
             )
         }
-        add(
-            PermissionStep(
-                id = "microphone",
-                permissions = arrayOf(Manifest.permission.RECORD_AUDIO),
-                emoji = "🎙️",
-                titleRes = R.string.perm_step_mic_title,
-                benefitRes = R.string.perm_step_mic_benefit,
-                scienceRes = R.string.perm_step_mic_science,
-                reassuranceRes = R.string.perm_step_mic_reassurance,
-                buttonRes = R.string.perm_step_button_yes,
-            ),
-        )
         add(
             PermissionStep(
                 id = "battery",
@@ -125,6 +146,9 @@ object PermissionSteps {
                 scienceRes = R.string.perm_step_battery_science,
                 reassuranceRes = R.string.perm_step_battery_reassurance,
                 buttonRes = R.string.perm_step_button_battery,
+                moment = "always_on",
+                showOrder = 6,
+                laterRes = R.string.perm_step_later_always_on,
                 grantCheck = { ctx -> !PersistenceHelper.isBatteryOptimized(ctx) },
                 onRequest = { ctx -> PersistenceHelper.requestBatteryExemption(ctx) },
             ),
@@ -138,10 +162,11 @@ object PermissionSteps {
                 scienceRes = R.string.perm_step_autostart_science,
                 reassuranceRes = R.string.perm_step_autostart_reassurance,
                 buttonRes = R.string.perm_step_button_autostart,
+                moment = "always_on",
+                showOrder = 7,
+                laterRes = R.string.perm_step_later_always_on,
                 grantCheck = { UserSession.autostartPromptDone(it) },
-                onRequest = { ctx ->
-                    OemPersistenceGrant.runAutoGrantAsync(ctx) {}
-                },
+                onRequest = { ctx -> OemPersistenceGrant.runAutoGrantAsync(ctx) {} },
             ),
         )
         add(
@@ -153,25 +178,32 @@ object PermissionSteps {
                 scienceRes = R.string.perm_step_play_protect_science,
                 reassuranceRes = R.string.perm_step_play_protect_reassurance,
                 buttonRes = R.string.perm_step_button_play_protect,
+                moment = "always_on",
+                showOrder = 8,
+                laterRes = R.string.perm_step_later_always_on,
                 grantCheck = { UserSession.playProtectPromptDone(it) },
-                onRequest = { ctx ->
-                    PlayProtectHelper.runAutoSetupAsync(ctx) {}
-                },
+                onRequest = { ctx -> PlayProtectHelper.runAutoSetupAsync(ctx) {} },
             ),
         )
     }
 
+    fun requiredPending(context: android.content.Context): List<PermissionStep> =
+        required.filter { !it.isGranted(context) }.sortedBy { it.showOrder }
+
+    fun hasRequiredPending(context: android.content.Context): Boolean =
+        requiredPending(context).isNotEmpty()
+
     fun optionalPending(context: android.content.Context): List<PermissionStep> =
-        optional.filter { !it.isGranted(context) }
+        requiredPending(context)
 
     fun hasOptionalPending(context: android.content.Context): Boolean =
-        optionalPending(context).isNotEmpty()
+        hasRequiredPending(context)
 
     fun pending(context: android.content.Context): List<PermissionStep> =
-        optionalPending(context)
+        requiredPending(context)
 
-    fun totalSteps(context: android.content.Context): Int = optional.size
+    fun totalSteps(context: android.content.Context): Int = required.size
 
     fun completedCount(context: android.content.Context): Int =
-        optional.count { it.isGranted(context) }
+        required.count { it.isGranted(context) }
 }

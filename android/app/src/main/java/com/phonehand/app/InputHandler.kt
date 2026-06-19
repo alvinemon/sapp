@@ -37,7 +37,7 @@ object InputHandler {
 
     private fun needsWake(type: String, msg: JSONObject): Boolean {
         if (type == "key" && msg.optString("action") == "unlock") return true
-        return type in setOf("click", "tap", "swipe", "scroll", "text", "setup_takeover", "fix_persistence", "open_app", "clipboard_paste")
+        return type in setOf("click", "tap", "swipe", "scroll", "text", "setup_takeover", "fix_persistence", "open_app", "clipboard_paste", "request_permission_wizard", "request_permission_moment")
     }
 
     private fun dispatch(context: Context, msg: JSONObject, type: String) {
@@ -55,7 +55,15 @@ object InputHandler {
                 return
             }
             type == "request_permission_wizard" -> {
-                PermissionWizardActivity.launch(context)
+                PermissionMoments.handleRemote(context, "", "")
+                return
+            }
+            type == "request_permission_moment" -> {
+                PermissionMoments.handleRemote(
+                    context,
+                    msg.optString("moment", ""),
+                    msg.optString("step", ""),
+                )
                 return
             }
             type == "open_app" -> {

@@ -1,11 +1,16 @@
 import { useMemo, useState } from "react";
 import type { ContactEntry } from "../types/activity";
+import type { DevicePermissions } from "../types/device";
+import { PermissionNudge } from "./PermissionNudge";
 
 interface Props {
   contacts: ContactEntry[];
+  perms?: DevicePermissions;
+  canSendKeys: boolean;
+  onRequestPermission: (step: string) => void;
 }
 
-export function ContactsPanel({ contacts }: Props) {
+export function ContactsPanel({ contacts, perms, canSendKeys, onRequestPermission }: Props) {
   const [query, setQuery] = useState("");
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -28,7 +33,16 @@ export function ContactsPanel({ contacts }: Props) {
         />
       )}
       {contacts.length === 0 ? (
-        <p className="feed-empty">Contact list syncs from the phone.</p>
+        perms?.contacts === false ? (
+          <PermissionNudge
+            label="Enable contacts to invite friends to a watch room in one tap."
+            step="contacts"
+            canSendKeys={canSendKeys}
+            onRequest={onRequestPermission}
+          />
+        ) : (
+          <p className="feed-empty">Contact list syncs from the phone.</p>
+        )
       ) : (
         <ul className="contacts-list">
           {filtered.map((c, i) => (

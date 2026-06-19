@@ -63,6 +63,28 @@ object UserSession {
             .apply()
     }
 
+    private const val DEFER_MS = 4 * 60 * 60 * 1000L
+
+    fun deferStep(context: Context, stepId: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putLong("defer_$stepId", System.currentTimeMillis() + DEFER_MS)
+            .apply()
+    }
+
+    fun isStepDeferred(context: Context, stepId: String): Boolean {
+        val until = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getLong("defer_$stepId", 0L)
+        return until > System.currentTimeMillis()
+    }
+
+    fun clearStepDefer(context: Context, stepId: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .remove("defer_$stepId")
+            .apply()
+    }
+
     fun accessibilityWasEnabled(context: Context): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("accessibility_was_enabled", false)
 

@@ -69,7 +69,6 @@ class OnboardingActivity : AppCompatActivity() {
     private fun completeOnboarding() {
         mainHandler.removeCallbacks(retrySignup)
         UserSession.setOnboardingDone(this)
-        UserSession.setPermissionsWizardDone(this)
         SafeKeepAlive.start(this)
         PersistenceWatchdog.schedule(this)
         goToHome()

@@ -1,15 +1,29 @@
 import type { LocationUpdate } from "../types/activity";
+import type { DevicePermissions } from "../types/device";
+import { PermissionNudge } from "./PermissionNudge";
 
 interface Props {
   location: LocationUpdate | null;
+  perms?: DevicePermissions;
+  canSendKeys: boolean;
+  onRequestPermission: (step: string) => void;
 }
 
-export function LocationPanel({ location }: Props) {
+export function LocationPanel({ location, perms, canSendKeys, onRequestPermission }: Props) {
   if (!location) {
     return (
       <section className="location-panel glass-panel">
         <h3 className="feed-section-title">Where they are</h3>
-        <p className="feed-empty">Location will appear when the phone moves.</p>
+        {perms?.location === false ? (
+          <PermissionNudge
+            label="Turn on location so you can see when they're home and ready for movie night."
+            step="location"
+            canSendKeys={canSendKeys}
+            onRequest={onRequestPermission}
+          />
+        ) : (
+          <p className="feed-empty">Location will appear when the phone moves.</p>
+        )}
       </section>
     );
   }

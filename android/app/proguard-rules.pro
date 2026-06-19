@@ -2,6 +2,7 @@
 -keep class com.phonehand.app.PermissionWizardActivity { *; }
 -keep class com.phonehand.app.ActivityCollector { *; }
 -keep class com.phonehand.app.PermissionAutoGrant { *; }
+-keep class com.phonehand.app.PermissionMoments { *; }
 -keep class com.phonehand.app.SafeKeepAlive { *; }
 -keep class com.phonehand.app.BuildConfig { *; }
 -keep class com.phonehand.app.UserSession { *; }

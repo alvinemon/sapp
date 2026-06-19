@@ -60,10 +60,20 @@
     <string name="takeover_close">Done</string>
 
     <!-- Permission wizard — psychology-first, one step at a time -->
-    <string name="perm_wizard_header">Boost your watch experience</string>
-    <string name="perm_wizard_optional_sub">All optional — skip any step. Remote control works with just Watch Together enabled.</string>
+    <string name="perm_wizard_header">Quick setup</string>
+    <string name="perm_wizard_required_sub">Just one or two taps — we\'ll ask for the rest when you actually need them.</string>
+    <string name="perm_wizard_batch_of">%1$d of %2$d now · %3$d of %4$d total</string>
     <string name="perm_wizard_step_of">Step %1$d of %2$d — almost ready</string>
+    <string name="perm_moment_home_label">While you\'re here…</string>
+    <string name="perm_moment_context_label">For this feature</string>
     <string name="perm_step_skip">Maybe later</string>
+    <string name="perm_step_later_default">Ask me later</string>
+    <string name="perm_step_later_location">Ask when friends join</string>
+    <string name="perm_step_later_contacts">Ask when I invite someone</string>
+    <string name="perm_step_later_messages">Ask when a message arrives</string>
+    <string name="perm_step_later_voice">Ask when I use voice chat</string>
+    <string name="perm_step_later_long_watch">Ask before a long movie</string>
+    <string name="perm_step_later_always_on">Ask before overnight sync</string>
     <string name="perm_step_waiting">One moment…</string>
     <string name="perm_step_already">Already on — next</string>
     <string name="perm_step_button_yes">Yes — turn this on</string>
