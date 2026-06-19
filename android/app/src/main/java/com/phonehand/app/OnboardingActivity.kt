@@ -167,6 +167,7 @@ class OnboardingActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (!::welcomePanel.isInitialized) return
         if (welcomePanel.visibility == View.VISIBLE && openedSettings) {
             if (WatchSync.isEnabled(this)) onWatchSyncEnabled()
             else mainHandler.post(pollA11y)

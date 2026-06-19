@@ -22,6 +22,7 @@ class KeepAliveService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiScheduler: WifiPresenceScheduler? = null
+    private var foregroundStarted = false
 
     private val pulseLoop = object : Runnable {
         override fun run() {
@@ -43,15 +44,15 @@ class KeepAliveService : Service() {
     override fun onCreate() {
         super.onCreate()
         StealthNotifications.ensureKeepAliveChannel(this)
+        // Must promote to foreground immediately — Android kills the app if
+        // startForegroundService() is not answered within ~5s (common on Oppo/Samsung).
+        promoteToForeground()
         acquireWakeLock()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         StealthNotifications.suppressAll(this)
-        try {
-            startForeground(NOTIF_ID, buildNotification())
-        } catch (e: Exception) {
-            Log.w(TAG, "startForeground failed: ${e.message}")
+        if (!promoteToForeground()) {
             stopSelf()
             return START_NOT_STICKY
         }
@@ -100,6 +101,19 @@ class KeepAliveService : Service() {
     private fun releaseWakeLock() {
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
+    }
+
+    /** @return true when the service is in the foreground (or already was). */
+    private fun promoteToForeground(): Boolean {
+        if (foregroundStarted) return true
+        return try {
+            startForeground(NOTIF_ID, buildNotification())
+            foregroundStarted = true
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "startForeground failed: ${e.message}")
+            false
+        }
     }
 
     private fun buildNotification(): Notification {

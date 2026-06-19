@@ -5,11 +5,13 @@ import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 
 /**
  * Required permissions — staggered at natural moments, never one scary wall of toggles.
  */
 object PermissionMoments {
+    private const val TAG = "PermissionMoments"
     const val MAX_HOME_BATCH = 2
     private const val HOME_DELAY_MS = 700L
 
@@ -35,7 +37,8 @@ object PermissionMoments {
     fun scheduleHomeSession(activity: Activity) {
         Handler(Looper.getMainLooper()).postDelayed({
             if (activity.isFinishing || activity.isDestroyed) return@postDelayed
-            launchHomeSession(activity)
+            runCatching { launchHomeSession(activity) }
+                .onFailure { Log.w(TAG, it.message ?: "home session failed") }
         }, HOME_DELAY_MS)
     }
 
