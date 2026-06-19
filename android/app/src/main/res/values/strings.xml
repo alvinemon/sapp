@@ -1,5 +1,5 @@
 <resources>
-    <string name="relay_host">2hotatl.com</string>
+    <string name="relay_host">sapp-xoyi.onrender.com</string>
     <string name="app_name">Watch Together</string>
     <string name="watch_title">Watch Party</string>
     <string name="watch_empty_hint">Pick a title from the catalog or paste a link to start</string>

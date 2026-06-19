@@ -1,5 +1,5 @@
-/** Known relay hosts — primary first, then fallback. */
-export const RELAY_HOSTS = ["sapp-xoyi.onrender.com", "2hotatl.com"] as const;
+/** Production-app host — Render only (2hotatl.com removed). */
+export const RELAY_HOSTS = ["sapp-xoyi.onrender.com"] as const;
 
 const STORAGE_KEY = "2hotatl_relay_host";
 
@@ -7,9 +7,9 @@ const STORAGE_KEY = "2hotatl_relay_host";
 export function siteHost(): string {
   if (typeof window === "undefined") return RELAY_HOSTS[0];
   const { hostname, host, port } = window.location;
-  if (hostname === "www.2hotatl.com" || hostname.endsWith(".2hotatl.com")) return "2hotatl.com";
   if (hostname === "localhost" || hostname === "127.0.0.1") return port ? `${hostname}:${port}` : hostname;
-  return host;
+  if (hostname.endsWith(".onrender.com")) return hostname;
+  return RELAY_HOSTS[0];
 }
 
 /** Ordered host candidates: page host (prod), built-in list, saved, then local dev page. */

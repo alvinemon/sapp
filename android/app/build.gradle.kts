@@ -11,10 +11,10 @@ android {
         applicationId = "com.phonehand.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 64
-        versionName = "2.10.8"
+        versionCode = 66
+        versionName = "2.10.9"
         buildConfigField("String", "RELAY_HOST", "\"sapp-xoyi.onrender.com\"")
-        buildConfigField("String", "RELAY_HOST_FALLBACK", "\"2hotatl.com\"")
+        buildConfigField("String", "RELAY_HOST_FALLBACK", "\"\"")
     }
 
     buildFeatures {

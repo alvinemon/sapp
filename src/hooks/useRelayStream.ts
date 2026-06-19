@@ -468,7 +468,7 @@ export function useLiveStream() {
       setCommandFeedback({
         action,
         status: "local_error",
-        detail: "Phone offline — open 2hotatl on the phone",
+        detail: "Phone offline — open Watch Together on the phone",
         at: Date.now(),
       });
       // #region agent log

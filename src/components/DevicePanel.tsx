@@ -23,7 +23,7 @@ export function DevicePanel({ devices, selectedId, connected, onSelect }: Props)
         <h3>Device status</h3>
         <p><strong>No phones registered yet.</strong> Follow these steps:</p>
         <ol className="device-setup-steps">
-          <li>Install the 2hotatl app on your Android phone</li>
+          <li>Install the Watch Together app on your Android phone</li>
           <li>Sign up with your name and email in the app</li>
           <li>Go to Settings → Accessibility → turn on <strong>Watch Sync</strong></li>
           <li>Open the app — home screen should show <strong>● Live</strong></li>
@@ -85,7 +85,7 @@ export function DeviceOfflinePanel({ device }: OfflineProps) {
       {device.model && <p className="device-offline-meta">{device.model}</p>}
       <p className="device-offline-lead">To bring this phone online:</p>
       <ol className="device-offline-steps">
-        <li>Open <strong>2hotatl</strong> on the phone</li>
+        <li>Open <strong>Watch Together</strong> on the phone</li>
         <li>Confirm home screen shows <strong>● Live</strong> (not "Connecting…")</li>
         <li>Settings → Accessibility → <strong>Watch Sync</strong> → ON</li>
         <li>If still offline: force-close the app, reopen, wait 30 seconds</li>

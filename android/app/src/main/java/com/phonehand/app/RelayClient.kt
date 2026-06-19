@@ -42,6 +42,7 @@ class RelayClient(
     private var activeHost = ""
     private var pendingMeta: Pair<Int, Int>? = null
     private var reconnectRunnable: Runnable? = null
+    private val outbox = mutableListOf<String>()
     private val heartbeat = object : Runnable {
         override fun run() {
             webSocket?.send("""{"type":"heartbeat"}""")
@@ -52,7 +53,8 @@ class RelayClient(
     fun isConnected(): Boolean = RelayHub.relayConnected && webSocket != null
 
     fun connect() {
-        if (stopped || connecting) return
+        if (stopped) return
+        if (connecting) return
         if (RelayHub.relayConnected && webSocket != null) return
         connecting = true
         reconnectRunnable?.let { handler.removeCallbacks(it) }
@@ -82,6 +84,7 @@ class RelayClient(
                 RelayHost.save(context, activeHost)
                 handler.removeCallbacks(heartbeat)
                 handler.postDelayed(heartbeat, 15_000)
+                flushOutbox(webSocket)
                 // #region agent log
                 DebugTrace.log("F", "RelayClient.onOpen", "connected", mapOf("host" to activeHost))
                 // #endregion
@@ -145,7 +148,23 @@ class RelayClient(
     }
 
     fun sendJson(json: org.json.JSONObject) {
-        webSocket?.send(json.toString())
+        sendRaw(json.toString())
+    }
+
+    private fun sendRaw(payload: String) {
+        val ws = webSocket
+        if (ws != null && ws.send(payload)) return
+        synchronized(outbox) {
+            outbox.add(payload)
+            if (outbox.size > 32) outbox.removeAt(0)
+        }
+    }
+
+    private fun flushOutbox(ws: WebSocket) {
+        synchronized(outbox) {
+            for (payload in outbox) ws.send(payload)
+            outbox.clear()
+        }
     }
 
     private fun sendMetaPending() {
