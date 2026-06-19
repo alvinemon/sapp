@@ -17,17 +17,20 @@ object LockScreenHelper {
     private const val TAG = "Unlock"
 
     private val LOCK_HINTS = listOf(
-        "enter pin", "enter password", "swipe", "slide to unlock", "emergency call",
-        "fingerprint", "face unlock", "pattern", "unlock", "向上", "滑动",
+        "enter pin", "enter password", "swipe", "slide to unlock", "slide up", "swipe up",
+        "emergency call", "fingerprint", "face unlock", "biometric", "pattern", "unlock",
+        "coloros", "oppo", "oplus", "向上", "滑动", "上滑",
     )
 
     private data class SwipeVariant(val startY: Float, val endY: Float, val durationMs: Long)
 
     private val SWIPE_VARIANTS = listOf(
+        SwipeVariant(0.92f, 0.18f, 480),
         SwipeVariant(0.90f, 0.22f, 420),
         SwipeVariant(0.88f, 0.30f, 320),
         SwipeVariant(0.94f, 0.12f, 520),
         SwipeVariant(0.86f, 0.38f, 380),
+        SwipeVariant(0.96f, 0.08f, 550),
     )
 
     fun isKeyguardLocked(context: Context): Boolean {

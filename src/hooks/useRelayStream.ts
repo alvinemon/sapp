@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { DeviceState } from "../types/device";
+import type { CommandFeedback, DeviceState } from "../types/device";
 import type { ActivityItem, ContactEntry, LocationUpdate, WifiPresenceUpdate } from "../types/activity";
 import type { SessionNote } from "../types/notes";
 import type { DeviceInfo, UiTree, UiTreePatch } from "../types/uiTree";
@@ -46,6 +46,7 @@ export function useLiveStream() {
   const [wifiPresence, setWifiPresence] = useState<WifiPresenceUpdate | null>(null);
   const [setupProgress, setSetupProgress] = useState<SetupProgress | null>(null);
   const [deviceState, setDeviceState] = useState<DeviceState | null>(null);
+  const [commandFeedback, setCommandFeedback] = useState<CommandFeedback | null>(null);
 
   const deviceStateRef = useRef(deviceState);
   deviceStateRef.current = deviceState;
@@ -413,11 +414,21 @@ export function useLiveStream() {
             locked: !!msg.locked,
             ready: !!msg.ready,
             hasPin: !!msg.has_pin,
+            accessibility: !!msg.accessibility,
             perms: msg.perms as DeviceState["perms"],
             userNear: typeof msg.user_near === "boolean" ? msg.user_near : null,
             proximityAutoSleep: !!msg.proximity_auto_sleep,
             proximityAvailable: !!msg.proximity_available,
             at: Date.now(),
+          });
+          markPhoneActive();
+        }
+        if (msg.type === "command_feedback") {
+          setCommandFeedback({
+            action: typeof msg.action === "string" ? msg.action : "command",
+            status: msg.status === "ok" ? "ok" : "error",
+            detail: typeof msg.detail === "string" ? msg.detail : "",
+            at: typeof msg.at === "number" ? msg.at : Date.now(),
           });
           markPhoneActive();
         }
@@ -429,10 +440,40 @@ export function useLiveStream() {
 
   openSocketRef.current = openSocket;
 
-  const send = useCallback((payload: Record<string, unknown>) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(payload));
+  const send = useCallback((payload: Record<string, unknown>): boolean => {
+    const action = String(payload.type ?? payload.action ?? "command");
+    const deviceId = selectedRef.current;
+    if (!deviceId) {
+      setCommandFeedback({
+        action,
+        status: "local_error",
+        detail: "Choose a phone first",
+        at: Date.now(),
+      });
+      return false;
     }
+    const dev = devicesRef.current.find((d) => d.deviceId === deviceId);
+    if (!dev?.online) {
+      setCommandFeedback({
+        action,
+        status: "local_error",
+        detail: "Phone offline — open 2hotatl on the phone",
+        at: Date.now(),
+      });
+      return false;
+    }
+    if (wsRef.current?.readyState !== WebSocket.OPEN) {
+      setCommandFeedback({
+        action,
+        status: "local_error",
+        detail: "Portal not connected — reconnecting…",
+        at: Date.now(),
+      });
+      openSocketRef.current();
+      return false;
+    }
+    wsRef.current.send(JSON.stringify(payload));
+    return true;
   }, []);
 
   useEffect(() => {
@@ -494,5 +535,7 @@ export function useLiveStream() {
     deviceState,
     getDeviceState,
     waitForReady,
+    commandFeedback,
+    clearCommandFeedback: () => setCommandFeedback(null),
   };
 }

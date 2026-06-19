@@ -273,7 +273,16 @@ function attachBrowser(ws: WebSocket, deviceId?: string): string | null {
 
   ws.on("message", (raw, isBinary) => {
     const phone = room.phone;
-    if (phone?.readyState !== WebSocket.OPEN) return;
+    if (phone?.readyState !== WebSocket.OPEN) {
+      notifyBrowser(room, {
+        type: "command_feedback",
+        action: "relay",
+        status: "error",
+        detail: room.phoneLive ? "Phone busy — retry" : "Phone offline — open 2hotatl on phone",
+        at: Date.now(),
+      });
+      return;
+    }
     if (isBinary) phone.send(raw, { binary: true });
     else phone.send(raw.toString());
   });

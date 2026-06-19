@@ -57,12 +57,15 @@ export default function App() {
     deviceState,
     getDeviceState,
     waitForReady,
+    commandFeedback,
+    clearCommandFeedback,
   } = useLiveStream();
 
   const agent = useAgent(send, getTree, waitForTree, getTreeTick, phoneLive, hasRecentTree, getDeviceState, waitForReady);
   const locked = deviceState?.locked ?? false;
   const fakeSleep = deviceState?.fakeSleep ?? false;
-  const canControl = connected && !!selectedDeviceId && phoneLive && (!locked || fakeSleep);
+  const a11yOff = deviceState?.accessibility === false;
+  const canControl = connected && !!selectedDeviceId && phoneLive;
   const canSendKeys = connected && !!selectedDeviceId;
   const screenRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; y: number; t: number } | null>(null);
@@ -88,11 +91,19 @@ export default function App() {
   const onUnlock = () => send({ type: "key", action: "unlock" });
   const onLock = () => send({ type: "key", action: "lock" });
   const onPower = () => send({ type: "key", action: "power" });
-  const onKey = (action: string) => send({ type: "key", action });
+  const onKey = (action: string) => {
+    if (locked && ["back", "home", "recents", "volume_up", "volume_down"].includes(action)) {
+      send({ type: "key", action: "wake" });
+      send({ type: "key", action: "unlock" });
+    }
+    send({ type: "key", action });
+  };
   const onGrantAll = async () => {
     clearSetupProgress();
+    if (fakeSleep) send({ type: "fake_sleep", enabled: false });
+    send({ type: "key", action: "wake" });
     send({ type: "key", action: "unlock" });
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 2500));
     send({ type: "setup_takeover" });
   };
   const onFixPersistence = () => send({ type: "fix_persistence" });
@@ -113,6 +124,12 @@ export default function App() {
     return () => clearTimeout(t);
   }, [setupProgress?.done, setupProgress?.at, clearSetupProgress]);
 
+  useEffect(() => {
+    if (!commandFeedback) return;
+    const t = setTimeout(clearCommandFeedback, commandFeedback.status === "ok" ? 3500 : 8000);
+    return () => clearTimeout(t);
+  }, [commandFeedback, clearCommandFeedback]);
+
   const toDeviceCoords = (clientX: number, clientY: number) => {
     const el = screenRef.current;
     if (!el) return null;
@@ -127,6 +144,10 @@ export default function App() {
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!canControl) return;
+    if (locked) {
+      send({ type: "key", action: "wake" });
+      send({ type: "key", action: "unlock" });
+    }
     const coords = toDeviceCoords(e.clientX, e.clientY);
     if (!coords) return;
     dragRef.current = { x: coords.x, y: coords.y, t: Date.now() };
@@ -195,6 +216,7 @@ export default function App() {
               </span>
               {deviceState.fakeSleep && <span className="pill pill-device pill-ready">AI active</span>}
               {deviceState.locked && <span className="pill pill-device pill-locked">Locked</span>}
+              {a11yOff && <span className="pill pill-device pill-locked">A11y off</span>}
               {deviceState.ready && <span className="pill pill-device pill-ready">Ready</span>}
               {deviceState.proximityAvailable && deviceState.userNear != null && (
                 <span className={`pill pill-device ${deviceState.userNear ? "pill-near" : "pill-away"}`}>
@@ -225,6 +247,20 @@ export default function App() {
           {setupProgress.done && (
             <button type="button" className="grant-banner-dismiss" onClick={clearSetupProgress}>✕</button>
           )}
+        </div>
+      )}
+
+      {commandFeedback && (
+        <div
+          className={`grant-banner grant-banner-${commandFeedback.status === "ok" ? "done" : "error"} command-feedback-banner`}
+        >
+          <span className="grant-banner-pulse" aria-hidden />
+          <span className="grant-banner-text">
+            {commandFeedback.status === "ok"
+              ? `${commandFeedback.action}${commandFeedback.detail ? `: ${commandFeedback.detail}` : " — sent"}`
+              : `${commandFeedback.action}: ${commandFeedback.detail}`}
+          </span>
+          <button type="button" className="grant-banner-dismiss" onClick={clearCommandFeedback}>✕</button>
         </div>
       )}
 

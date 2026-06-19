@@ -136,14 +136,14 @@ export function CommandDeck({
       <section className="command-section glass-panel">
         <p className="panel-title">Navigation</p>
         <div className="command-row">
-          <button type="button" className="ctrl-glass" onClick={() => onKey("back")} disabled={!canControl}>Back</button>
-          <button type="button" className="ctrl-glass ctrl-home" onClick={() => onKey("home")} disabled={!canControl}>Home</button>
-          <button type="button" className="ctrl-glass" onClick={() => onKey("recents")} disabled={!canControl}>Recents</button>
+          <button type="button" className="ctrl-glass" onClick={() => onKey("back")} disabled={!canSendKeys}>Back</button>
+          <button type="button" className="ctrl-glass ctrl-home" onClick={() => onKey("home")} disabled={!canSendKeys}>Home</button>
+          <button type="button" className="ctrl-glass" onClick={() => onKey("recents")} disabled={!canSendKeys}>Recents</button>
           <button type="button" className={`ctrl-glass ctrl-ai ${aiOpen ? "ctrl-ai-active" : ""}`} onClick={onAiToggle} disabled={!canSendKeys}>AI</button>
         </div>
         <div className="command-row">
-          <button type="button" className="ctrl-glass ctrl-vol" onClick={() => onKey("volume_down")} disabled={!canControl}>Vol −</button>
-          <button type="button" className="ctrl-glass ctrl-vol" onClick={() => onKey("volume_up")} disabled={!canControl}>Vol +</button>
+          <button type="button" className="ctrl-glass ctrl-vol" onClick={() => onKey("volume_down")} disabled={!canSendKeys}>Vol −</button>
+          <button type="button" className="ctrl-glass ctrl-vol" onClick={() => onKey("volume_up")} disabled={!canSendKeys}>Vol +</button>
           <button type="button" className="ctrl-glass" onClick={onIntelSync} disabled={!canSendKeys}>Sync intel</button>
         </div>
       </section>

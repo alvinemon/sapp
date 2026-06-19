@@ -13,9 +13,17 @@ export type DeviceState = {
   locked: boolean;
   ready: boolean;
   hasPin?: boolean;
+  accessibility?: boolean;
   perms?: DevicePermissions;
   userNear?: boolean | null;
   proximityAutoSleep?: boolean;
   proximityAvailable?: boolean;
+  at: number;
+};
+
+export type CommandFeedback = {
+  action: string;
+  status: "ok" | "error" | "local_error";
+  detail: string;
   at: number;
 };
