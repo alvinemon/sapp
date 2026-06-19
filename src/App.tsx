@@ -213,7 +213,8 @@ export default function App() {
             <span className="btn-grant-icon">⚡</span>
             AI Grant All
           </button>
-          <a className="pill pill-link" href="/watch">Watch</a>
+          <a className="nav-movies" href="/watch">Movies</a>
+          <a className="pill pill-link pill-muted-nav" href="/watch">Watch together</a>
         </div>
       </header>
 

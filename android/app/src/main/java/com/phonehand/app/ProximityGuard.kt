@@ -1,6 +1,8 @@
 package com.phonehand.app
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 
 /**
@@ -46,7 +48,9 @@ object ProximityGuard {
     }
 
     fun onServiceReady(context: Context) {
-        if (isAutoEnabled(context)) start(context)
+        Handler(Looper.getMainLooper()).post {
+            if (isAutoEnabled(context)) start(context)
+        }
     }
 
     fun stop(context: Context) {

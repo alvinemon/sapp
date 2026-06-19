@@ -11,8 +11,8 @@ android {
         applicationId = "com.phonehand.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 56
-        versionName = "2.10.1"
+        versionCode = 58
+        versionName = "2.10.2"
         buildConfigField("String", "RELAY_HOST", "\"sapp-xoyi.onrender.com\"")
         buildConfigField("String", "RELAY_HOST_FALLBACK", "\"\"")
     }
@@ -60,6 +60,8 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.0")
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.coordinatorlayout:coordinatorlayout:1.2.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.media3:media3-exoplayer:1.5.1")
     implementation("androidx.media3:media3-ui:1.5.1")

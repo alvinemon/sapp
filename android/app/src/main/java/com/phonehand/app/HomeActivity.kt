@@ -24,6 +24,9 @@ class HomeActivity : AppCompatActivity() {
         }
 
         setContentView(R.layout.activity_home)
+        findViewById<android.view.View>(R.id.btnBrowseMovies).setOnClickListener {
+            startActivity(Intent(this, MoviesActivity::class.java))
+        }
         // Defer background work until after the first frame — avoids FGS timeout
         // racing activity startup on cold launch (Oppo / Android 12+).
         window.decorView.post {

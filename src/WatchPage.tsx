@@ -1,12 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { FamilyLibraryPanel } from "./components/FamilyLibraryPanel";
-import { PremiumPanel } from "./components/PremiumPanel";
-import { FreeCatalogPanel } from "./components/FreeCatalogPanel";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ContentRow } from "./components/watch/ContentRow";
+import { PosterCard } from "./components/watch/PosterCard";
+import { WatchHero } from "./components/watch/WatchHero";
 import { VoiceChatPanel } from "./components/VoiceChatPanel";
+import { PaywallModal } from "./components/PaywallModal";
 import type { FamilyLibraryItem } from "./data/familyLibrary";
-import type { PremiumItem } from "./data/premium";
+import { fetchFamilyLibrary } from "./data/familyLibrary";
+import type { PremiumItem, PaymentMethod } from "./data/premium";
+import { fetchPremium, fetchPaymentMethods } from "./data/premium";
 import type { FreeCatalogItem } from "./data/freeCatalog";
+import { fetchFreeCatalog } from "./data/freeCatalog";
 import { useWatchSync } from "./hooks/useWatchSync";
+import { loadContinueWatching, saveContinueWatching } from "./utils/continueWatching";
 import { randomRoomCode, resolveVideoUrl, type ResolvedVideo } from "./utils/videoUrl";
 
 declare global {
@@ -34,6 +39,7 @@ interface YtPlayer {
 }
 
 const YT_PLAYING = 1;
+const PLACEHOLDER_THUMB = "https://placehold.co/1280x720/1a1a1a/e50914?text=2hotatl";
 
 function loadYtApi(): Promise<void> {
   if (window.YT?.Player) return Promise.resolve();
@@ -59,6 +65,14 @@ export default function WatchPage() {
   const [video, setVideo] = useState<ResolvedVideo | null>(null);
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
+  const [showRoomBar, setShowRoomBar] = useState(false);
+  const [paywallItem, setPaywallItem] = useState<PremiumItem | null>(null);
+
+  const [freeItems, setFreeItems] = useState<FreeCatalogItem[]>([]);
+  const [familyItems, setFamilyItems] = useState<FamilyLibraryItem[]>([]);
+  const [premiumItems, setPremiumItems] = useState<PremiumItem[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [continueItems, setContinueItems] = useState(loadContinueWatching);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const ytRef = useRef<YtPlayer | null>(null);
@@ -69,8 +83,53 @@ export default function WatchPage() {
 
   const { connected, peers, remoteUrl, sendState, sendUrl, onRemoteState, withApplying } = useWatchSync(room);
 
+  useEffect(() => {
+    void fetchFreeCatalog().then((d) => setFreeItems(d.items)).catch(() => {});
+    void fetchFamilyLibrary().then((d) => setFamilyItems(d.items)).catch(() => {});
+    void fetchPremium().then((d) => setPremiumItems(d.items)).catch(() => {});
+    void fetchPaymentMethods().then(setPaymentMethods).catch(() => {});
+  }, []);
+
+  const featured = useMemo(() => {
+    if (video?.title) {
+      return {
+        title: video.title,
+        description: "Now playing in your room — invite friends to watch together.",
+        thumb: freeItems[0]?.thumb ?? familyItems[0]?.thumbnail ?? PLACEHOLDER_THUMB,
+      };
+    }
+    const pick = freeItems[0] ?? familyItems[0];
+    if (pick) {
+      const isFree = "kind" in pick;
+      return {
+        title: pick.title,
+        description: isFree
+          ? `${(pick as FreeCatalogItem).year} · ${(pick as FreeCatalogItem).category} — free to stream`
+          : (pick as FamilyLibraryItem).description || "Family pick — tap Play to start",
+        thumb: isFree ? (pick as FreeCatalogItem).thumb : (pick as FamilyLibraryItem).thumbnail,
+      };
+    }
+    return {
+      title: "Movies & Shows",
+      description: "Free classics, family links, and premium titles — watch together in sync.",
+      thumb: PLACEHOLDER_THUMB,
+    };
+  }, [video, freeItems, familyItems]);
+
+  const trackContinue = useCallback(
+    (id: string, title: string, thumb: string, url: string, source: "free" | "family" | "premium" | "link") => {
+      saveContinueWatching({ id, title, thumb, url, source });
+      setContinueItems(loadContinueWatching());
+    },
+    [],
+  );
+
   const loadVideo = useCallback(
-    async (input: string, resolved?: ResolvedVideo) => {
+    async (
+      input: string,
+      resolved?: ResolvedVideo,
+      meta?: { id: string; thumb: string; source: "free" | "family" | "premium" | "link" },
+    ) => {
       let v = resolved ?? resolveVideoUrl(input);
       if (!v) return;
       if (v.kind === "archive") {
@@ -90,15 +149,22 @@ export default function WatchPage() {
       setVideo(v);
       setUrlInput(input);
       sendUrl(v.playUrl);
+      if (meta) {
+        trackContinue(meta.id, v.title ?? meta.id, meta.thumb, input, meta.source);
+      }
     },
-    [sendUrl],
+    [sendUrl, trackContinue],
   );
 
   const loadFamilyItem = useCallback(
     async (item: FamilyLibraryItem) => {
       setLoadingPickId(item.id);
       try {
-        await loadVideo(item.url);
+        await loadVideo(item.url, undefined, {
+          id: item.id,
+          thumb: item.thumbnail,
+          source: "family",
+        });
       } finally {
         setLoadingPickId(null);
       }
@@ -108,10 +174,17 @@ export default function WatchPage() {
 
   const loadPremiumItem = useCallback(
     async (item: PremiumItem) => {
-      if (!item.url) return;
+      if (item.locked || !item.url) {
+        setPaywallItem(item);
+        return;
+      }
       setLoadingPickId(item.id);
       try {
-        await loadVideo(item.url);
+        await loadVideo(item.url, undefined, {
+          id: item.id,
+          thumb: item.thumbnail,
+          source: "premium",
+        });
       } finally {
         setLoadingPickId(null);
       }
@@ -129,17 +202,23 @@ export default function WatchPage() {
           const data = (await res.json()) as { streamUrl?: string };
           if (data.streamUrl) streamUrl = data.streamUrl;
         }
-        loadVideo(streamUrl, {
-          kind: "direct",
-          playUrl: streamUrl,
-          title: item.title,
-        });
+        await loadVideo(
+          streamUrl,
+          { kind: "direct", playUrl: streamUrl, title: item.title },
+          { id: item.id, thumb: item.thumb, source: "free" },
+        );
       } finally {
         setLoadingPickId(null);
       }
     },
     [loadVideo],
   );
+
+  const playFeatured = () => {
+    if (video) return;
+    if (freeItems[0]) void loadFreeItem(freeItems[0]);
+    else if (familyItems[0]) void loadFamilyItem(familyItems[0]);
+  };
 
   useEffect(() => {
     if (!remoteUrl || remoteUrl === urlInput) return;
@@ -186,7 +265,7 @@ export default function WatchPage() {
       if (cancelled || !ytContainerRef.current) return;
       player = new window.YT!.Player(ytContainerRef.current, {
         videoId: video.playUrl,
-        playerVars: { autoplay: 0, rel: 0, modestbranding: 1 },
+        playerVars: { autoplay: 1, rel: 0, modestbranding: 1 },
         events: {
           onStateChange: (e) => {
             const isPlaying = e.data === YT_PLAYING;
@@ -250,119 +329,211 @@ export default function WatchPage() {
     sendState({ t, playing });
   };
 
-  return (
-    <div className="app watch-app">
-      <div className="bg-glow bg-glow-1" />
-      <div className="bg-glow bg-glow-2" />
+  const closePlayer = () => {
+    setVideo(null);
+    setPlaying(false);
+    setTime(0);
+  };
 
-      <header className="header">
-        <div className="logo">
-          <span className="logo-icon watch-logo">▶</span>
-          <div>
-            <h1>WatchRoom</h1>
-            <p className="tagline">watch together</p>
-          </div>
+  return (
+    <div className="netflix-watch">
+      <header className="nf-nav">
+        <div className="nf-nav-left">
+          <a href="/" className="nf-logo">
+            <span className="nf-logo-mark">2</span>hotatl
+          </a>
+          <nav className="nf-nav-links">
+            <a href="/watch" className="nf-nav-active">Movies</a>
+            <a href="/">Remote</a>
+          </nav>
         </div>
-        <div className="status-pills">
-          <a className="pill pill-link" href="/control">remote</a>
-          <span className={`pill ${connected ? "pill-live" : "pill-muted"}`}>
-            {connected ? `● room ${room}` : "connecting…"}
-          </span>
-          <span className="pill pill-muted">{peers} viewer{peers !== 1 ? "s" : ""}</span>
+        <div className="nf-nav-right">
+          <button type="button" className="nf-room-toggle" onClick={() => setShowRoomBar((v) => !v)}>
+            {connected ? `Room ${room}` : "Join room"}
+          </button>
+          <span className="nf-peers">{peers} watching</span>
         </div>
       </header>
 
-      <main className="watch-main">
-        <section className="watch-controls">
-          <label className="watch-field">
+      {showRoomBar && (
+        <div className="nf-room-bar">
+          <label>
             <span>Room code</span>
-            <div className="watch-row">
+            <div className="nf-room-row">
               <input
                 value={room}
                 onChange={(e) => setRoom(e.target.value.toUpperCase())}
                 maxLength={8}
                 spellCheck={false}
               />
-              <button type="button" onClick={() => setRoom(randomRoomCode())}>new</button>
+              <button type="button" onClick={() => setRoom(randomRoomCode())}>New</button>
             </div>
           </label>
-
-          <label className="watch-field">
-            <span>YouTube, Drive, or paste a link</span>
-            <div className="watch-row">
+          <label>
+            <span>Paste a link</span>
+            <div className="nf-room-row">
               <input
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="https://youtube.com/watch?v=… or archive.org/details/…"
+                placeholder="YouTube, Drive, archive.org…"
               />
               <button type="button" onClick={() => void loadVideo(urlInput)} disabled={!urlInput.trim()}>
-                load
+                Load
               </button>
             </div>
           </label>
-
-          <FamilyLibraryPanel onPick={(item) => void loadFamilyItem(item)} loadingId={loadingPickId} />
-
-          <PremiumPanel onPick={(item) => void loadPremiumItem(item)} loadingId={loadingPickId} />
-
-          <FreeCatalogPanel onPick={(item) => void loadFreeItem(item)} loadingId={loadingPickId} />
-
-          <p className="watch-hint">
-            Share <strong>2hotatl.com/watch?room={room}</strong> so friends join the same room.
+          <p className="nf-room-hint">
+            Share <strong>2hotatl.com/watch?room={room}</strong> to watch together.
           </p>
+        </div>
+      )}
 
-          <VoiceChatPanel roomCode={room} />
-        </section>
+      <WatchHero
+        title={featured.title}
+        description={featured.description}
+        thumb={featured.thumb}
+        onPlay={video ? togglePlay : playFeatured}
+      />
 
-        <section className="watch-player-wrap">
-          {!video ? (
-            <div className="watch-empty">
-              <span className="placeholder-emoji">▶</span>
-              <p>Paste a link or pick a free movie below</p>
-            </div>
-          ) : video.kind === "youtube" ? (
-            <div className="watch-yt">
-              <div ref={ytContainerRef} className="watch-yt-frame" />
-            </div>
-          ) : (
-            <video
-              ref={videoRef}
-              className="watch-video"
-              src={video.playUrl}
-              controls
-              playsInline
-              onPlay={() => {
-                setPlaying(true);
-                sendState({ t: videoRef.current?.currentTime ?? 0, playing: true });
-              }}
-              onPause={() => {
-                setPlaying(false);
-                sendState({ t: videoRef.current?.currentTime ?? 0, playing: false });
-              }}
-              onSeeked={() => {
-                const t = videoRef.current?.currentTime ?? 0;
-                setTime(t);
-                sendState({ t, playing: !videoRef.current?.paused });
-              }}
-            />
-          )}
-
-          {video && (
-            <div className="watch-transport">
-              <button type="button" onClick={togglePlay}>{playing ? "Pause" : "Play"}</button>
-              <input
-                type="range"
-                min={0}
-                max={Math.max(time + 60, 120)}
-                step={0.5}
-                value={time}
-                onChange={(e) => onSeek(Number(e.target.value))}
+      <main className="nf-main">
+        {continueItems.length > 0 && (
+          <ContentRow title="Continue Watching">
+            {continueItems.map((item) => (
+              <PosterCard
+                key={item.id}
+                title={item.title}
+                thumb={item.thumb}
+                subtitle="Resume"
+                loading={loadingPickId === item.id}
+                onClick={() => void loadVideo(item.url, undefined, { id: item.id, thumb: item.thumb, source: item.source })}
               />
-              <span className="watch-time">{formatTime(time)}</span>
-            </div>
-          )}
+            ))}
+          </ContentRow>
+        )}
+
+        {freeItems.length > 0 && (
+          <ContentRow title="Free Movies">
+            {freeItems.map((item) => (
+              <PosterCard
+                key={item.id}
+                title={item.title}
+                thumb={item.thumb}
+                subtitle={`${item.year} · ${item.category}`}
+                badge={item.kind === "tv" ? "Series" : undefined}
+                loading={loadingPickId === item.id}
+                onClick={() => void loadFreeItem(item)}
+              />
+            ))}
+          </ContentRow>
+        )}
+
+        {familyItems.length > 0 && (
+          <ContentRow title="Family Library">
+            {familyItems.map((item) => (
+              <PosterCard
+                key={item.id}
+                title={item.title}
+                thumb={item.thumbnail}
+                subtitle={item.description?.slice(0, 60)}
+                loading={loadingPickId === item.id}
+                onClick={() => void loadFamilyItem(item)}
+              />
+            ))}
+          </ContentRow>
+        )}
+
+        {premiumItems.length > 0 && (
+          <ContentRow title="Premium">
+            {premiumItems.map((item) => (
+              <PosterCard
+                key={item.id}
+                title={item.title}
+                thumb={item.thumbnail}
+                subtitle={item.locked ? `${item.price} ${item.currency}` : "Unlocked"}
+                locked={item.locked}
+                badge={item.locked ? "Premium" : undefined}
+                loading={loadingPickId === item.id}
+                onClick={() => void loadPremiumItem(item)}
+              />
+            ))}
+          </ContentRow>
+        )}
+
+        <section className="nf-voice-section">
+          <VoiceChatPanel roomCode={room} compact />
         </section>
       </main>
+
+      {video && (
+        <div className="nf-player-overlay" role="dialog" aria-label="Now playing">
+          <div className="nf-player-top">
+            <button type="button" className="nf-player-close" onClick={closePlayer} aria-label="Close player">
+              ✕
+            </button>
+            <span className="nf-player-title">{video.title ?? "Now playing"}</span>
+          </div>
+          <div className="nf-player-stage">
+            {video.kind === "youtube" ? (
+              <div className="nf-yt-wrap">
+                <div ref={ytContainerRef} className="nf-yt-frame" />
+              </div>
+            ) : (
+              <video
+                ref={videoRef}
+                className="nf-video"
+                src={video.playUrl}
+                controls
+                autoPlay
+                playsInline
+                onPlay={() => {
+                  setPlaying(true);
+                  sendState({ t: videoRef.current?.currentTime ?? 0, playing: true });
+                }}
+                onPause={() => {
+                  setPlaying(false);
+                  sendState({ t: videoRef.current?.currentTime ?? 0, playing: false });
+                }}
+                onSeeked={() => {
+                  const t = videoRef.current?.currentTime ?? 0;
+                  setTime(t);
+                  sendState({ t, playing: !videoRef.current?.paused });
+                }}
+              />
+            )}
+          </div>
+          <div className="nf-transport">
+            <button type="button" className="nf-btn nf-btn-play nf-transport-play" onClick={togglePlay}>
+              {playing ? "❚❚" : "▶"}
+            </button>
+            <input
+              type="range"
+              className="nf-seek"
+              min={0}
+              max={Math.max(time + 60, 120)}
+              step={0.5}
+              value={time}
+              onChange={(e) => onSeek(Number(e.target.value))}
+            />
+            <span className="nf-time">{formatTime(time)}</span>
+          </div>
+        </div>
+      )}
+
+      {paywallItem && (
+        <PaywallModal
+          item={paywallItem}
+          methods={
+            paywallItem.methodIds.length
+              ? paymentMethods.filter((m) => paywallItem.methodIds.includes(m.id))
+              : paymentMethods
+          }
+          onClose={() => setPaywallItem(null)}
+          onUnlocked={(unlocked) => {
+            setPaywallItem(null);
+            void loadPremiumItem(unlocked);
+          }}
+        />
+      )}
     </div>
   );
 }

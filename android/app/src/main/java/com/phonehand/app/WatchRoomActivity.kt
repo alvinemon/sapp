@@ -79,16 +79,10 @@ class WatchRoomActivity : AppCompatActivity() {
 
         btnPlay.setOnClickListener { loadAndPlay() }
         findViewById<Button>(R.id.btnBrowseFamily).setOnClickListener {
-            startActivityForResult(
-                Intent(this, FamilyLibraryActivity::class.java),
-                FamilyLibraryActivity.REQUEST_CODE,
-            )
+            startActivity(Intent(this, MoviesActivity::class.java))
         }
         findViewById<Button>(R.id.btnBrowseFree).setOnClickListener {
-            startActivityForResult(
-                Intent(this, FreeCatalogActivity::class.java),
-                FreeCatalogActivity.REQUEST_CODE,
-            )
+            startActivity(Intent(this, MoviesActivity::class.java))
         }
         findViewById<Button>(R.id.btnNewRoom).setOnClickListener {
             roomInput.setText(randomRoom())
@@ -98,6 +92,17 @@ class WatchRoomActivity : AppCompatActivity() {
         setupPttButton()
         setupWebView()
         reconnectSync()
+        handleLaunchStream(intent)
+    }
+
+    private fun handleLaunchStream(intent: Intent?) {
+        val url = intent?.getStringExtra(FreeCatalogActivity.EXTRA_STREAM_URL)?.trim().orEmpty()
+        if (url.isEmpty()) return
+        val title = intent?.getStringExtra(FreeCatalogActivity.EXTRA_TITLE).orEmpty()
+        if (title.isNotBlank()) logoText.text = title
+        urlInput.setText(url)
+        loadUrl(url)
+        syncClient?.sendUrl(url)
     }
 
     private fun bindViews() {

@@ -21,4 +21,10 @@
         <item name="android:textColor">#FFB450</item>
         <item name="strokeColor">#664422</item>
     </style>
+
+    <style name="Theme.PhoneHand.Movies" parent="Theme.PhoneHand">
+        <item name="android:statusBarColor">@color/nf_bg</item>
+        <item name="android:navigationBarColor">@color/nf_bottom_nav</item>
+        <item name="android:windowBackground">@color/nf_bg</item>
+    </style>
 </resources>

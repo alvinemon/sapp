@@ -9,6 +9,7 @@ data class FreeCatalogItem(
     val category: String,
     val kind: String,
     val streamUrl: String,
+    val thumb: String,
 ) {
     fun label(): String = "$title ($year) · $category"
 }
@@ -31,6 +32,7 @@ object FreeCatalog {
                                 category = o.getString("category"),
                                 kind = o.getString("kind"),
                                 streamUrl = o.getString("streamUrl"),
+                                thumb = o.optString("thumb"),
                             ),
                         )
                     }

@@ -36,6 +36,21 @@
             android:textColor="#8888A8"
             android:textSize="16sp" />
 
+        <TextView
+            android:id="@+id/btnBrowseMovies"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginTop="32dp"
+            android:background="@drawable/btn_nf_play"
+            android:gravity="center"
+            android:minWidth="200dp"
+            android:paddingStart="28dp"
+            android:paddingEnd="28dp"
+            android:text="@string/home_browse_movies"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
     </LinearLayout>
 
 </FrameLayout>

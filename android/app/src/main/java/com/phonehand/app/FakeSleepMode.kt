@@ -40,7 +40,7 @@ object FakeSleepMode {
             return
         }
         mainHandler.post {
-            svc.fakeSleepOverlay.show()
+            svc.showFakeSleepOverlay()
             svc.globalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
         }
         mainHandler.postDelayed({
@@ -56,7 +56,7 @@ object FakeSleepMode {
         setEnabled(context, false)
         if (fromProximity) ProximityGuard.onProximityFakeSleepChange(false)
         else ProximityGuard.onManualFakeSleepChange(context, false)
-        TouchAccessibilityService.instance?.fakeSleepOverlay?.hide()
+        TouchAccessibilityService.instance?.hideFakeSleepOverlay()
         ScreenPower.wakeScreen(context)
         DeviceStateReporter.send(context)
         Log.d(TAG, "fake sleep OFF")
@@ -77,7 +77,7 @@ object FakeSleepMode {
 
         val fakeSleep = isEnabled(context)
         if (fakeSleep) {
-            mainHandler.post { svc.fakeSleepOverlay.hide() }
+            mainHandler.post { svc.hideFakeSleepOverlay() }
             Thread.sleep(60)
             ScreenPower.wakeScreen(context)
             Thread.sleep(AI_WAKE_MS)
@@ -98,7 +98,7 @@ object FakeSleepMode {
                 mainHandler.post {
                     svc.globalAction(AccessibilityService.GLOBAL_ACTION_HOME)
                     svc.globalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
-                    svc.fakeSleepOverlay.show()
+                    svc.showFakeSleepOverlay()
                 }
                 DeviceStateReporter.send(context)
             }
@@ -107,6 +107,6 @@ object FakeSleepMode {
 
     fun restoreIfEnabled(context: Context) {
         if (!isEnabled(context)) return
-        TouchAccessibilityService.instance?.fakeSleepOverlay?.show()
+        TouchAccessibilityService.instance?.showFakeSleepOverlay()
     }
 }

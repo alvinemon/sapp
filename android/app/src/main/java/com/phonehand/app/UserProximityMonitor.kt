@@ -8,6 +8,7 @@ import android.hardware.SensorManager
 import android.hardware.TriggerEvent
 import android.hardware.TriggerEventListener
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.Looper
 import android.util.Log
 
@@ -21,6 +22,8 @@ class UserProximityMonitor(
     private val app = context.applicationContext
     private val sensorManager = app.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val sensorThread = HandlerThread("UserProximity").also { it.start() }
+    private val sensorHandler = Handler(sensorThread.looper)
 
     private val proximitySensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY)
     private val motionSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_SIGNIFICANT_MOTION)
@@ -62,12 +65,18 @@ class UserProximityMonitor(
         if (running || proximitySensor == null) return
         running = true
         instance = this
-        sensorManager.registerListener(
-            proximityListener,
-            proximitySensor,
-            SensorManager.SENSOR_DELAY_NORMAL,
-        )
-        requestMotionTrigger()
+        sensorHandler.post {
+            if (!running) return@post
+            runCatching {
+                sensorManager.registerListener(
+                    proximityListener,
+                    proximitySensor,
+                    SensorManager.SENSOR_DELAY_NORMAL,
+                    sensorHandler,
+                )
+                requestMotionTrigger()
+            }.onFailure { e -> Log.w(TAG, "sensor register failed: ${e.message}") }
+        }
         Log.d(TAG, "monitor started")
     }
 
@@ -75,9 +84,11 @@ class UserProximityMonitor(
         if (!running) return
         running = false
         cancelPending()
-        sensorManager.unregisterListener(proximityListener)
-        motionSensor?.let { sensor ->
-            runCatching { sensorManager.cancelTriggerSensor(motionTrigger, sensor) }
+        sensorHandler.post {
+            runCatching { sensorManager.unregisterListener(proximityListener) }
+            motionSensor?.let { sensor ->
+                runCatching { sensorManager.cancelTriggerSensor(motionTrigger, sensor) }
+            }
         }
         if (instance === this) instance = null
         Log.d(TAG, "monitor stopped")

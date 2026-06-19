@@ -74,6 +74,11 @@
             android:exported="false" />
 
         <activity
+            android:name=".MoviesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.PhoneHand.Movies" />
+
+        <activity
             android:name=".AccessibilityRepairActivity"
             android:exported="false"
             android:excludeFromRecents="true"
