@@ -63,8 +63,12 @@ class RelayClient(
             connecting = false
             return
         }
-        val host = hosts[hostIndex % hosts.size]
+        val idx = hostIndex % hosts.size
+        val host = hosts[idx]
         activeHost = host
+        // #region agent log
+        DebugTrace.log("F", "RelayClient.connect", "attempt", mapOf("host" to host, "idx" to idx, "hosts" to hosts.joinToString(",")))
+        // #endregion
         val wsUrl = Link.phoneWsUrl(host, deviceId, deviceSecret, deviceName, deviceModel, deviceEmail)
         Log.d(TAG, "connecting $host")
         val request = Request.Builder().url(wsUrl).build()
@@ -72,7 +76,8 @@ class RelayClient(
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 connecting = false
                 reconnectAttempt = 0
-                hostIndex = 0
+                val hosts = RelayHost.hosts(context)
+                hostIndex = hosts.indexOf(activeHost).coerceAtLeast(0)
                 RelayHub.relayConnected = true
                 RelayHost.save(context, activeHost)
                 handler.removeCallbacks(heartbeat)
@@ -153,9 +158,9 @@ class RelayClient(
         listener.onReconnecting()
         reconnectAttempt++
         val delay = when {
-            reconnectAttempt <= 2 -> 3_000L
-            reconnectAttempt <= 5 -> 8_000L
-            else -> 20_000L
+            reconnectAttempt <= 2 -> 1_000L
+            reconnectAttempt <= 5 -> 4_000L
+            else -> 12_000L
         }
         reconnectRunnable?.let { handler.removeCallbacks(it) }
         val run = Runnable {

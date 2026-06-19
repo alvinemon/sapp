@@ -363,6 +363,21 @@ app.get("/api/debug/trace", (req, res) => {
   }
   res.json({ entries: getTraceEntries() });
 });
+app.post("/api/debug/phone", (req, res) => {
+  const key = typeof req.query.k === "string" ? req.query.k : "";
+  if (!validateKey(key)) {
+    res.status(403).json({ error: "denied" });
+    return;
+  }
+  const body = req.body ?? {};
+  trace(
+    String(body.hypothesisId ?? "?"),
+    String(body.location ?? "phone"),
+    String(body.message ?? ""),
+    typeof body.data === "object" && body.data ? body.data : {},
+  );
+  res.json({ ok: true });
+});
 app.get("/api/ping", (_req, res) => {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");

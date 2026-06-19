@@ -5,20 +5,7 @@ import android.content.Context
 object RelayHost {
     private const val KEY = "relay_host"
 
-    fun hosts(context: Context): List<String> {
-        val out = linkedSetOf<String>()
-        out.add(BuildConfig.RELAY_HOST)
-        BuildConfig.RELAY_HOST_FALLBACK
-            .split(",")
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-            .forEach { out.add(it) }
-        context.getSharedPreferences(UserSession.PREFS_NAME, Context.MODE_PRIVATE)
-            .getString(KEY, null)
-            ?.takeIf { it.isNotBlank() }
-            ?.let { out.add(it) }
-        return out.toList()
-    }
+    fun hosts(context: Context): List<String> = RelayHealth.ordered(context)
 
     fun clearSaved(context: Context) {
         context.getSharedPreferences(UserSession.PREFS_NAME, Context.MODE_PRIVATE)
@@ -28,6 +15,7 @@ object RelayHost {
     }
 
     fun save(context: Context, host: String) {
+        if (!RelayHealth.isHealthy(host)) return
         context.getSharedPreferences(UserSession.PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY, host)

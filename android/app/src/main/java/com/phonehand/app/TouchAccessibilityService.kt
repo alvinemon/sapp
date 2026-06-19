@@ -192,6 +192,13 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         val label = DeviceId.label(this)
         val model = android.os.Build.MODEL
         relay = RelayClient(this, id, secret, label, model, email, this).also { it.connect() }
+        // #region agent log
+        DebugTrace.log("G", "TouchAccessibilityService.connectRelay", "starting", mapOf(
+            "signedUp" to true,
+            "emailLen" to email.length,
+            "hosts" to RelayHost.hosts(this).joinToString(","),
+        ))
+        // #endregion
     }
 
     private fun registerNetworkWatcher() {
