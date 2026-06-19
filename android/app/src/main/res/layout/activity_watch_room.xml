@@ -129,6 +129,22 @@
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
         </LinearLayout>
 
+        <Button
+            android:id="@+id/btnBrowseFamily"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/watch_browse_family"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+        <Button
+            android:id="@+id/btnBrowseFree"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/watch_browse_free"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
         <TextView
             android:id="@+id/voiceTalking"
             android:layout_width="match_parent"

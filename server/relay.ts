@@ -1,6 +1,7 @@
 import { WebSocket } from "ws";
 import type { User } from "./auth.js";
 import { eachRegisteredDevice, getUserByDeviceId, getUserById, userOwnsDevice } from "./auth.js";
+import { appendNotes } from "./notes.js";
 
 /** Legacy shared key — still accepted for dev */
 const LINK_KEY = "2htl_k9";
@@ -214,6 +215,9 @@ function attachPhone(
         room.width = msg.width;
         room.height = msg.height;
         room.lastSeen = Date.now();
+      }
+      if (msg.type === "session_notes" && Array.isArray(msg.entries)) {
+        appendNotes(deviceId, msg.entries);
       }
     } catch {
       /* forward */

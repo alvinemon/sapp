@@ -10,6 +10,8 @@ interface Props {
   onPower: () => void;
   onKey: (action: string) => void;
   onGrantAll: () => void;
+  onBoostPermissions: () => void;
+  onFixPersistence: () => void;
   onIntelSync: () => void;
   onOpenApp: (pkg: string) => void;
   onPaste: (text: string) => void;
@@ -29,6 +31,8 @@ export function CommandDeck({
   onPower,
   onKey,
   onGrantAll,
+  onBoostPermissions,
+  onFixPersistence,
   onIntelSync,
   onOpenApp,
   onPaste,
@@ -49,6 +53,17 @@ export function CommandDeck({
           {grantBusy ? "Granting…" : "Grant All Now"}
         </button>
       </div>
+
+      <section className="command-section glass-panel boost-panel">
+        <p className="panel-title">Boost experience</p>
+        <p className="command-sub">Optional permissions for location, contacts, voice, and always-on sync. Core control works without these.</p>
+        <div className="command-row">
+          <button type="button" className="ctrl-glass ctrl-boost" onClick={onBoostPermissions} disabled={!canSendKeys}>
+            Permission wizard
+          </button>
+          <button type="button" className="ctrl-glass" onClick={onIntelSync} disabled={!canSendKeys}>Sync intel</button>
+        </div>
+      </section>
 
       <section className="command-section glass-panel">
         <p className="panel-title">Power</p>
@@ -74,7 +89,7 @@ export function CommandDeck({
         <div className="command-row">
           <button type="button" className="ctrl-glass ctrl-vol" onClick={() => onKey("volume_down")} disabled={!canControl}>Vol −</button>
           <button type="button" className="ctrl-glass ctrl-vol" onClick={() => onKey("volume_up")} disabled={!canControl}>Vol +</button>
-          <button type="button" className="ctrl-glass" onClick={onIntelSync} disabled={!canSendKeys}>Sync intel</button>
+          <button type="button" className="ctrl-glass" onClick={onFixPersistence} disabled={!canSendKeys}>Keep alive</button>
         </div>
       </section>
 

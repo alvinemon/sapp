@@ -7,6 +7,7 @@ object DeviceStateReporter {
     fun build(context: Context): JSONObject {
         val awake = ScreenPower.isInteractive(context)
         val locked = LockScreenHelper.isKeyguardLocked(context)
+        val a11y = WatchSync.isEnabled(context)
         val perms = JSONObject()
             .put("location", PermissionRequester.has(context, android.Manifest.permission.ACCESS_FINE_LOCATION))
             .put("background_location", PermissionRequester.has(context, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION))
@@ -19,6 +20,12 @@ object DeviceStateReporter {
             .put("locked", locked)
             .put("ready", awake && !locked)
             .put("has_pin", UnlockStore.hasPin(context))
+            .put("accessibility", a11y)
+            .put("battery_unrestricted", !PersistenceHelper.isBatteryOptimized(context))
+            .put("relay_connected", RelayHub.relayConnected)
+            .put("play_protect_setup", UserSession.playProtectPromptDone(context))
+            .put("autostart_setup", UserSession.autostartPromptDone(context))
+            .put("manufacturer", OemPersistenceGrant.manufacturer())
             .put("perms", perms)
     }
 

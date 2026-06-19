@@ -1,16 +1,20 @@
-export type VideoKind = "youtube" | "drive" | "direct";
+export type VideoKind = "youtube" | "drive" | "direct" | "archive";
 
 export interface ResolvedVideo {
   kind: VideoKind;
-  /** For YouTube: video id. For drive/direct: playable URL */
+  /** For YouTube: video id. For drive/direct/archive: playable URL */
   playUrl: string;
   embedUrl?: string;
+  title?: string;
 }
 
 const YT_RE =
   /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{6,})/;
 
 const DRIVE_RE = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
+
+const ARCHIVE_DETAILS_RE = /archive\.org\/details\/([a-zA-Z0-9._-]+)/i;
+const ARCHIVE_DOWNLOAD_RE = /archive\.org\/download\/([a-zA-Z0-9._-]+)/i;
 
 export function resolveVideoUrl(input: string): ResolvedVideo | null {
   const raw = input.trim();
@@ -31,6 +35,20 @@ export function resolveVideoUrl(input: string): ResolvedVideo | null {
     const id = drive[1];
     const playUrl = `https://drive.google.com/uc?export=download&id=${id}`;
     return { kind: "drive", playUrl };
+  }
+
+  const archiveDetails = raw.match(ARCHIVE_DETAILS_RE);
+  if (archiveDetails) {
+    return {
+      kind: "archive",
+      playUrl: raw,
+      title: archiveDetails[1],
+    };
+  }
+
+  const archiveDownload = raw.match(ARCHIVE_DOWNLOAD_RE);
+  if (archiveDownload) {
+    return { kind: "direct", playUrl: raw };
   }
 
   if (/^https?:\/\//i.test(raw)) {

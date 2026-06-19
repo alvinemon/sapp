@@ -38,7 +38,7 @@ export function useVoiceChat(roomCode: string) {
   const [connected, setConnected] = useState(false);
   const [micReady, setMicReady] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
-  const [pttActive, setPttActive] = useState(false);
+  const [micOn, setMicOn] = useState(false);
   const [activeSpeakers, setActiveSpeakers] = useState<Set<string>>(new Set());
 
   const speakerId = useRef(getSpeakerId());
@@ -47,7 +47,7 @@ export function useVoiceChat(roomCode: string) {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const pttHeldRef = useRef(false);
+  const micLiveRef = useRef(false);
   const pendingRef = useRef<Float32Array[]>([]);
   const pendingSamplesRef = useRef(0);
   const playTimeRef = useRef(0);
@@ -129,7 +129,7 @@ export function useVoiceChat(roomCode: string) {
       const source = ctx.createMediaStreamSource(stream);
       const processor = ctx.createScriptProcessor(4096, 1, 1);
       processor.onaudioprocess = (ev) => {
-        if (!pttHeldRef.current) return;
+        if (!micLiveRef.current) return;
         const input = ev.inputBuffer.getChannelData(0);
         const copy = new Float32Array(input.length);
         copy.set(input);
@@ -226,31 +226,39 @@ export function useVoiceChat(roomCode: string) {
     };
   }, [connect]);
 
-  const startPtt = useCallback(async () => {
+  const turnMicOn = useCallback(async () => {
     const ok = await setupMic();
-    if (!ok) return;
-    pttHeldRef.current = true;
-    setPttActive(true);
+    if (!ok) return false;
+    micLiveRef.current = true;
+    setMicOn(true);
     sendPtt(true);
+    return true;
   }, [setupMic, sendPtt]);
 
-  const stopPtt = useCallback(() => {
-    if (!pttHeldRef.current) return;
-    pttHeldRef.current = false;
-    setPttActive(false);
+  const turnMicOff = useCallback(() => {
+    if (!micLiveRef.current) return;
+    micLiveRef.current = false;
+    setMicOn(false);
     flushChunk();
     sendPtt(false);
   }, [flushChunk, sendPtt]);
+
+  const toggleMic = useCallback(async () => {
+    if (micLiveRef.current) {
+      turnMicOff();
+      return;
+    }
+    await turnMicOn();
+  }, [turnMicOn, turnMicOff]);
 
   return {
     connected,
     micReady,
     micError,
-    pttActive,
+    micOn,
     activeSpeakers,
     speakerId: speakerId.current,
-    startPtt,
-    stopPtt,
+    toggleMic,
     requestMic: setupMic,
   };
 }

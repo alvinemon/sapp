@@ -4,10 +4,37 @@ import { WebSocketServer } from "ws";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { authenticateDevice, ensureDeviceRegistered, signup } from "./auth.js";
+import { authenticateDevice, ensureDeviceRegistered, getUserByDeviceId, signup } from "./auth.js";
+import { clearNotes, getNotes } from "./notes.js";
 import { resolveDeepSeekApiKey, runAgent } from "./agent.js";
 import { attachClient, listDevices, validateKey, status } from "./relay.js";
 import { attachWatchClient, watchStatus } from "./watch.js";
+import { findFreeItem, listFreeCatalog, resolveArchiveStream } from "./freeCatalog.js";
+import {
+  addFamilyItem,
+  canEditLibrary,
+  libraryEditKey,
+  listFamilyLibrary,
+  removeFamilyItem,
+} from "./familyLibrary.js";
+import {
+  addPaymentMethod,
+  listPaymentMethods,
+  removePaymentMethod,
+  assertAdmin as assertPaymentAdmin,
+} from "./payments.js";
+import {
+  addPremiumItem,
+  approvePending,
+  assertAdmin as assertPremiumAdmin,
+  getPremiumPlayUrl,
+  grantAccess,
+  listPending,
+  listPremium,
+  removePremiumItem,
+  requestAccess,
+  verifyCode,
+} from "./premium.js";
 import { resolvePort } from "./port.js";
 
 function resolveDistPath() {
@@ -49,7 +76,7 @@ app.set("trust proxy", 1);
 
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, User-Agent, Accept");
   if (req.method === "OPTIONS") {
     res.status(204).end();
@@ -77,7 +104,251 @@ app.get("/api/status", (_req, res) =>
   }),
 );
 app.get("/api/watch", (_req, res) => res.json(watchStatus()));
+app.get("/api/free-catalog", (req, res) => {
+  const kind = typeof req.query.kind === "string" ? req.query.kind : undefined;
+  const category = typeof req.query.category === "string" ? req.query.category : undefined;
+  res.json(listFreeCatalog(kind, category));
+});
+app.get("/api/free-catalog/resolve/:id", async (req, res) => {
+  const id = String(req.params.id ?? "").trim();
+  if (!id) {
+    res.status(400).json({ error: "id required" });
+    return;
+  }
+  const known = findFreeItem(id);
+  const streamUrl = (await resolveArchiveStream(id)) ?? known?.streamUrl ?? null;
+  if (!streamUrl) {
+    res.status(404).json({ error: "no stream" });
+    return;
+  }
+  res.json({ id, streamUrl, item: known ?? null });
+});
+app.get("/api/family-library", (_req, res) => {
+  res.json({ ...listFamilyLibrary(), requiresKey: !!libraryEditKey() });
+});
+app.post("/api/family-library", (req, res) => {
+  try {
+    const { title, description, thumbnail, url, editKey } = req.body ?? {};
+    if (!canEditLibrary(typeof editKey === "string" ? editKey : undefined)) {
+      res.status(403).json({ error: "Invalid edit key" });
+      return;
+    }
+    if (!title || !url) {
+      res.status(400).json({ error: "title and url required" });
+      return;
+    }
+    const item = addFamilyItem({
+      title: String(title),
+      description: String(description ?? ""),
+      thumbnail: String(thumbnail ?? ""),
+      url: String(url),
+    });
+    res.json(item);
+  } catch (e) {
+    res.status(500).json({ error: e instanceof Error ? e.message : "save failed" });
+  }
+});
+app.delete("/api/family-library/:id", (req, res) => {
+  try {
+    const { editKey } = req.body ?? {};
+    if (!canEditLibrary(typeof editKey === "string" ? editKey : undefined)) {
+      res.status(403).json({ error: "Invalid edit key" });
+      return;
+    }
+    const ok = removeFamilyItem(String(req.params.id ?? ""));
+    if (!ok) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e instanceof Error ? e.message : "delete failed" });
+  }
+});
+
+function parseCodes(raw: unknown): string[] {
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  return raw.split(",").map((c) => c.trim().toUpperCase()).filter(Boolean);
+}
+
+app.get("/api/payment-methods", (req, res) => {
+  const all = req.query.all === "1";
+  if (all) {
+    try {
+      assertPaymentAdmin(typeof req.query.editKey === "string" ? req.query.editKey : undefined);
+      res.json(listPaymentMethods(true));
+    } catch {
+      res.status(403).json({ error: "Invalid edit key" });
+    }
+    return;
+  }
+  res.json(listPaymentMethods());
+});
+app.post("/api/payment-methods", (req, res) => {
+  try {
+    const { name, account, instructions, editKey } = req.body ?? {};
+    assertPaymentAdmin(typeof editKey === "string" ? editKey : undefined);
+    const method = addPaymentMethod({
+      name: String(name ?? ""),
+      account: String(account ?? ""),
+      instructions: String(instructions ?? ""),
+    });
+    res.json(method);
+  } catch (e) {
+    res.status(e instanceof Error && e.message === "Invalid edit key" ? 403 : 500).json({
+      error: e instanceof Error ? e.message : "failed",
+    });
+  }
+});
+app.delete("/api/payment-methods/:id", (req, res) => {
+  try {
+    const { editKey } = req.body ?? {};
+    assertPaymentAdmin(typeof editKey === "string" ? editKey : undefined);
+    if (!removePaymentMethod(String(req.params.id ?? ""))) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(403).json({ error: e instanceof Error ? e.message : "denied" });
+  }
+});
+
+app.get("/api/premium", (req, res) => {
+  const codes = parseCodes(req.query.codes);
+  res.json(listPremium(codes));
+});
+app.post("/api/premium", (req, res) => {
+  try {
+    const { title, description, thumbnail, url, price, currency, methodIds, editKey } = req.body ?? {};
+    assertPremiumAdmin(typeof editKey === "string" ? editKey : undefined);
+    const item = addPremiumItem({
+      title: String(title ?? ""),
+      description: String(description ?? ""),
+      thumbnail: String(thumbnail ?? ""),
+      url: String(url ?? ""),
+      price: String(price ?? ""),
+      currency: String(currency ?? "BDT"),
+      methodIds: Array.isArray(methodIds) ? methodIds.map(String) : [],
+    });
+    res.json(item);
+  } catch (e) {
+    res.status(e instanceof Error && e.message === "Invalid edit key" ? 403 : 500).json({
+      error: e instanceof Error ? e.message : "failed",
+    });
+  }
+});
+app.delete("/api/premium/:id", (req, res) => {
+  try {
+    const { editKey } = req.body ?? {};
+    assertPremiumAdmin(typeof editKey === "string" ? editKey : undefined);
+    if (!removePremiumItem(String(req.params.id ?? ""))) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(403).json({ error: e instanceof Error ? e.message : "denied" });
+  }
+});
+app.post("/api/premium/request", (req, res) => {
+  try {
+    const { contentId, methodId, reference } = req.body ?? {};
+    if (!contentId || !methodId || !reference) {
+      res.status(400).json({ error: "contentId, methodId, reference required" });
+      return;
+    }
+    requestAccess(String(contentId), String(methodId), String(reference));
+    res.json({
+      message:
+        "Payment submitted. Wait for admin approval — you'll get an unlock code. Or enter a code if you already have one.",
+    });
+  } catch (e) {
+    res.status(500).json({ error: e instanceof Error ? e.message : "failed" });
+  }
+});
+app.post("/api/premium/verify", (req, res) => {
+  const { contentId, code } = req.body ?? {};
+  if (!contentId || !code) {
+    res.status(400).json({ error: "contentId and code required" });
+    return;
+  }
+  const ok = verifyCode(String(contentId), String(code));
+  if (!ok) {
+    res.json({ ok: false });
+    return;
+  }
+  const url = getPremiumPlayUrl(String(contentId), [String(code).trim().toUpperCase()]);
+  res.json({ ok: true, url });
+});
+app.get("/api/premium/pending", (req, res) => {
+  try {
+    assertPremiumAdmin(typeof req.query.editKey === "string" ? req.query.editKey : undefined);
+    res.json({ pending: listPending() });
+  } catch {
+    res.status(403).json({ error: "Invalid edit key" });
+  }
+});
+app.post("/api/premium/pending/:id/approve", (req, res) => {
+  try {
+    const { editKey } = req.body ?? {};
+    assertPremiumAdmin(typeof editKey === "string" ? editKey : undefined);
+    const result = approvePending(String(req.params.id ?? ""));
+    if (!result) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    res.json({ code: result.code, contentId: result.contentId });
+  } catch (e) {
+    res.status(403).json({ error: e instanceof Error ? e.message : "denied" });
+  }
+});
+app.post("/api/premium/grant", (req, res) => {
+  try {
+    const { contentId, editKey } = req.body ?? {};
+    assertPremiumAdmin(typeof editKey === "string" ? editKey : undefined);
+    const { code } = grantAccess(String(contentId ?? ""));
+    res.json({ code });
+  } catch (e) {
+    res.status(403).json({ error: e instanceof Error ? e.message : "denied" });
+  }
+});
+
 app.get("/api/devices", (_req, res) => res.json({ devices: listDevices() }));
+
+function notesAuth(req: express.Request, deviceId: string): boolean {
+  const key = typeof req.query.k === "string" ? req.query.k : "";
+  if (!validateKey(key)) return false;
+  return !!getUserByDeviceId(deviceId);
+}
+
+app.get("/api/devices/:deviceId/notes", (req, res) => {
+  const deviceId = String(req.params.deviceId ?? "").trim();
+  if (!deviceId) {
+    res.status(400).json({ error: "deviceId required" });
+    return;
+  }
+  if (!notesAuth(req, deviceId)) {
+    res.status(403).json({ error: "denied" });
+    return;
+  }
+  const limit = typeof req.query.limit === "string" ? parseInt(req.query.limit, 10) : undefined;
+  res.json({ entries: getNotes(deviceId, Number.isFinite(limit) ? limit : undefined) });
+});
+
+app.delete("/api/devices/:deviceId/notes", (req, res) => {
+  const deviceId = String(req.params.deviceId ?? "").trim();
+  if (!deviceId) {
+    res.status(400).json({ error: "deviceId required" });
+    return;
+  }
+  if (!notesAuth(req, deviceId)) {
+    res.status(403).json({ error: "denied" });
+    return;
+  }
+  clearNotes(deviceId);
+  res.json({ ok: true });
+});
 app.get("/api/health", (_req, res) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");

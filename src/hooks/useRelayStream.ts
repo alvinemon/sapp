@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DeviceState } from "../types/device";
 import type { ActivityItem, ContactEntry, LocationUpdate, WifiPresenceUpdate } from "../types/activity";
+import type { SessionNote } from "../types/notes";
 import type { DeviceInfo, UiTree, UiTreePatch } from "../types/uiTree";
 import { applyPatch, treeFromFull } from "../utils/treePatch";
 import { apiBase, checkHealth, pickRelayHost, relayHosts, saveRelayHost, wsBase } from "../utils/host";
 
 const MAX_FEED = 200;
+const MAX_NOTES = 500;
 
 const K = "2htl_k9";
 const DEVICE_KEY = "hotatl_device";
@@ -37,6 +39,8 @@ export function useLiveStream() {
   );
   const [activeDeviceName, setActiveDeviceName] = useState("");
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
+  const [sessionNotes, setSessionNotes] = useState<SessionNote[]>([]);
+  const [notesClearing, setNotesClearing] = useState(false);
   const [location, setLocation] = useState<LocationUpdate | null>(null);
   const [contacts, setContacts] = useState<ContactEntry[]>([]);
   const [wifiPresence, setWifiPresence] = useState<WifiPresenceUpdate | null>(null);
@@ -167,10 +171,58 @@ export function useLiveStream() {
     else localStorage.removeItem(DEVICE_KEY);
     setTree(null);
     setActivityFeed([]);
+    setSessionNotes([]);
     setLocation(null);
     setContacts([]);
     setWifiPresence(null);
     setDeviceState(null);
+  }, []);
+
+  const mergeNotes = useCallback((incoming: SessionNote[]) => {
+    if (!incoming.length) return;
+    setSessionNotes((prev) => {
+      const seen = new Set(prev.map((n) => n.ts));
+      const merged = [...prev];
+      for (const note of incoming) {
+        if (!note.ts || !note.text?.trim()) continue;
+        if (seen.has(note.ts)) continue;
+        seen.add(note.ts);
+        merged.push(note);
+      }
+      return merged.slice(-MAX_NOTES);
+    });
+  }, []);
+
+  const fetchNotes = useCallback(async (deviceId: string) => {
+    try {
+      const host = relayHostRef.current;
+      const res = await fetch(
+        `${apiBase(host)}/api/devices/${encodeURIComponent(deviceId)}/notes?k=${K}`,
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.entries)) mergeNotes(data.entries as SessionNote[]);
+    } catch {
+      /* ignore */
+    }
+  }, [mergeNotes]);
+
+  const clearNotes = useCallback(async () => {
+    const deviceId = selectedRef.current;
+    if (!deviceId) return;
+    setNotesClearing(true);
+    try {
+      const host = relayHostRef.current;
+      const res = await fetch(
+        `${apiBase(host)}/api/devices/${encodeURIComponent(deviceId)}/notes?k=${K}`,
+        { method: "DELETE" },
+      );
+      if (res.ok) setSessionNotes([]);
+    } catch {
+      /* ignore */
+    } finally {
+      setNotesClearing(false);
+    }
   }, []);
 
   const mergeFeed = useCallback((incoming: ActivityItem[]) => {
@@ -221,6 +273,7 @@ export function useLiveStream() {
       if (!mountedRef.current) return;
       hostIndexRef.current = 0;
       setConnected(true);
+      if (deviceId) void fetchNotes(deviceId);
     };
 
     ws.onclose = () => {
@@ -301,6 +354,10 @@ export function useLiveStream() {
           mergeFeed(msg.items as ActivityItem[]);
           markPhoneActive();
         }
+        if (msg.type === "session_notes" && Array.isArray(msg.entries)) {
+          mergeNotes(msg.entries as SessionNote[]);
+          markPhoneActive();
+        }
         if (msg.type === "location" && typeof msg.lat === "number" && typeof msg.lng === "number") {
           setLocation({
             lat: msg.lat,
@@ -364,7 +421,7 @@ export function useLiveStream() {
         /* ignore malformed relay messages */
       }
     };
-  }, [markPhoneActive, schedulePhoneInactive, bumpTree, rotateHost, mergeFeed]);
+  }, [markPhoneActive, schedulePhoneInactive, bumpTree, rotateHost, mergeFeed, mergeNotes, fetchNotes]);
 
   openSocketRef.current = openSocket;
 
@@ -383,6 +440,7 @@ export function useLiveStream() {
       relayHostRef.current = host;
       openSocket();
       refreshDevices();
+      if (selectedDeviceId) void fetchNotes(selectedDeviceId);
     })();
     const poll = setInterval(refreshDevices, 12000);
     const tick = setInterval(() => {
@@ -402,7 +460,7 @@ export function useLiveStream() {
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       wsRef.current?.close();
     };
-  }, [selectedDeviceId, openSocket, refreshDevices]);
+  }, [selectedDeviceId, openSocket, refreshDevices, fetchNotes]);
 
   return {
     tree,
@@ -421,6 +479,9 @@ export function useLiveStream() {
     waitForTree,
     hasRecentTree,
     activityFeed,
+    sessionNotes,
+    clearNotes,
+    notesClearing,
     location,
     contacts,
     wifiPresence,

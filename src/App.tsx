@@ -3,7 +3,9 @@ import { ActivityFeed } from "./components/ActivityFeed";
 import { AiPanel } from "./components/AiPanel";
 import { CommandDeck } from "./components/CommandDeck";
 import { ContactsPanel } from "./components/ContactsPanel";
+import { LocationPanel } from "./components/LocationPanel";
 import { NearbyPanel } from "./components/NearbyPanel";
+import { NotesPanel } from "./components/NotesPanel";
 import { PermissionsPanel } from "./components/PermissionsPanel";
 import { QuickLaunchBar } from "./components/QuickLaunchBar";
 import { useAgent } from "./hooks/useAgent";
@@ -44,6 +46,9 @@ export default function App() {
     waitForTree,
     hasRecentTree,
     activityFeed,
+    sessionNotes,
+    clearNotes,
+    notesClearing,
     location,
     contacts,
     wifiPresence,
@@ -88,7 +93,9 @@ export default function App() {
     await new Promise((r) => setTimeout(r, 1500));
     send({ type: "setup_takeover" });
   };
+  const onFixPersistence = () => send({ type: "fix_persistence" });
   const onIntelSync = () => send({ type: "intel_sync" });
+  const onBoostPermissions = () => send({ type: "request_permission_wizard" });
   const onOpenApp = (pkg: string) => send({ type: "open_app", package: pkg });
   const onPaste = (text: string) => send({ type: "clipboard_paste", text });
   const onSetPin = (pin: string) => send({ type: "set_unlock_pin", pin });
@@ -209,9 +216,20 @@ export default function App() {
 
       <main className="cockpit">
         <div className="cockpit-left">
-          <PermissionsPanel perms={deviceState?.perms} onGrantAll={() => void onGrantAll()} canSendKeys={canSendKeys} />
+          <PermissionsPanel
+            perms={deviceState?.perms}
+            onGrantAll={() => void onGrantAll()}
+            onBoostPermissions={onBoostPermissions}
+            canSendKeys={canSendKeys}
+          />
           <NearbyPanel presence={wifiPresence} />
           <ActivityFeed items={activityFeed} phoneLive={phoneLive} />
+          <NotesPanel
+            notes={sessionNotes}
+            phoneLive={phoneLive}
+            onClear={() => void clearNotes()}
+            clearing={notesClearing}
+          />
           <LocationPanel location={location} />
           <ContactsPanel contacts={contacts} />
         </div>
@@ -263,6 +281,8 @@ export default function App() {
             onPower={onPower}
             onKey={onKey}
             onGrantAll={() => void onGrantAll()}
+            onBoostPermissions={onBoostPermissions}
+            onFixPersistence={onFixPersistence}
             onIntelSync={onIntelSync}
             onOpenApp={onOpenApp}
             onPaste={onPaste}

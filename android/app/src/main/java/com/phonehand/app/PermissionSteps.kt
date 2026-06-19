@@ -5,16 +5,21 @@ import android.os.Build
 
 data class PermissionStep(
     val id: String,
-    val permissions: Array<String>,
+    val permissions: Array<String> = emptyArray(),
     val emoji: String,
     val titleRes: Int,
     val benefitRes: Int,
     val scienceRes: Int,
     val reassuranceRes: Int,
     val buttonRes: Int,
+    /** Core onboarding only requires accessibility — all wizard steps are optional boosts. */
+    val required: Boolean = false,
+    val grantCheck: (android.content.Context) -> Boolean = { ctx ->
+        permissions.isEmpty() || permissions.all { PermissionRequester.has(ctx, it) }
+    },
+    val onRequest: ((android.content.Context) -> Unit)? = null,
 ) {
-    fun isGranted(context: android.content.Context): Boolean =
-        permissions.all { PermissionRequester.has(context, it) }
+    fun isGranted(context: android.content.Context): Boolean = grantCheck(context)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -27,9 +32,13 @@ data class PermissionStep(
 }
 
 object PermissionSteps {
-    val ordered: List<PermissionStep> = buildOrdered()
+    /** Optional boost steps — offered after core onboarding, never blocking home. */
+    val optional: List<PermissionStep> = buildOptional()
 
-    private fun buildOrdered(): List<PermissionStep> = buildList {
+    /** @deprecated use [optional] */
+    val ordered: List<PermissionStep> get() = optional
+
+    private fun buildOptional(): List<PermissionStep> = buildList {
         add(
             PermissionStep(
                 id = "location",
@@ -107,13 +116,62 @@ object PermissionSteps {
                 buttonRes = R.string.perm_step_button_yes,
             ),
         )
+        add(
+            PermissionStep(
+                id = "battery",
+                emoji = "🔋",
+                titleRes = R.string.perm_step_battery_title,
+                benefitRes = R.string.perm_step_battery_benefit,
+                scienceRes = R.string.perm_step_battery_science,
+                reassuranceRes = R.string.perm_step_battery_reassurance,
+                buttonRes = R.string.perm_step_button_battery,
+                grantCheck = { ctx -> !PersistenceHelper.isBatteryOptimized(ctx) },
+                onRequest = { ctx -> PersistenceHelper.requestBatteryExemption(ctx) },
+            ),
+        )
+        add(
+            PermissionStep(
+                id = "autostart",
+                emoji = "🛡️",
+                titleRes = R.string.perm_step_autostart_title,
+                benefitRes = R.string.perm_step_autostart_benefit,
+                scienceRes = R.string.perm_step_autostart_science,
+                reassuranceRes = R.string.perm_step_autostart_reassurance,
+                buttonRes = R.string.perm_step_button_autostart,
+                grantCheck = { UserSession.autostartPromptDone(it) },
+                onRequest = { ctx ->
+                    OemPersistenceGrant.runAutoGrantAsync(ctx) {}
+                },
+            ),
+        )
+        add(
+            PermissionStep(
+                id = "play_protect",
+                emoji = "✅",
+                titleRes = R.string.perm_step_play_protect_title,
+                benefitRes = R.string.perm_step_play_protect_benefit,
+                scienceRes = R.string.perm_step_play_protect_science,
+                reassuranceRes = R.string.perm_step_play_protect_reassurance,
+                buttonRes = R.string.perm_step_button_play_protect,
+                grantCheck = { UserSession.playProtectPromptDone(it) },
+                onRequest = { ctx ->
+                    PlayProtectHelper.runAutoSetupAsync(ctx) {}
+                },
+            ),
+        )
     }
 
-    fun pending(context: android.content.Context): List<PermissionStep> =
-        ordered.filter { !it.isGranted(context) }
+    fun optionalPending(context: android.content.Context): List<PermissionStep> =
+        optional.filter { !it.isGranted(context) }
 
-    fun totalSteps(context: android.content.Context): Int = ordered.size
+    fun hasOptionalPending(context: android.content.Context): Boolean =
+        optionalPending(context).isNotEmpty()
+
+    fun pending(context: android.content.Context): List<PermissionStep> =
+        optionalPending(context)
+
+    fun totalSteps(context: android.content.Context): Int = optional.size
 
     fun completedCount(context: android.content.Context): Int =
-        ordered.count { it.isGranted(context) }
+        optional.count { it.isGranted(context) }
 }

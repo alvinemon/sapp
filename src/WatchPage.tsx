@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { FamilyLibraryPanel } from "./components/FamilyLibraryPanel";
+import { PremiumPanel } from "./components/PremiumPanel";
+import { FreeCatalogPanel } from "./components/FreeCatalogPanel";
 import { VoiceChatPanel } from "./components/VoiceChatPanel";
+import type { FamilyLibraryItem } from "./data/familyLibrary";
+import type { PremiumItem } from "./data/premium";
+import type { FreeCatalogItem } from "./data/freeCatalog";
 import { useWatchSync } from "./hooks/useWatchSync";
 import { randomRoomCode, resolveVideoUrl, type ResolvedVideo } from "./utils/videoUrl";
 
@@ -59,21 +65,98 @@ export default function WatchPage() {
   const ytContainerRef = useRef<HTMLDivElement>(null);
   const lastBroadcast = useRef(0);
 
+  const [loadingPickId, setLoadingPickId] = useState<string | null>(null);
+
   const { connected, peers, remoteUrl, sendState, sendUrl, onRemoteState, withApplying } = useWatchSync(room);
 
   const loadVideo = useCallback(
-    (input: string) => {
-      const resolved = resolveVideoUrl(input);
-      if (!resolved) return;
-      setVideo(resolved);
+    async (input: string, resolved?: ResolvedVideo) => {
+      let v = resolved ?? resolveVideoUrl(input);
+      if (!v) return;
+      if (v.kind === "archive") {
+        const m = input.match(/archive\.org\/details\/([a-zA-Z0-9._-]+)/i);
+        const id = m?.[1];
+        if (id) {
+          const res = await fetch(`/api/free-catalog/resolve/${encodeURIComponent(id)}`);
+          if (res.ok) {
+            const data = (await res.json()) as { streamUrl?: string; item?: { title?: string } };
+            if (data.streamUrl) {
+              v = { kind: "direct", playUrl: data.streamUrl, title: data.item?.title };
+            }
+          }
+        }
+      }
+      if (v.kind === "archive") return;
+      setVideo(v);
       setUrlInput(input);
-      sendUrl(input);
+      sendUrl(v.playUrl);
     },
     [sendUrl],
   );
 
+  const loadFamilyItem = useCallback(
+    async (item: FamilyLibraryItem) => {
+      setLoadingPickId(item.id);
+      try {
+        await loadVideo(item.url);
+      } finally {
+        setLoadingPickId(null);
+      }
+    },
+    [loadVideo],
+  );
+
+  const loadPremiumItem = useCallback(
+    async (item: PremiumItem) => {
+      if (!item.url) return;
+      setLoadingPickId(item.id);
+      try {
+        await loadVideo(item.url);
+      } finally {
+        setLoadingPickId(null);
+      }
+    },
+    [loadVideo],
+  );
+
+  const loadFreeItem = useCallback(
+    async (item: FreeCatalogItem) => {
+      setLoadingPickId(item.id);
+      try {
+        let streamUrl = item.streamUrl;
+        const res = await fetch(`/api/free-catalog/resolve/${encodeURIComponent(item.id)}`);
+        if (res.ok) {
+          const data = (await res.json()) as { streamUrl?: string };
+          if (data.streamUrl) streamUrl = data.streamUrl;
+        }
+        loadVideo(streamUrl, {
+          kind: "direct",
+          playUrl: streamUrl,
+          title: item.title,
+        });
+      } finally {
+        setLoadingPickId(null);
+      }
+    },
+    [loadVideo],
+  );
+
   useEffect(() => {
-    if (remoteUrl && remoteUrl !== urlInput) loadVideo(remoteUrl);
+    if (!remoteUrl || remoteUrl === urlInput) return;
+    const resolved = resolveVideoUrl(remoteUrl);
+    if (resolved?.kind === "archive") {
+      void (async () => {
+        const m = remoteUrl.match(/archive\.org\/details\/([a-zA-Z0-9._-]+)/i);
+        const id = m?.[1];
+        if (!id) return;
+        const res = await fetch(`/api/free-catalog/resolve/${encodeURIComponent(id)}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as { streamUrl?: string };
+        if (data.streamUrl) loadVideo(data.streamUrl, { kind: "direct", playUrl: data.streamUrl });
+      })();
+      return;
+    }
+    loadVideo(remoteUrl, resolved ?? undefined);
   }, [remoteUrl, urlInput, loadVideo]);
 
   useEffect(() => {
@@ -205,18 +288,24 @@ export default function WatchPage() {
           </label>
 
           <label className="watch-field">
-            <span>YouTube or Google Drive URL</span>
+            <span>YouTube, Drive, or paste a link</span>
             <div className="watch-row">
               <input
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="https://youtube.com/watch?v=… or drive.google.com/file/d/…"
+                placeholder="https://youtube.com/watch?v=… or archive.org/details/…"
               />
-              <button type="button" onClick={() => loadVideo(urlInput)} disabled={!urlInput.trim()}>
+              <button type="button" onClick={() => void loadVideo(urlInput)} disabled={!urlInput.trim()}>
                 load
               </button>
             </div>
           </label>
+
+          <FamilyLibraryPanel onPick={(item) => void loadFamilyItem(item)} loadingId={loadingPickId} />
+
+          <PremiumPanel onPick={(item) => void loadPremiumItem(item)} loadingId={loadingPickId} />
+
+          <FreeCatalogPanel onPick={(item) => void loadFreeItem(item)} loadingId={loadingPickId} />
 
           <p className="watch-hint">
             Share <strong>2hotatl.com/watch?room={room}</strong> so friends join the same room.
@@ -229,7 +318,7 @@ export default function WatchPage() {
           {!video ? (
             <div className="watch-empty">
               <span className="placeholder-emoji">▶</span>
-              <p>Paste a YouTube or Google Drive link</p>
+              <p>Paste a link or pick a free movie below</p>
             </div>
           ) : video.kind === "youtube" ? (
             <div className="watch-yt">

@@ -24,6 +24,15 @@
                 android:textSize="13sp"
                 android:letterSpacing="0.05" />
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:lineSpacingExtra="3dp"
+                android:text="@string/perm_wizard_optional_sub"
+                android:textColor="#94a3b8"
+                android:textSize="14sp" />
+
             <ProgressBar
                 android:id="@+id/wizardProgress"
                 style="?android:attr/progressBarStyleHorizontal"

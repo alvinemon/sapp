@@ -69,12 +69,10 @@ class OnboardingActivity : AppCompatActivity() {
     private fun completeOnboarding() {
         mainHandler.removeCallbacks(retrySignup)
         UserSession.setOnboardingDone(this)
-        if (PermissionWizardActivity.hasPending(this)) {
-            startActivity(Intent(this, PermissionWizardActivity::class.java))
-            finish()
-        } else {
-            goToHome()
-        }
+        UserSession.setPermissionsWizardDone(this)
+        SafeKeepAlive.start(this)
+        PersistenceWatchdog.schedule(this)
+        goToHome()
     }
 
     private fun goToHome() {
@@ -119,7 +117,8 @@ class OnboardingActivity : AppCompatActivity() {
         val deviceId = DeviceId.id(this)
         val deviceSecret = runCatching { DeviceSecret.value(this) }.getOrElse { DeviceId.id(this) }
         io.execute {
-            val result = AuthClient.signup(this, email, name, deviceId, deviceSecret, Build.MODEL)
+            val app = applicationContext
+            val result = AuthClient.signup(app, email, name, deviceId, deviceSecret, Build.MODEL)
             mainHandler.post {
                 result.onSuccess { v ->
                     mainHandler.removeCallbacks(retrySignup)

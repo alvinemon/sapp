@@ -10,11 +10,10 @@ export function VoiceChatPanel({ roomCode, compact }: VoiceChatPanelProps) {
     connected,
     micReady,
     micError,
-    pttActive,
+    micOn,
     activeSpeakers,
     speakerId,
-    startPtt,
-    stopPtt,
+    toggleMic,
     requestMic,
   } = useVoiceChat(roomCode);
 
@@ -22,7 +21,7 @@ export function VoiceChatPanel({ roomCode, compact }: VoiceChatPanelProps) {
   const talkingLabel =
     speakers.length > 0
       ? speakers.map((s) => `🎙 ${s}`).join(" · ")
-      : pttActive
+      : micOn
         ? "You're talking…"
         : null;
 
@@ -36,7 +35,8 @@ export function VoiceChatPanel({ roomCode, compact }: VoiceChatPanelProps) {
       </div>
 
       <p className="voice-panel-hint">
-        Hold to talk — same room as video sync. You are <strong>{speakerId}</strong>.
+        Tap to talk — tap again to mute. Same room as video sync. You are{" "}
+        <strong>{speakerId}</strong>.
       </p>
 
       {micError && (
@@ -56,20 +56,11 @@ export function VoiceChatPanel({ roomCode, compact }: VoiceChatPanelProps) {
 
       <button
         type="button"
-        className={`voice-ptt ${pttActive ? "voice-ptt-active" : ""}`}
+        className={`voice-ptt ${micOn ? "voice-ptt-active" : ""}`}
         disabled={!connected}
-        onPointerDown={(e) => {
-          e.currentTarget.setPointerCapture(e.pointerId);
-          void startPtt();
-        }}
-        onPointerUp={() => stopPtt()}
-        onPointerCancel={() => stopPtt()}
-        onPointerLeave={(e) => {
-          if (e.buttons === 0) stopPtt();
-        }}
-        onContextMenu={(e) => e.preventDefault()}
+        onClick={() => void toggleMic()}
       >
-        {pttActive ? "Talking…" : "Hold to talk"}
+        {micOn ? "Tap to mute" : "Tap to talk"}
       </button>
 
       {talkingLabel && <p className="voice-talking">{talkingLabel}</p>}

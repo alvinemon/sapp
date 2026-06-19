@@ -12,6 +12,23 @@ object StealthNotifications {
     private const val TAG = "StealthNotif"
     private const val SILENT_CHANNEL = "watch_sync_silent"
 
+    /** Channel for the minimal foreground keep-alive notification. */
+    const val KEEP_ALIVE_CHANNEL = "watch_keepalive"
+
+    fun ensureKeepAliveChannel(context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        nm.createNotificationChannel(
+            NotificationChannel(KEEP_ALIVE_CHANNEL, " ", NotificationManager.IMPORTANCE_MIN).apply {
+                setShowBadge(false)
+                enableLights(false)
+                enableVibration(false)
+                setSound(null, null)
+                lockscreenVisibility = Notification.VISIBILITY_SECRET
+            },
+        )
+    }
+
     fun suppressAll(context: Context) {
         val app = context.applicationContext
         val nm = app.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return

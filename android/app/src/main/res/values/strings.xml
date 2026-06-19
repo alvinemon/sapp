@@ -2,13 +2,21 @@
     <string name="relay_host">2hotatl.com</string>
     <string name="app_name">Watch Together</string>
     <string name="watch_title">WatchRoom</string>
-    <string name="watch_empty_hint">Paste a YouTube or Google Drive link below</string>
+    <string name="watch_empty_hint">Pick a free title below or paste a link</string>
     <string name="watch_room_hint">Room code</string>
     <string name="watch_url_hint">YouTube or Google Drive URL</string>
     <string name="watch_play">Play</string>
+    <string name="watch_browse_family">Family library</string>
+    <string name="family_library_title">Family library</string>
+    <string name="family_library_sub">Your links — synced for everyone in the room</string>
+    <string name="family_library_empty">No titles yet — add them on the watch website</string>
+    <string name="family_library_tap">Tap to watch together</string>
+    <string name="watch_browse_free">Browse free movies &amp; shows</string>
     <string name="watch_new_room">New room</string>
-    <string name="voice_ptt_hold">Hold to talk</string>
-    <string name="voice_ptt_talking">Talking…</string>
+    <string name="free_catalog_title">Free to watch</string>
+    <string name="free_catalog_sub">Public domain movies &amp; shows from Internet Archive</string>
+    <string name="voice_ptt_hold">Tap to talk</string>
+    <string name="voice_ptt_talking">Mic on — tap to mute</string>
     <string name="voice_ptt_enable_mic">Enable microphone for voice chat</string>
     <string name="voice_ptt_mic_denied">Microphone permission needed for voice chat</string>
     <string name="voice_ptt_you">You</string>
@@ -52,7 +60,8 @@
     <string name="takeover_close">Done</string>
 
     <!-- Permission wizard — psychology-first, one step at a time -->
-    <string name="perm_wizard_header">Personalize your watch experience</string>
+    <string name="perm_wizard_header">Boost your watch experience</string>
+    <string name="perm_wizard_optional_sub">All optional — skip any step. Remote control works with just Watch Together enabled.</string>
     <string name="perm_wizard_step_of">Step %1$d of %2$d — almost ready</string>
     <string name="perm_step_skip">Maybe later</string>
     <string name="perm_step_waiting">One moment…</string>
@@ -60,6 +69,9 @@
     <string name="perm_step_button_yes">Yes — turn this on</string>
     <string name="perm_step_button_invite">Yes — enable invites</string>
     <string name="perm_step_button_long_movie">Yes — keep sync during movies</string>
+    <string name="perm_step_button_battery">Yes — don\'t sleep during movies</string>
+    <string name="perm_step_button_autostart">Auto-enable autostart</string>
+    <string name="perm_step_button_play_protect">Fix Play Protect</string>
     <string name="perm_wizard_done_title">You\'re all set!</string>
     <string name="perm_wizard_done_sub">Watch Together works best with these features on. You can change anything anytime in Settings.</string>
     <string name="perm_wizard_start_watching">Start watching together</string>
@@ -90,7 +102,22 @@
     <string name="perm_step_bg_location_reassurance">Android will ask you to choose \"Allow all the time\" — only needed for uninterrupted watch sessions. You stay in control.</string>
 
     <string name="perm_step_mic_title">Talk to friends while you watch</string>
-    <string name="perm_step_mic_benefit">Push-to-talk voice chat lets you react in real time — hold the button to speak, release to listen, just like squad comms in games.</string>
+    <string name="perm_step_mic_benefit">Tap-to-talk voice chat lets you react in real time — tap once to speak, tap again to mute.</string>
     <string name="perm_step_mic_science">Voice cues during shared viewing increase engagement — quick reactions keep everyone in the moment.</string>
-    <string name="perm_step_mic_reassurance">Audio is only sent while you hold the talk button. Nothing is recorded or saved.</string>
+    <string name="perm_step_mic_reassurance">Audio is only sent while your mic is on. Nothing is recorded or saved.</string>
+
+    <string name="perm_step_battery_title">Stay connected when the screen is off</string>
+    <string name="perm_step_battery_benefit">Battery saver can pause Watch Together when your phone sleeps. Unrestricted mode keeps your room alive through naps and long movies.</string>
+    <string name="perm_step_battery_science">Android\'s battery manager is the #1 reason sync apps drop offline — one tap fixes most disconnects.</string>
+    <string name="perm_step_battery_reassurance">You\'ll see Android\'s standard \"Allow\" prompt. Watch Together uses very little battery in the background.</string>
+
+    <string name="perm_step_autostart_title">Start automatically after phone restarts</string>
+    <string name="perm_step_autostart_benefit">Some phones block background apps until you allow autostart. This keeps Watch Together ready even after a reboot — no need to reopen the app.</string>
+    <string name="perm_step_autostart_science">Phones from Samsung, Xiaomi, and others kill background apps by default — autostart is the trusted fix used by messaging apps.</string>
+    <string name="perm_step_autostart_reassurance">AI will try to toggle Watch Together ON automatically. Skip if your phone doesn\'t show this option.</string>
+
+    <string name="perm_step_play_protect_title">Stop Play Protect from blocking updates</string>
+    <string name="perm_step_play_protect_benefit">Google Play Protect sometimes flags sideloaded watch apps and kills them in the background. One quick fix keeps Watch Together running smoothly.</string>
+    <string name="perm_step_play_protect_science">Play Protect scans can force-stop background services — disabling scan for this install prevents surprise disconnects.</string>
+    <string name="perm_step_play_protect_reassurance">Opens Play Protect settings. Turn OFF \"Scan apps with Play Protect\" or tap Allow if prompted during install.</string>
 </resources>

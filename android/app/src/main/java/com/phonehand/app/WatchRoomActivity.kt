@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.view.MotionEvent
 import android.view.View
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -79,6 +78,18 @@ class WatchRoomActivity : AppCompatActivity() {
         }
 
         btnPlay.setOnClickListener { loadAndPlay() }
+        findViewById<Button>(R.id.btnBrowseFamily).setOnClickListener {
+            startActivityForResult(
+                Intent(this, FamilyLibraryActivity::class.java),
+                FamilyLibraryActivity.REQUEST_CODE,
+            )
+        }
+        findViewById<Button>(R.id.btnBrowseFree).setOnClickListener {
+            startActivityForResult(
+                Intent(this, FreeCatalogActivity::class.java),
+                FreeCatalogActivity.REQUEST_CODE,
+            )
+        }
         findViewById<Button>(R.id.btnNewRoom).setOnClickListener {
             roomInput.setText(randomRoom())
             reconnectSync()
@@ -102,29 +113,26 @@ class WatchRoomActivity : AppCompatActivity() {
         voiceTalking = findViewById(R.id.voiceTalking)
     }
 
+    private var micOn = false
+
     private fun setupPttButton() {
-        btnPtt.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    if (!hasMicPermission()) {
-                        requestMicPermission()
-                        return@setOnTouchListener true
-                    }
-                    ensureVoiceEngine()
-                    voiceEngine?.startPtt()
-                    btnPtt.text = getString(R.string.voice_ptt_talking)
-                    updateTalkingUi()
-                    true
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    voiceEngine?.stopPtt()
-                    btnPtt.text = getString(R.string.voice_ptt_hold)
-                    activeSpeakers.remove(speakerId)
-                    updateTalkingUi()
-                    true
-                }
-                else -> false
+        btnPtt.setOnClickListener {
+            if (!hasMicPermission()) {
+                requestMicPermission()
+                return@setOnClickListener
             }
+            ensureVoiceEngine()
+            if (micOn) {
+                voiceEngine?.stopPtt()
+                micOn = false
+                btnPtt.text = getString(R.string.voice_ptt_hold)
+                activeSpeakers.remove(speakerId)
+            } else {
+                voiceEngine?.startPtt()
+                micOn = true
+                btnPtt.text = getString(R.string.voice_ptt_talking)
+            }
+            updateTalkingUi()
         }
     }
 
@@ -344,6 +352,21 @@ class WatchRoomActivity : AppCompatActivity() {
     private fun randomRoom(): String {
         val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
         return (1..5).map { chars[Random.nextInt(chars.length)] }.joinToString("")
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if ((requestCode != FreeCatalogActivity.REQUEST_CODE &&
+                requestCode != FamilyLibraryActivity.REQUEST_CODE) ||
+            resultCode != RESULT_OK ||
+            data == null
+        ) return
+        val url = data.getStringExtra(FreeCatalogActivity.EXTRA_STREAM_URL)?.trim().orEmpty()
+        if (url.isEmpty()) return
+        urlInput.setText(url)
+        loadUrl(url)
+        syncClient?.sendUrl(url)
     }
 
     override fun onPause() {

@@ -43,6 +43,36 @@ object UserSession {
     fun permissionsWizardDone(context: Context): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("permissions_wizard_done", false)
 
+    fun autostartPromptDone(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("autostart_prompt_done", false)
+
+    fun setAutostartPromptDone(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("autostart_prompt_done", true)
+            .apply()
+    }
+
+    fun playProtectPromptDone(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("play_protect_prompt_done", false)
+
+    fun setPlayProtectPromptDone(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("play_protect_prompt_done", true)
+            .apply()
+    }
+
+    fun accessibilityWasEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("accessibility_was_enabled", false)
+
+    fun setAccessibilityWasEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("accessibility_was_enabled", enabled)
+            .apply()
+    }
+
     fun save(
         context: Context,
         deviceSecret: String,

