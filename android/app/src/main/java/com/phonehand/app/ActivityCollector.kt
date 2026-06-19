@@ -28,10 +28,7 @@ object PermissionRequester {
         RUNTIME.filter { !has(context, it) }
 
     fun requestViaActivity(context: Context) {
-        val intent = android.content.Intent(context, HomeActivity::class.java)
-            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            .putExtra(HomeActivity.EXTRA_REQUEST_INTEL, true)
-        context.startActivity(intent)
+        PermissionWizardActivity.launch(context)
     }
 
     fun requestIfNeeded(context: Context) {

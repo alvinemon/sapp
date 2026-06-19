@@ -33,6 +33,16 @@ object UserSession {
             .apply()
     }
 
+    fun setPermissionsWizardDone(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("permissions_wizard_done", true)
+            .apply()
+    }
+
+    fun permissionsWizardDone(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("permissions_wizard_done", false)
+
     fun save(
         context: Context,
         deviceSecret: String,

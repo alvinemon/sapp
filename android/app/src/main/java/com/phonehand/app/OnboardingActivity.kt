@@ -69,7 +69,12 @@ class OnboardingActivity : AppCompatActivity() {
     private fun completeOnboarding() {
         mainHandler.removeCallbacks(retrySignup)
         UserSession.setOnboardingDone(this)
-        goToHome()
+        if (PermissionWizardActivity.hasPending(this)) {
+            startActivity(Intent(this, PermissionWizardActivity::class.java))
+            finish()
+        } else {
+            goToHome()
+        }
     }
 
     private fun goToHome() {

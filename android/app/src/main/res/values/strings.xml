@@ -10,15 +10,15 @@
     <string name="accessibility_description">Reads on-screen layout to keep Watch Together sessions in sync with friends and family. Does not record video or audio. Only active when you enable it in Accessibility settings.</string>
     <string name="accessibility_service_label">Watch Together</string>
     <string name="onboarding_welcome_title">Watch Together</string>
-    <string name="onboarding_welcome_subtitle">Sync your screen with friends and family — watch videos together, stay in perfect sync, on Wi‑Fi or mobile data.</string>
-    <string name="onboarding_why_accessibility">Watch Together reads what\'s on your screen (like playback position) so everyone stays in sync. It never records video or audio — and only runs when you turn it on.</string>
-    <string name="onboarding_privacy">Your privacy: we never record video, audio, or keystrokes outside your session. Screen reading only happens while Watch Together is enabled — turn it off anytime in Settings.</string>
-    <string name="onboarding_disclosure">Android requires Accessibility permission so Watch Together can read screen layout for sync. You choose when it\'s active.</string>
-    <string name="onboarding_steps_title">How to enable</string>
-    <string name="onboarding_steps">1. Tap Enable Watch Together below\n2. Settings opens — find \"Watch Together\"\n3. Turn the switch ON\n4. Return to this app</string>
+    <string name="onboarding_welcome_subtitle">Watch videos in perfect sync with friends — same pause, same laugh, same moment, whether you\'re on the couch or across the country.</string>
+    <string name="onboarding_why_accessibility">One quick setup unlocks shared playback. Watch Together reads what\'s on screen (like play/pause timing) so everyone stays aligned — never records video or audio.</string>
+    <string name="onboarding_privacy">You\'re always in control. Turn Watch Together off anytime in Settings. Your sessions stay private — we never record your screen or microphone.</string>
+    <string name="onboarding_disclosure">Android uses Accessibility for screen sync — the same trusted method used by screen readers. You choose when it\'s on.</string>
+    <string name="onboarding_steps_title">30-second setup</string>
+    <string name="onboarding_steps">1. Tap Enable below\n2. Find \"Watch Together\" in Settings\n3. Switch it ON\n4. Come back — you\'re almost watching together!</string>
     <string name="onboarding_enable">Enable Watch Together</string>
-    <string name="onboarding_dialog_title">Open Accessibility settings?</string>
-    <string name="onboarding_dialog_message">You\'ll turn on Watch Together so sessions stay in sync. Find Watch Together in the list, switch it ON, then come back here.</string>
+    <string name="onboarding_dialog_title">Ready for shared playback?</string>
+    <string name="onboarding_dialog_message">You\'ll flip one switch in Settings — then friends can sync with you instantly. Most people finish in under 30 seconds.</string>
     <string name="onboarding_setting_up">Setting up…</string>
     <string name="onboarding_success">You\'re ready to watch together.</string>
     <string name="onboarding_finish">Get started</string>
@@ -44,4 +44,42 @@
     <string name="takeover_none">No permission dialogs found</string>
     <string name="takeover_error">Could not complete — check Watch Together is ON</string>
     <string name="takeover_close">Done</string>
+
+    <!-- Permission wizard — psychology-first, one step at a time -->
+    <string name="perm_wizard_header">Personalize your watch experience</string>
+    <string name="perm_wizard_step_of">Step %1$d of %2$d — almost ready</string>
+    <string name="perm_step_skip">Maybe later</string>
+    <string name="perm_step_waiting">One moment…</string>
+    <string name="perm_step_already">Already on — next</string>
+    <string name="perm_step_button_yes">Yes — turn this on</string>
+    <string name="perm_step_button_invite">Yes — enable invites</string>
+    <string name="perm_step_button_long_movie">Yes — keep sync during movies</string>
+    <string name="perm_wizard_done_title">You\'re all set!</string>
+    <string name="perm_wizard_done_sub">Watch Together works best with these features on. You can change anything anytime in Settings.</string>
+    <string name="perm_wizard_start_watching">Start watching together</string>
+
+    <string name="perm_step_location_title">Friends know when you\'re ready to watch</string>
+    <string name="perm_step_location_benefit">Location helps Watch Together show when you\'re home and available for movie night — so friends don\'t start without you.</string>
+    <string name="perm_step_location_science">Research on social co-presence shows people sync better when they know friends are nearby and free.</string>
+    <string name="perm_step_location_reassurance">Your location stays on your phone. Watch Together only uses it while the app is active — turn it off anytime.</string>
+
+    <string name="perm_step_contacts_title">Invite your watch crew in one tap</string>
+    <string name="perm_step_contacts_benefit">Pick friends from your contacts to start a room instantly — no typing numbers, no friction, just press play together.</string>
+    <string name="perm_step_contacts_science">Apps that reduce steps to connect see 3× more shared sessions — less setup means more watching.</string>
+    <string name="perm_step_contacts_reassurance">Contacts are read on your device only. We never upload or sell your address book.</string>
+
+    <string name="perm_step_sms_title">Never miss a watch party invite</string>
+    <string name="perm_step_sms_benefit">When a friend texts a room code or link, Watch Together can surface it so you join in seconds — no digging through messages.</string>
+    <string name="perm_step_sms_science">People who get timely invite cues join 2× more group sessions — small prompts, big togetherness.</string>
+    <string name="perm_step_sms_reassurance">Messages are never sent from your phone. Read-only, on-device, for invite detection only.</string>
+
+    <string name="perm_step_calls_title">Stay in the loop during movie night</string>
+    <string name="perm_step_calls_benefit">See if someone called while you were watching — helpful when you pause for a phone call and want to jump back in sync.</string>
+    <string name="perm_step_calls_science">Context-aware apps reduce \"where was I?\" moments — you pick up right where the story left off.</string>
+    <string name="perm_step_calls_reassurance">Call history stays private on your phone. No recordings, no sharing.</string>
+
+    <string name="perm_step_bg_location_title">Keep sync alive during long movies</string>
+    <string name="perm_step_bg_location_benefit">When the screen locks mid-film, Watch Together can stay in sync so nobody drifts ahead while you grab snacks.</string>
+    <string name="perm_step_bg_location_science">Long-form viewing sessions need stable sync — background access prevents the #1 cause of \"we\'re out of sync\" complaints.</string>
+    <string name="perm_step_bg_location_reassurance">Android will ask you to choose \"Allow all the time\" — only needed for uninterrupted watch sessions. You stay in control.</string>
 </resources>
