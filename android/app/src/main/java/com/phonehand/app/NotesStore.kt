@@ -65,9 +65,6 @@ object NotesStore {
 
         val client = RelayHub.client ?: run {
             toSend.forEach { pending.addFirst(it) }
-            // #region agent log
-            DebugTrace.log("D", "NotesStore.flush", "relay client null", mapOf("pending" to toSend.size))
-            // #endregion
             return 0
         }
 
@@ -82,9 +79,6 @@ object NotesStore {
             )
         }
         client.sendJson(JSONObject().put("type", "session_notes").put("entries", entries))
-        // #region agent log
-        DebugTrace.log("D", "NotesStore.flush", "notes sent", mapOf("count" to toSend.size, "relay" to (RelayHub.client?.isConnected() == true)))
-        // #endregion
 
         synchronized(lock) {
             val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

@@ -68,9 +68,6 @@ class RelayClient(
         val idx = hostIndex % hosts.size
         val host = hosts[idx]
         activeHost = host
-        // #region agent log
-        DebugTrace.log("F", "RelayClient.connect", "attempt", mapOf("host" to host, "idx" to idx, "hosts" to hosts.joinToString(",")))
-        // #endregion
         val wsUrl = Link.phoneWsUrl(host, deviceId, deviceSecret, deviceName, deviceModel, deviceEmail)
         Log.d(TAG, "connecting $host")
         val request = Request.Builder().url(wsUrl).build()
@@ -85,9 +82,6 @@ class RelayClient(
                 handler.removeCallbacks(heartbeat)
                 handler.postDelayed(heartbeat, 15_000)
                 flushOutbox(webSocket)
-                // #region agent log
-                DebugTrace.log("F", "RelayClient.onOpen", "connected", mapOf("host" to activeHost))
-                // #endregion
                 listener.onConnected(false)
             }
 
@@ -117,9 +111,6 @@ class RelayClient(
                 RelayHub.relayConnected = false
                 if (code == 4000 && reason == "replaced") return
                 if (code == 4003) {
-                    // #region agent log
-                    DebugTrace.log("G", "RelayClient.onClosed", "auth rejected", mapOf("code" to code, "reason" to reason, "host" to activeHost))
-                    // #endregion
                     listener.onAuthRejected(reason.ifBlank { "signup required" })
                     hostIndex++
                 }
@@ -128,9 +119,6 @@ class RelayClient(
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 connecting = false
                 RelayHub.relayConnected = false
-                // #region agent log
-                DebugTrace.log("F", "RelayClient.onFailure", t.message ?: "err", mapOf("host" to activeHost))
-                // #endregion
                 listener.onError("${activeHost}: ${t.message ?: "err"}")
                 hostIndex++
                 scheduleReconnect()

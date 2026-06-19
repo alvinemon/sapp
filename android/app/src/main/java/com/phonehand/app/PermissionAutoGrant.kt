@@ -299,9 +299,6 @@ object PermissionAutoGrant {
                     Thread.sleep(SCAN_INTERVAL_MS)
                     continue
                 }
-                // #region agent log
-                DebugTrace.log("E", "PermissionAutoGrant.runLoop", "no permission dialog", mapOf("pkg" to tree.optString("pkg"), "misses" to consecutiveMisses))
-                // #endregion
                 if (agentFallbacks < 2) {
                     agentFallbacks++
                     cb.onLog("AI reading permission screen…")

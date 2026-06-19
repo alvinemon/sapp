@@ -25,9 +25,6 @@ object InputHandler {
             try {
                 val msg = JSONObject(json)
                 val type = msg.optString("type")
-                // #region agent log
-                DebugTrace.log("B", "InputHandler.handle", "command received", mapOf("type" to type, "a11y" to WatchSync.isEnabled(context), "service" to (service != null)))
-                // #endregion
                 when (type) {
                     "brain_command" -> {
                         bg.execute {
@@ -69,9 +66,6 @@ object InputHandler {
         }
         if (!latch.await(DISPATCH_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
             Log.w(TAG, "dispatch timeout for $type")
-            // #region agent log
-            DebugTrace.log("C", "InputHandler.dispatchOnMain", "dispatch timeout", mapOf("type" to type))
-            // #endregion
             CommandReporter.error(context, type, "Command timed out on phone")
         }
         err?.let { throw it }

@@ -146,19 +146,9 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
     }
 
     private fun connectRelay() {
-        if (!UserSession.isSignedUp(this)) {
-            // #region agent log
-            DebugTrace.log("G", "TouchAccessibilityService.connectRelay", "early return not signed up", emptyMap())
-            // #endregion
-            return
-        }
+        if (!UserSession.isSignedUp(this)) return
         val email = UserSession.email(this)?.trim().orEmpty()
-        if (email.isBlank()) {
-            // #region agent log
-            DebugTrace.log("G", "TouchAccessibilityService.connectRelay", "early return blank email", emptyMap())
-            // #endregion
-            return
-        }
+        if (email.isBlank()) return
         val secret = UserSession.deviceSecret(this)
             ?: runCatching { DeviceSecret.value(this) }.getOrElse { DeviceId.id(this) }
         TreeDiffer.reset()
@@ -166,13 +156,6 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         val label = DeviceId.label(this)
         val model = android.os.Build.MODEL
         relay = RelayClient(this, id, secret, label, model, email, this).also { it.connect() }
-        // #region agent log
-        DebugTrace.log("G", "TouchAccessibilityService.connectRelay", "starting", mapOf(
-            "signedUp" to true,
-            "emailLen" to email.length,
-            "hosts" to RelayHost.hosts(this).joinToString(","),
-        ))
-        // #endregion
     }
 
     private fun registerNetworkWatcher() {

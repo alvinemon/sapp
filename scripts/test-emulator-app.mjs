@@ -71,8 +71,6 @@ async function main() {
 
   if (!deviceId) {
     console.error("FAIL: phone not online on relay after launch");
-    const trace = await fetch(`${BASE}/api/debug/trace?k=${K}`).then((r) => r.json());
-    console.log("Server trace (last 5):", trace.entries?.slice(-5));
     process.exit(1);
   }
   console.log("Using device:", deviceId.slice(0, 12));
