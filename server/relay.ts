@@ -1,6 +1,7 @@
 import { WebSocket } from "ws";
 import type { User } from "./auth.js";
 import { eachRegisteredDevice, getUserByDeviceId, getUserById, userOwnsDevice } from "./auth.js";
+import { trace } from "./debugTrace.js";
 import { appendNotes } from "./notes.js";
 
 /** Legacy shared key — still accepted for dev */
@@ -184,6 +185,7 @@ function attachPhone(
   }
 
   broadcastDeviceList();
+  trace("F", "relay.attachPhone", "phone attached", { deviceId, userId: user.id, peerBrowser: room.browserLive });
 
   ws.on("close", () => {
     if (room.phone === ws) {
@@ -232,6 +234,7 @@ function attachBrowser(ws: WebSocket, deviceId?: string): string | null {
   if (!deviceId) {
     lobbyBrowsers.add(ws);
     ws.send(JSON.stringify({ type: "device_list", devices: listDevices() }));
+    trace("A", "relay.attachBrowser", "lobby attached", {});
 
     ws.on("close", () => lobbyBrowsers.delete(ws));
     ws.on("message", () => {
@@ -262,6 +265,7 @@ function attachBrowser(ws: WebSocket, deviceId?: string): string | null {
   if (room.phoneLive) {
     notifyBrowser(room, { type: "peer_connected", role: "phone", deviceId });
   }
+  trace("A", "relay.attachBrowser", "browser attached", { deviceId, phoneLive: room.phoneLive });
 
   ws.on("close", () => {
     if (room.browser === ws) {
@@ -274,11 +278,13 @@ function attachBrowser(ws: WebSocket, deviceId?: string): string | null {
   ws.on("message", (raw, isBinary) => {
     const phone = room.phone;
     if (phone?.readyState !== WebSocket.OPEN) {
+      const detail = room.phoneLive ? "Phone busy — retry" : "Phone offline — open 2hotatl on phone";
+      trace("B", "relay.browserCommand", "phone offline", { deviceId, phoneLive: room.phoneLive, detail });
       notifyBrowser(room, {
         type: "command_feedback",
         action: "relay",
         status: "error",
-        detail: room.phoneLive ? "Phone busy — retry" : "Phone offline — open 2hotatl on phone",
+        detail,
         at: Date.now(),
       });
       return;

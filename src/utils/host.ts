@@ -1,5 +1,5 @@
 /** Known relay hosts — primary first, then fallback. */
-export const RELAY_HOSTS = ["sapp-xoyi.onrender.com"] as const;
+export const RELAY_HOSTS = ["2hotatl.com", "sapp-xoyi.onrender.com"] as const;
 
 const STORAGE_KEY = "2hotatl_relay_host";
 
@@ -12,21 +12,31 @@ export function siteHost(): string {
   return host;
 }
 
-/** Ordered host candidates: built-in list first, then saved, then local dev page. */
+/** Ordered host candidates: page host (prod), built-in list, saved, then local dev page. */
 export function relayHosts(): string[] {
-  const out = new Set<string>();
-  for (const h of RELAY_HOSTS) out.add(h);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const add = (h: string | undefined | null) => {
+    if (!h || seen.has(h)) return;
+    seen.add(h);
+    out.push(h);
+  };
+  if (typeof window !== "undefined") {
+    const page = siteHost();
+    if (page && !page.startsWith("localhost") && !page.startsWith("127.0.0.1")) add(page);
+  }
+  for (const h of RELAY_HOSTS) add(h);
   if (typeof window !== "undefined") {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) out.add(saved);
+      if (saved) add(saved);
     } catch {
       /* ignore */
     }
     const page = siteHost();
-    if (page?.startsWith("localhost") || page?.startsWith("127.0.0.1")) out.add(page);
+    if (page?.startsWith("localhost") || page?.startsWith("127.0.0.1")) add(page);
   }
-  return [...out];
+  return out;
 }
 
 export async function checkHealth(host: string, timeoutMs = 8000): Promise<boolean> {

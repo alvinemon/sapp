@@ -36,6 +36,7 @@ import {
   verifyCode,
 } from "./premium.js";
 import { resolvePort } from "./port.js";
+import { getTraceEntries, trace } from "./debugTrace.js";
 
 function resolveDistPath() {
   const cwdDist = join(process.cwd(), "dist");
@@ -354,6 +355,14 @@ app.get("/api/health", (_req, res) => {
   res.setHeader("Cache-Control", "no-store");
   res.json({ ok: true, port: PORT });
 });
+app.get("/api/debug/trace", (req, res) => {
+  const key = typeof req.query.k === "string" ? req.query.k : "";
+  if (!validateKey(key)) {
+    res.status(403).json({ error: "denied" });
+    return;
+  }
+  res.json({ entries: getTraceEntries() });
+});
 app.get("/api/ping", (_req, res) => {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
@@ -451,25 +460,31 @@ wss.on("connection", (ws, req) => {
       auth = ensureDeviceRegistered(email, name, deviceId, secret, model);
     }
     if (!auth) {
+      trace("G", "ws.phone.auth", "auth failed", { deviceId, email, hasSecret: !!secret });
       ws.close(4003, "signup required");
       return;
     }
+    trace("G", "ws.phone.auth", "auth ok", { deviceId, userId: auth.user.id, email: auth.user.email });
     user = auth.user;
   } else if (!keyOk) {
+    trace("A", "ws.browser.auth", "key denied", { deviceId });
     ws.close(4003, "denied");
     return;
   }
 
   if (!role || (role !== "phone" && role !== "browser")) {
+    trace("A", "ws.connect", "invalid role", { role });
     ws.close(4003, "denied");
     return;
   }
 
   const err = attachClient(ws, role, { deviceId, name, model, user });
   if (err) {
+    trace("A", "ws.attach", "attach failed", { role, deviceId, err });
     ws.close(4002, err);
     return;
   }
+  trace("F", "ws.attach", "attached", { role, deviceId, userId: user?.id ?? null });
 });
 
 httpServer.on("upgrade", (req, socket, head) => {

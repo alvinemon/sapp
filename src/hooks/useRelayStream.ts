@@ -4,7 +4,7 @@ import type { ActivityItem, ContactEntry, LocationUpdate, WifiPresenceUpdate } f
 import type { SessionNote } from "../types/notes";
 import type { DeviceInfo, UiTree, UiTreePatch } from "../types/uiTree";
 import { applyPatch, treeFromFull } from "../utils/treePatch";
-import { apiBase, checkHealth, pickRelayHost, relayHosts, saveRelayHost, wsBase } from "../utils/host";
+import { apiBase, checkHealth, pickRelayHost, RELAY_HOSTS, relayHosts, saveRelayHost, wsBase } from "../utils/host";
 
 const MAX_FEED = 200;
 const MAX_NOTES = 500;
@@ -52,7 +52,7 @@ export function useLiveStream() {
   deviceStateRef.current = deviceState;
 
   const wsRef = useRef<WebSocket | null>(null);
-  const relayHostRef = useRef("2hotatl.com");
+  const relayHostRef = useRef(RELAY_HOSTS[0]);
   const hostIndexRef = useRef(0);
   const lastPhoneAtRef = useRef(0);
   const disconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -471,6 +471,9 @@ export function useLiveStream() {
         detail: "Phone offline — open 2hotatl on the phone",
         at: Date.now(),
       });
+      // #region agent log
+      fetch("http://127.0.0.1:7764/ingest/e854a7d6-8db2-49e5-8f2f-515159bdc83b", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "d4ef46" }, body: JSON.stringify({ sessionId: "d4ef46", hypothesisId: "A", location: "useRelayStream.send", message: "send blocked phone offline", data: { action, deviceId }, timestamp: Date.now() }) }).catch(() => {});
+      // #endregion
       return false;
     }
     if (wsRef.current?.readyState !== WebSocket.OPEN) {
