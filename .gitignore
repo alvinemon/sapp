@@ -10,7 +10,13 @@ platform-tools.zip
 !.env.example
 android/local.properties
 server.cjs
-data/
+data/session-notes/
+data/users.json
+!data/family-library.json
+!data/free-catalog.json
+!data/payment-methods.json
+!data/premium-access.json
+!data/premium-content.json
 android/app/build/
 android/.gradle/
 

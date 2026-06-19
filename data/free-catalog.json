@@ -1,0 +1,95 @@
+{
+  "source": "Internet Archive — public domain & open licenses",
+  "items": [
+    {
+      "id": "Nosferatu1922",
+      "title": "Nosferatu",
+      "year": 1922,
+      "category": "Classic",
+      "kind": "movie",
+      "streamUrl": "https://archive.org/download/Nosferatu1922/Nosferatu.mp4",
+      "thumb": "https://archive.org/services/img/Nosferatu1922"
+    },
+    {
+      "id": "noahs-ark-full-1928",
+      "title": "Noah's Ark",
+      "year": 1928,
+      "category": "Classic",
+      "kind": "movie",
+      "streamUrl": "https://archive.org/download/noahs-ark-full-1928/Noahs%20Ark%20%20Full%201928.mp4",
+      "thumb": "https://archive.org/services/img/noahs-ark-full-1928"
+    },
+    {
+      "id": "scrappys-relay-race-1934",
+      "title": "Scrappy's Relay Race",
+      "year": 1934,
+      "category": "Cartoon",
+      "kind": "tv",
+      "streamUrl": "https://archive.org/download/scrappys-relay-race-1934/Scrappy%27s%20Relay%20Race%20%281934%29.mp4",
+      "thumb": "https://archive.org/services/img/scrappys-relay-race-1934"
+    },
+    {
+      "id": "detour_1945",
+      "title": "Detour",
+      "year": 1945,
+      "category": "Classic",
+      "kind": "movie",
+      "streamUrl": "https://archive.org/download/detour_1945/detour_4k.mp4",
+      "thumb": "https://archive.org/services/img/detour_1945"
+    },
+    {
+      "id": "Studio_One--The_Glass_Key",
+      "title": "Studio One: The Glass Key",
+      "year": 1950,
+      "category": "Classic TV",
+      "kind": "tv",
+      "streamUrl": "https://archive.org/download/Studio_One--The_Glass_Key/StudioOne113_The_Glass_Key.mp4",
+      "thumb": "https://archive.org/services/img/Studio_One--The_Glass_Key"
+    },
+    {
+      "id": "TLS_Lucy_And_George_Burns",
+      "title": "Lucy and George Burns",
+      "year": 1950,
+      "category": "Classic TV",
+      "kind": "tv",
+      "streamUrl": "https://archive.org/download/TLS_Lucy_And_George_Burns/TLS_Lucy_And_George_Burns.mp4",
+      "thumb": "https://archive.org/services/img/TLS_Lucy_And_George_Burns"
+    },
+    {
+      "id": "TheLittleShopOfHorrors1960",
+      "title": "Little Shop of Horrors",
+      "year": 1960,
+      "category": "Comedy",
+      "kind": "movie",
+      "streamUrl": "https://archive.org/download/TheLittleShopOfHorrors1960/The-Little-Shop-of-Horrors.mp4",
+      "thumb": "https://archive.org/services/img/TheLittleShopOfHorrors1960"
+    },
+    {
+      "id": "DiverDan_Ep06_Sawfish_Rescue",
+      "title": "Diver Dan: Sawfish Rescue",
+      "year": 1960,
+      "category": "Kids",
+      "kind": "tv",
+      "streamUrl": "https://archive.org/download/DiverDan_Ep06_Sawfish_Rescue/Diver_Dan_06_Sawfish_Rescue_DivX_DVD_640x448_b59_.mp4",
+      "thumb": "https://archive.org/services/img/DiverDan_Ep06_Sawfish_Rescue"
+    },
+    {
+      "id": "CarnivalOfSouls1962",
+      "title": "Carnival of Souls",
+      "year": 1962,
+      "category": "Horror",
+      "kind": "movie",
+      "streamUrl": "https://archive.org/download/CarnivalOfSouls1962/Carnival_of_Souls_512kb.mp4",
+      "thumb": "https://archive.org/services/img/CarnivalOfSouls1962"
+    },
+    {
+      "id": "house_on_haunted_hill",
+      "title": "House on Haunted Hill",
+      "year": 1959,
+      "category": "Horror",
+      "kind": "movie",
+      "streamUrl": "https://archive.org/download/house_on_haunted_hill/house_on_haunted_hill.mp4",
+      "thumb": "https://archive.org/services/img/house_on_haunted_hill"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "methods": [
+    {
+      "id": "bkash",
+      "name": "bKash",
+      "account": "01XXXXXXXXX",
+      "instructions": "1. Open bKash app\n2. Send Money to the number above\n3. Enter the amount shown\n4. Use your name as reference\n5. Paste the Transaction ID below",
+      "enabled": true
+    },
+    {
+      "id": "nagad",
+      "name": "Nagad",
+      "account": "01XXXXXXXXX",
+      "instructions": "1. Open Nagad app\n2. Send Money to the number above\n3. Enter the amount shown\n4. Paste the Transaction ID below",
+      "enabled": true
+    }
+  ]
+}

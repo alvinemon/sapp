@@ -1,0 +1,12 @@
+{
+  "title": "Family watch list",
+  "items": [
+    {
+      "id": "example1",
+      "title": "Example — replace me",
+      "description": "Upload your MP4 to Google Drive, share as Anyone with link, paste URL here.",
+      "thumbnail": "https://placehold.co/300x450/1a1a2e/8888aa?text=Your+Movie",
+      "url": "https://drive.google.com/file/d/REPLACE_FILE_ID/view"
+    }
+  ]
+}
