@@ -19,7 +19,9 @@ object ProximityGuard {
     private var userDisabledWhileAway = false
 
     fun isAutoEnabled(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO, false)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO, true)
+
+    fun isProximityActivated(): Boolean = proximityActivated
 
     fun setAutoEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

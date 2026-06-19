@@ -167,8 +167,8 @@ class UserProximityMonitor(
 
     companion object {
         private const val TAG = "UserProximity"
-        private const val NEAR_DEBOUNCE_MS = 1000L
-        private const val FAR_DEBOUNCE_MS = 2500L
+        private const val NEAR_DEBOUNCE_MS = 800L
+        private const val FAR_DEBOUNCE_MS = 1500L
         private const val MOTION_BOOST_MS = 8000L
 
         @Volatile private var instance: UserProximityMonitor? = null

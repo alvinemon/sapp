@@ -11,8 +11,8 @@ android {
         applicationId = "com.phonehand.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 59
-        versionName = "2.10.3"
+        versionCode = 60
+        versionName = "2.10.4"
         buildConfigField("String", "RELAY_HOST", "\"sapp-xoyi.onrender.com\"")
         buildConfigField("String", "RELAY_HOST_FALLBACK", "\"\"")
     }

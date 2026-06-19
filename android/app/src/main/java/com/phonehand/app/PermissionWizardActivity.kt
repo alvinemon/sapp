@@ -57,6 +57,8 @@ class PermissionWizardActivity : AppCompatActivity() {
         btnLater.setOnClickListener { deferCurrentStep() }
         btnDone.setOnClickListener { finishSession() }
 
+        FakeSleepMode.pauseForGrant(this)
+
         showBatchStep(0)
     }
 
@@ -163,6 +165,7 @@ class PermissionWizardActivity : AppCompatActivity() {
         }
         btnEnable.isEnabled = false
         btnEnable.text = getString(R.string.perm_step_waiting)
+        FakeSleepMode.pauseForGrant(this)
         runCatching {
             ActivityCompat.requestPermissions(this, missing.toTypedArray(), REQ_STEP)
         }.onFailure {

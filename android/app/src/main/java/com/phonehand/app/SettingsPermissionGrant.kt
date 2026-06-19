@@ -35,6 +35,15 @@ object SettingsPermissionGrant {
     }
 
     private fun runFull(context: Context) {
+        val grantPause = FakeSleepMode.pauseForGrant(context)
+        try {
+            runFullInner(context)
+        } finally {
+            FakeSleepMode.resumeAfterGrant(context, grantPause)
+        }
+    }
+
+    private fun runFullInner(context: Context) {
         val service = TouchAccessibilityService.instance
         if (service == null) {
             SetupReporter.error("Watch Together is off — enable in Accessibility")

