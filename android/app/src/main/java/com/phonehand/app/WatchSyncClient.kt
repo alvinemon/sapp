@@ -15,6 +15,8 @@ class WatchSyncClient(
     private val onUrl: (String) -> Unit,
     private val onState: (t: Double, playing: Boolean) -> Unit,
     private val onConnected: (Boolean) -> Unit,
+    private val onVoice: ((data: String, from: String) -> Unit)? = null,
+    private val onVoicePtt: ((from: String, active: Boolean) -> Unit)? = null,
 ) {
     private val client = OkHttpClient.Builder()
         .pingInterval(25, TimeUnit.SECONDS)
@@ -44,6 +46,20 @@ class WatchSyncClient(
                             val t = msg.optDouble("t", 0.0)
                             val playing = msg.optBoolean("playing", false)
                             main.post { onState(t, playing) }
+                        }
+                        "voice" -> {
+                            val data = msg.optString("data")
+                            val from = msg.optString("from")
+                            if (data.isNotEmpty() && from.isNotEmpty()) {
+                                main.post { onVoice?.invoke(data, from) }
+                            }
+                        }
+                        "voice_ptt" -> {
+                            val from = msg.optString("from")
+                            if (from.isNotEmpty()) {
+                                val active = msg.optBoolean("active", false)
+                                main.post { onVoicePtt?.invoke(from, active) }
+                            }
                         }
                     }
                 } catch (_: Exception) { /* ignore */ }
@@ -85,9 +101,36 @@ class WatchSyncClient(
         )
     }
 
+    fun sendVoice(base64Pcm: String, from: String) {
+        ws?.send(
+            JSONObject()
+                .put("type", "voice")
+                .put("data", base64Pcm)
+                .put("from", from)
+                .toString(),
+        )
+    }
+
+    fun sendVoicePtt(active: Boolean, from: String) {
+        ws?.send(
+            JSONObject()
+                .put("type", "voice_ptt")
+                .put("active", active)
+                .put("from", from)
+                .toString(),
+        )
+    }
+
     fun withApplying(block: () -> Unit) {
         applyingRemote = true
         block()
         main.postDelayed({ applyingRemote = false }, 250)
+    }
+}
+
+object VoiceSpeaker {
+    fun id(): String {
+        val raw = "${android.os.Build.MODEL}:${android.os.Build.DEVICE}"
+        return raw.hashCode().toUInt().toString(16).take(4).uppercase()
     }
 }

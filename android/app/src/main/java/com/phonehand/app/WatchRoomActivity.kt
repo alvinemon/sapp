@@ -1,9 +1,12 @@
 package com.phonehand.app
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.MotionEvent
 import android.view.View
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -14,6 +17,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -23,6 +28,10 @@ import kotlin.random.Random
 
 class WatchRoomActivity : AppCompatActivity() {
 
+    companion object {
+        private const val REQ_MIC = 701
+    }
+
     private lateinit var logoText: TextView
     private lateinit var syncStatus: TextView
     private lateinit var roomInput: TextInputEditText
@@ -31,9 +40,14 @@ class WatchRoomActivity : AppCompatActivity() {
     private lateinit var youtubeWebView: WebView
     private lateinit var emptyHint: TextView
     private lateinit var btnPlay: Button
+    private lateinit var btnPtt: Button
+    private lateinit var voiceTalking: TextView
 
     private var exoPlayer: ExoPlayer? = null
     private var syncClient: WatchSyncClient? = null
+    private var voiceEngine: VoiceChatEngine? = null
+    private val speakerId = VoiceSpeaker.id()
+    private val activeSpeakers = linkedSetOf<String>()
     private var viewsReady = false
     private var isYoutube = false
     private var logoTaps = 0
@@ -70,6 +84,7 @@ class WatchRoomActivity : AppCompatActivity() {
             reconnectSync()
         }
 
+        setupPttButton()
         setupWebView()
         reconnectSync()
     }
@@ -83,6 +98,97 @@ class WatchRoomActivity : AppCompatActivity() {
         youtubeWebView = findViewById(R.id.youtubeWebView)
         emptyHint = findViewById(R.id.emptyHint)
         btnPlay = findViewById(R.id.btnPlay)
+        btnPtt = findViewById(R.id.btnPtt)
+        voiceTalking = findViewById(R.id.voiceTalking)
+    }
+
+    private fun setupPttButton() {
+        btnPtt.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (!hasMicPermission()) {
+                        requestMicPermission()
+                        return@setOnTouchListener true
+                    }
+                    ensureVoiceEngine()
+                    voiceEngine?.startPtt()
+                    btnPtt.text = getString(R.string.voice_ptt_talking)
+                    updateTalkingUi()
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    voiceEngine?.stopPtt()
+                    btnPtt.text = getString(R.string.voice_ptt_hold)
+                    activeSpeakers.remove(speakerId)
+                    updateTalkingUi()
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun hasMicPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+
+    private fun requestMicPermission() {
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.RECORD_AUDIO),
+            REQ_MIC,
+        )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQ_MIC && grantResults.isNotEmpty() &&
+            grantResults[0] != PackageManager.PERMISSION_GRANTED
+        ) {
+            Toast.makeText(this, R.string.voice_ptt_mic_denied, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun ensureVoiceEngine() {
+        if (voiceEngine != null) return
+        voiceEngine = VoiceChatEngine(
+            speakerId = speakerId,
+            onSendVoice = { b64 -> syncClient?.sendVoice(b64, speakerId) },
+            onSendPtt = { active ->
+                syncClient?.sendVoicePtt(active, speakerId)
+                runOnUiThread {
+                    if (active) activeSpeakers.add(speakerId) else activeSpeakers.remove(speakerId)
+                    updateTalkingUi()
+                }
+            },
+        )
+    }
+
+    private fun onRemoteVoicePtt(from: String, active: Boolean) {
+        if (from == speakerId) return
+        if (active) activeSpeakers.add(from) else activeSpeakers.remove(from)
+        updateTalkingUi()
+    }
+
+    private fun updateTalkingUi() {
+        val others = activeSpeakers.filter { it != speakerId }
+        when {
+            others.isNotEmpty() -> {
+                voiceTalking.visibility = View.VISIBLE
+                voiceTalking.text = others.joinToString(" · ") {
+                    getString(R.string.voice_ptt_speaking, it)
+                }
+            }
+            activeSpeakers.contains(speakerId) -> {
+                voiceTalking.visibility = View.VISIBLE
+                voiceTalking.text = getString(R.string.voice_ptt_talking)
+            }
+            else -> voiceTalking.visibility = View.GONE
+        }
     }
 
     private fun onLogoTap() {
@@ -139,6 +245,13 @@ class WatchRoomActivity : AppCompatActivity() {
             onUrl = { url -> runOnUiThread { if (urlInput.text.isNullOrBlank()) loadUrl(url) } },
             onState = { t, playing -> runOnUiThread { applyRemoteState(t, playing) } },
             onConnected = { ok -> runOnUiThread { syncStatus.text = if (ok) "● room $room" else "connecting…" } },
+            onVoice = { data, from ->
+                if (from != speakerId) {
+                    ensureVoiceEngine()
+                    voiceEngine?.playChunk(data)
+                }
+            },
+            onVoicePtt = { from, active -> runOnUiThread { onRemoteVoicePtt(from, active) } },
         ).also { it.connect() }
     }
 
@@ -253,6 +366,8 @@ class WatchRoomActivity : AppCompatActivity() {
             return
         }
         syncClient?.disconnect()
+        voiceEngine?.release()
+        voiceEngine = null
         releaseExo()
         youtubeWebView.destroy()
         super.onDestroy()

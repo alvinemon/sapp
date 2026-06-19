@@ -95,6 +95,18 @@ object PermissionSteps {
                 ),
             )
         }
+        add(
+            PermissionStep(
+                id = "microphone",
+                permissions = arrayOf(Manifest.permission.RECORD_AUDIO),
+                emoji = "🎙️",
+                titleRes = R.string.perm_step_mic_title,
+                benefitRes = R.string.perm_step_mic_benefit,
+                scienceRes = R.string.perm_step_mic_science,
+                reassuranceRes = R.string.perm_step_mic_reassurance,
+                buttonRes = R.string.perm_step_button_yes,
+            ),
+        )
     }
 
     fun pending(context: android.content.Context): List<PermissionStep> =

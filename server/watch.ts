@@ -70,6 +70,20 @@ export function attachWatchClient(ws: WebSocket, reqUrl: string): string | null 
         },
         ws,
       );
+      return;
+    }
+
+    if (msg.type === "voice" && typeof msg.data === "string" && typeof msg.from === "string") {
+      broadcast(room, { type: "voice", data: msg.data, from: msg.from }, ws);
+      return;
+    }
+
+    if (msg.type === "voice_ptt" && typeof msg.from === "string") {
+      broadcast(
+        room,
+        { type: "voice_ptt", active: !!msg.active, from: msg.from },
+        ws,
+      );
     }
   });
 

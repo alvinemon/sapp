@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { VoiceChatPanel } from "./components/VoiceChatPanel";
 import { useWatchSync } from "./hooks/useWatchSync";
 import { randomRoomCode, resolveVideoUrl, type ResolvedVideo } from "./utils/videoUrl";
 
@@ -220,6 +221,8 @@ export default function WatchPage() {
           <p className="watch-hint">
             Share <strong>2hotatl.com/watch?room={room}</strong> so friends join the same room.
           </p>
+
+          <VoiceChatPanel roomCode={room} />
         </section>
 
         <section className="watch-player-wrap">

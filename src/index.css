@@ -1942,6 +1942,108 @@ input[type="range"] {
   min-width: 3rem;
 }
 
+/* Voice chat */
+.voice-panel {
+  margin-top: 0.5rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.voice-panel-compact {
+  padding: 0.75rem;
+}
+
+.voice-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.voice-panel-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.voice-panel-status {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.voice-panel-status.voice-live {
+  color: var(--green, #4ade80);
+}
+
+.voice-panel-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.voice-panel-error {
+  font-size: 0.8rem;
+  color: #ffb450;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.voice-retry,
+.voice-enable-mic {
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.voice-enable-mic {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.voice-ptt {
+  padding: 0.85rem 1.25rem;
+  border-radius: 10px;
+  border: 2px solid var(--accent);
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  transition: background 0.1s, transform 0.1s;
+}
+
+.voice-ptt:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.voice-ptt-active,
+.voice-ptt:active:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+  transform: scale(0.98);
+}
+
+.voice-talking {
+  font-size: 0.85rem;
+  color: var(--pink, #f472b6);
+  margin: 0;
+  min-height: 1.2em;
+}
+
 .placeholder-sub {
   font-size: 0.8rem;
   color: var(--muted);
