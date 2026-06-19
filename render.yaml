@@ -11,7 +11,7 @@ services:
     name: 2hotatl-relay
     runtime: node
     plan: free
-    buildCommand: npm install --include=dev && npm run build && node scripts/build-cjs.mjs
+    buildCommand: bash scripts/render-build.sh
     startCommand: node server.cjs
     healthCheckPath: /api/health
     envVars:
