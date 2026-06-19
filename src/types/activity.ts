@@ -35,5 +35,14 @@ export interface WifiPresenceUpdate {
   peopleEstimate: number;
   ssid?: string;
   peers?: WifiPeer[];
+  waveScore?: number;
+  motionDetected?: boolean;
+  rssiStdDev?: number;
+  rssiSwing?: number;
+  motionBursts?: number;
+  connectedRssi?: number;
+  waveSeries?: number[];
+  peopleFromWaves?: number;
+  pulse?: boolean;
   at?: number;
 }

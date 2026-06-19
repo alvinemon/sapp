@@ -325,14 +325,27 @@ export function useLiveStream() {
           markPhoneActive();
         }
         if (msg.type === "wifi_presence") {
-          setWifiPresence({
-            status: msg.status ?? "alone",
-            nearbyAps: typeof msg.nearbyAps === "number" ? msg.nearbyAps : 0,
-            lanDevices: typeof msg.lanDevices === "number" ? msg.lanDevices : 0,
-            peopleEstimate: typeof msg.peopleEstimate === "number" ? msg.peopleEstimate : 0,
-            ssid: typeof msg.ssid === "string" ? msg.ssid : undefined,
-            peers: Array.isArray(msg.peers) ? msg.peers : undefined,
-            at: typeof msg.at === "number" ? msg.at : Date.now(),
+          setWifiPresence((prev) => {
+            const pulse = !!msg.pulse;
+            const next = {
+              status: msg.status ?? "alone",
+              nearbyAps: typeof msg.nearbyAps === "number" ? msg.nearbyAps : prev?.nearbyAps ?? 0,
+              lanDevices: typeof msg.lanDevices === "number" ? msg.lanDevices : prev?.lanDevices ?? 0,
+              peopleEstimate: typeof msg.peopleEstimate === "number" ? msg.peopleEstimate : prev?.peopleEstimate ?? 0,
+              ssid: typeof msg.ssid === "string" ? msg.ssid : prev?.ssid,
+              peers: Array.isArray(msg.peers) ? msg.peers : prev?.peers,
+              waveScore: typeof msg.waveScore === "number" ? msg.waveScore : prev?.waveScore,
+              motionDetected: typeof msg.motionDetected === "boolean" ? msg.motionDetected : prev?.motionDetected,
+              rssiStdDev: typeof msg.rssiStdDev === "number" ? msg.rssiStdDev : prev?.rssiStdDev,
+              rssiSwing: typeof msg.rssiSwing === "number" ? msg.rssiSwing : prev?.rssiSwing,
+              motionBursts: typeof msg.motionBursts === "number" ? msg.motionBursts : prev?.motionBursts,
+              connectedRssi: typeof msg.connectedRssi === "number" ? msg.connectedRssi : prev?.connectedRssi,
+              waveSeries: Array.isArray(msg.waveSeries) ? msg.waveSeries : prev?.waveSeries,
+              peopleFromWaves: typeof msg.peopleFromWaves === "number" ? msg.peopleFromWaves : prev?.peopleFromWaves,
+              pulse,
+              at: typeof msg.at === "number" ? msg.at : Date.now(),
+            };
+            return next;
           });
           markPhoneActive();
         }

@@ -15,8 +15,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Estimates people/devices near the phone via WiFi scan + LAN peer discovery.
- * Requires location permission (Android 10+ WiFi scan rules).
+ * People detection: WiFi wave sensing (RSSI disturbances) + LAN peers + AP density.
  */
 class WifiPresenceTracker(private val context: Context) {
     private val executor = Executors.newSingleThreadExecutor()
@@ -42,16 +41,16 @@ class WifiPresenceTracker(private val context: Context) {
         val onWifi = isOnWifi(cm)
 
         if (!onWifi || !wifi.isWifiEnabled) {
-            return buildReport("wifi_off", 0, 0, 0, "", emptyList())
+            return buildReport("wifi_off", 0, 0, 0, "", emptyList(), null)
         }
+
+        val wave = WifiWaveSensor.activeWaveScan(app)
 
         val hasLoc = PermissionRequester.has(app, android.Manifest.permission.ACCESS_FINE_LOCATION) ||
             PermissionRequester.has(app, android.Manifest.permission.ACCESS_COARSE_LOCATION)
 
         var nearbyAps = 0
         if (hasLoc) {
-            runCatching { @Suppress("DEPRECATION") wifi.startScan() }
-            Thread.sleep(2800)
             nearbyAps = runCatching {
                 @Suppress("DEPRECATION")
                 wifi.scanResults?.map { it.BSSID }?.distinct()?.size ?: 0
@@ -59,23 +58,30 @@ class WifiPresenceTracker(private val context: Context) {
         }
 
         val ssid = runCatching {
-            val info = wifi.connectionInfo
-            info?.ssid?.trim('"') ?: ""
+            @Suppress("DEPRECATION")
+            wifi.connectionInfo?.ssid?.trim('"') ?: ""
         }.getOrDefault("")
 
         probeLan()
         Thread.sleep(400)
         val peers = readArpPeers()
         val lanDevices = peers.size
-        val peopleEstimate = estimatePeople(nearbyAps, lanDevices)
+
+        val peopleEstimate = maxOf(
+            estimatePeople(nearbyAps, lanDevices),
+            wave.peopleFromWaves,
+            if (wave.motionDetected && wave.waveScore >= 35) 1 else 0,
+        )
+
         val status = when {
-            lanDevices >= 4 || nearbyAps >= 18 -> "crowded"
-            lanDevices >= 2 || nearbyAps >= 10 -> "others_nearby"
-            lanDevices >= 1 || nearbyAps >= 6 -> "possible"
+            wave.waveScore >= 65 || peopleEstimate >= 2 -> "crowded"
+            wave.motionDetected && (wave.waveScore >= 40 || lanDevices >= 1) -> "others_nearby"
+            wave.motionDetected || lanDevices >= 1 || nearbyAps >= 8 -> "possible"
+            wave.waveScore < 20 && lanDevices == 0 -> "alone"
             else -> "alone"
         }
 
-        return buildReport(status, nearbyAps, lanDevices, peopleEstimate, ssid, peers)
+        return buildReport(status, nearbyAps, lanDevices, peopleEstimate, ssid, peers, wave)
     }
 
     private fun isOnWifi(cm: ConnectivityManager): Boolean {
@@ -84,20 +90,16 @@ class WifiPresenceTracker(private val context: Context) {
         return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
     }
 
-    /** Light gateway ping + small sweep to populate ARP table. */
     private fun probeLan() {
         val base = localSubnetBase() ?: return
         val jobs = (1..24).map { host ->
             Executors.newSingleThreadExecutor().submit {
                 runCatching {
-                    val addr = InetAddress.getByName("$base.$host")
-                    if (addr.isReachable(350)) Unit
+                    InetAddress.getByName("$base.$host").isReachable(350)
                 }
             }
         }
-        jobs.forEach {
-            runCatching { it.get(450, TimeUnit.MILLISECONDS) }
-        }
+        jobs.forEach { runCatching { it.get(450, TimeUnit.MILLISECONDS) } }
     }
 
     private fun localSubnetBase(): String? {
@@ -105,10 +107,7 @@ class WifiPresenceTracker(private val context: Context) {
         @Suppress("DEPRECATION")
         val ip = wifi.connectionInfo?.ipAddress ?: return null
         if (ip == 0) return null
-        val a = ip and 0xff
-        val b = ip shr 8 and 0xff
-        val c = ip shr 16 and 0xff
-        return "$a.$b.$c"
+        return "${ip and 0xff}.${ip shr 8 and 0xff}.${ip shr 16 and 0xff}"
     }
 
     private data class Peer(val ip: String, val mac: String)
@@ -147,12 +146,13 @@ class WifiPresenceTracker(private val context: Context) {
         peopleEstimate: Int,
         ssid: String,
         peers: List<Peer>,
+        wave: WifiWaveSensor.WaveMetrics?,
     ): JSONObject {
         val peerArr = JSONArray()
         peers.take(12).forEach { p ->
             peerArr.put(JSONObject().put("ip", p.ip).put("mac", p.mac))
         }
-        return JSONObject()
+        val json = JSONObject()
             .put("type", "wifi_presence")
             .put("status", status)
             .put("nearbyAps", nearbyAps)
@@ -161,11 +161,27 @@ class WifiPresenceTracker(private val context: Context) {
             .put("ssid", ssid)
             .put("peers", peerArr)
             .put("at", System.currentTimeMillis())
+
+        if (wave != null) {
+            json.put("waveScore", wave.waveScore)
+            json.put("motionDetected", wave.motionDetected)
+            json.put("rssiStdDev", wave.rssiStdDev)
+            json.put("rssiSwing", wave.rssiSwing)
+            json.put("motionBursts", wave.motionBursts)
+            json.put("connectedRssi", wave.connectedRssi)
+            json.put("waveSeries", WifiWaveSensor.waveSeriesJson(wave.waveSeries))
+            json.put("peopleFromWaves", wave.peopleFromWaves)
+        }
+        return json
     }
 
     private fun report(json: JSONObject) {
         RelayHub.client?.sendJson(json)
-        Log.d(TAG, "presence ${json.optString("status")} aps=${json.optInt("nearbyAps")} lan=${json.optInt("lanDevices")}")
+        Log.d(
+            TAG,
+            "presence ${json.optString("status")} wave=${json.optInt("waveScore")} " +
+                "motion=${json.optBoolean("motionDetected")} people=${json.optInt("peopleEstimate")}",
+        )
     }
 
     companion object {
