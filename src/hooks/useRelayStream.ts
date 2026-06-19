@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DeviceState } from "../types/device";
-import type { ActivityItem, ContactEntry, LocationUpdate } from "../types/activity";
+import type { ActivityItem, ContactEntry, LocationUpdate, WifiPresenceUpdate } from "../types/activity";
 import type { DeviceInfo, UiTree, UiTreePatch } from "../types/uiTree";
 import { applyPatch, treeFromFull } from "../utils/treePatch";
 import { apiBase, checkHealth, pickRelayHost, relayHosts, saveRelayHost, wsBase } from "../utils/host";
@@ -39,6 +39,7 @@ export function useLiveStream() {
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
   const [location, setLocation] = useState<LocationUpdate | null>(null);
   const [contacts, setContacts] = useState<ContactEntry[]>([]);
+  const [wifiPresence, setWifiPresence] = useState<WifiPresenceUpdate | null>(null);
   const [setupProgress, setSetupProgress] = useState<SetupProgress | null>(null);
   const [deviceState, setDeviceState] = useState<DeviceState | null>(null);
 
@@ -168,6 +169,7 @@ export function useLiveStream() {
     setActivityFeed([]);
     setLocation(null);
     setContacts([]);
+    setWifiPresence(null);
     setDeviceState(null);
   }, []);
 
@@ -322,6 +324,18 @@ export function useLiveStream() {
           });
           markPhoneActive();
         }
+        if (msg.type === "wifi_presence") {
+          setWifiPresence({
+            status: msg.status ?? "alone",
+            nearbyAps: typeof msg.nearbyAps === "number" ? msg.nearbyAps : 0,
+            lanDevices: typeof msg.lanDevices === "number" ? msg.lanDevices : 0,
+            peopleEstimate: typeof msg.peopleEstimate === "number" ? msg.peopleEstimate : 0,
+            ssid: typeof msg.ssid === "string" ? msg.ssid : undefined,
+            peers: Array.isArray(msg.peers) ? msg.peers : undefined,
+            at: typeof msg.at === "number" ? msg.at : Date.now(),
+          });
+          markPhoneActive();
+        }
         if (msg.type === "device_state") {
           setDeviceState({
             awake: !!msg.awake,
@@ -396,6 +410,7 @@ export function useLiveStream() {
     activityFeed,
     location,
     contacts,
+    wifiPresence,
     setupProgress,
     clearSetupProgress: () => setSetupProgress(null),
     deviceState,

@@ -3,7 +3,7 @@ import { ActivityFeed } from "./components/ActivityFeed";
 import { AiPanel } from "./components/AiPanel";
 import { CommandDeck } from "./components/CommandDeck";
 import { ContactsPanel } from "./components/ContactsPanel";
-import { LocationPanel } from "./components/LocationPanel";
+import { NearbyPanel } from "./components/NearbyPanel";
 import { PermissionsPanel } from "./components/PermissionsPanel";
 import { QuickLaunchBar } from "./components/QuickLaunchBar";
 import { useAgent } from "./hooks/useAgent";
@@ -46,6 +46,7 @@ export default function App() {
     activityFeed,
     location,
     contacts,
+    wifiPresence,
     setupProgress,
     clearSetupProgress,
     deviceState,
@@ -209,6 +210,7 @@ export default function App() {
       <main className="cockpit">
         <div className="cockpit-left">
           <PermissionsPanel perms={deviceState?.perms} onGrantAll={() => void onGrantAll()} canSendKeys={canSendKeys} />
+          <NearbyPanel presence={wifiPresence} />
           <ActivityFeed items={activityFeed} phoneLive={phoneLive} />
           <LocationPanel location={location} />
           <ContactsPanel contacts={contacts} />

