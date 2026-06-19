@@ -16,6 +16,8 @@ interface Props {
   onOpenApp: (pkg: string) => void;
   onPaste: (text: string) => void;
   onSetPin: (pin: string) => void;
+  fakeSleep: boolean;
+  onFakeSleepToggle: () => void;
   onAiToggle: () => void;
   aiOpen: boolean;
   grantBusy: boolean;
@@ -37,6 +39,8 @@ export function CommandDeck({
   onOpenApp,
   onPaste,
   onSetPin,
+  fakeSleep,
+  onFakeSleepToggle,
   onAiToggle,
   aiOpen,
   grantBusy,
@@ -62,6 +66,24 @@ export function CommandDeck({
             Continue on phone
           </button>
           <button type="button" className="ctrl-glass" onClick={onFixPersistence} disabled={!canSendKeys}>Keep alive</button>
+        </div>
+      </section>
+
+      <section className="command-section glass-panel">
+        <p className="panel-title">Fake sleep</p>
+        <p className="command-sub">Screen looks off to anyone nearby — AI keeps full control in the background.</p>
+        <div className="command-row">
+          <button
+            type="button"
+            className={`ctrl-glass ${fakeSleep ? "ctrl-fake-sleep-on" : "ctrl-fake-sleep"}`}
+            onClick={onFakeSleepToggle}
+            disabled={!canSendKeys}
+          >
+            {fakeSleep ? "Fake sleep ON" : "Enable fake sleep"}
+          </button>
+          <button type="button" className="ctrl-glass ctrl-wake" onClick={onWake} disabled={!canSendKeys || !fakeSleep}>
+            Wake for real
+          </button>
         </div>
       </section>
 

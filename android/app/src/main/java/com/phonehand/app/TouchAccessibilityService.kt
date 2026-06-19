@@ -31,6 +31,8 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
     private var lastAuthRepairAt = 0L
 
     @Volatile var lastTreeJson: org.json.JSONObject? = null
+    lateinit var fakeSleepOverlay: FakeSleepOverlay
+        private set
 
     private val treeLoop = object : Runnable {
         override fun run() {
@@ -61,6 +63,8 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         RelayHub.screenHeight = metrics.heightPixels
         registerNetworkWatcher()
         UserSession.setAccessibilityWasEnabled(this, true)
+        fakeSleepOverlay = FakeSleepOverlay(this)
+        if (FakeSleepMode.isEnabled(this)) fakeSleepOverlay.show()
         runCatching { ensureRelay() }
     }
 
@@ -72,6 +76,7 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         RelayHub.client = null
         RelayHub.live = false
         stopStreaming()
+        if (::fakeSleepOverlay.isInitialized) fakeSleepOverlay.destroy()
         if (InputHandler.service === this) InputHandler.service = null
         if (instance === this) instance = null
         if (UserSession.isSignedUp(this)) {

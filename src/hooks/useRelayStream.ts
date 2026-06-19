@@ -409,6 +409,7 @@ export function useLiveStream() {
         if (msg.type === "device_state") {
           setDeviceState({
             awake: !!msg.awake,
+            fakeSleep: !!msg.fake_sleep,
             locked: !!msg.locked,
             ready: !!msg.ready,
             hasPin: !!msg.has_pin,

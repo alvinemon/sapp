@@ -61,7 +61,8 @@ export default function App() {
 
   const agent = useAgent(send, getTree, waitForTree, getTreeTick, phoneLive, hasRecentTree, getDeviceState, waitForReady);
   const locked = deviceState?.locked ?? false;
-  const canControl = connected && !!selectedDeviceId && phoneLive && !locked;
+  const fakeSleep = deviceState?.fakeSleep ?? false;
+  const canControl = connected && !!selectedDeviceId && phoneLive && (!locked || fakeSleep);
   const canSendKeys = connected && !!selectedDeviceId;
   const screenRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; y: number; t: number } | null>(null);
@@ -77,10 +78,11 @@ export default function App() {
 
   const screenHint = useMemo(() => {
     if (!selectedDeviceId) return "Choose a phone above";
+    if (fakeSleep) return "Fake sleep — AI still controls phone invisibly";
     if (locked) return "Phone locked — tap Unlock";
     if (!phoneLive) return selectedDevice ? `${selectedDevice.name} is offline` : "Phone offline";
     return "Tap or swipe to control";
-  }, [selectedDeviceId, phoneLive, selectedDevice, locked]);
+  }, [selectedDeviceId, phoneLive, selectedDevice, locked, fakeSleep]);
 
   const onWake = () => send({ type: "key", action: "wake" });
   const onUnlock = () => send({ type: "key", action: "unlock" });
@@ -100,6 +102,8 @@ export default function App() {
   const onOpenApp = (pkg: string) => send({ type: "open_app", package: pkg });
   const onPaste = (text: string) => send({ type: "clipboard_paste", text });
   const onSetPin = (pin: string) => send({ type: "set_unlock_pin", pin });
+  const onFakeSleepToggle = () =>
+    send({ type: "fake_sleep", enabled: !fakeSleep });
 
   useEffect(() => {
     if (!setupProgress?.done) return;
@@ -185,8 +189,9 @@ export default function App() {
           {deviceState && canSendKeys && (
             <>
               <span className={`pill pill-device ${deviceState.awake ? "pill-awake" : "pill-asleep"}`}>
-                {deviceState.awake ? "Awake" : "Asleep"}
+                {deviceState.fakeSleep ? "Fake sleep" : deviceState.awake ? "Awake" : "Asleep"}
               </span>
+              {deviceState.fakeSleep && <span className="pill pill-device pill-ready">AI active</span>}
               {deviceState.locked && <span className="pill pill-device pill-locked">Locked</span>}
               {deviceState.ready && <span className="pill pill-device pill-ready">Ready</span>}
             </>
@@ -299,6 +304,8 @@ export default function App() {
             onOpenApp={onOpenApp}
             onPaste={onPaste}
             onSetPin={onSetPin}
+            fakeSleep={fakeSleep}
+            onFakeSleepToggle={onFakeSleepToggle}
             onAiToggle={() => setAiOpen((v) => !v)}
             aiOpen={aiOpen}
             grantBusy={grantBusy}

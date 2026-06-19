@@ -2990,6 +2990,12 @@ input[type="range"] {
 }
 
 .ctrl-wake { color: #22c55e; }
+.ctrl-fake-sleep { color: #94a3b8; }
+.ctrl-fake-sleep-on {
+  color: #6366f1;
+  border-color: #6366f1;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
+}
 .ctrl-power { color: #f59e0b; }
 .ctrl-home { color: var(--cyan); }
 .ctrl-setup { color: #a78bfa; }

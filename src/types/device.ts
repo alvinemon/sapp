@@ -9,6 +9,7 @@ export type DevicePermissions = {
 
 export type DeviceState = {
   awake: boolean;
+  fakeSleep?: boolean;
   locked: boolean;
   ready: boolean;
   hasPin?: boolean;

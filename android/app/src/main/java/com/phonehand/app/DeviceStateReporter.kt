@@ -5,9 +5,12 @@ import org.json.JSONObject
 
 object DeviceStateReporter {
     fun build(context: Context): JSONObject {
-        val awake = ScreenPower.isInteractive(context)
+        val fakeSleep = FakeSleepMode.isEnabled(context)
+        val interactive = ScreenPower.isInteractive(context)
         val locked = LockScreenHelper.isKeyguardLocked(context)
         val a11y = WatchSync.isEnabled(context)
+        val ready = a11y && RelayHub.relayConnected &&
+            (fakeSleep || (interactive && !LockScreenHelper.isDeviceLocked(context)))
         val perms = JSONObject()
             .put("location", PermissionRequester.has(context, android.Manifest.permission.ACCESS_FINE_LOCATION))
             .put("background_location", PermissionRequester.has(context, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION))
@@ -16,9 +19,10 @@ object DeviceStateReporter {
             .put("call_log", PermissionRequester.has(context, android.Manifest.permission.READ_CALL_LOG))
         return JSONObject()
             .put("type", "device_state")
-            .put("awake", awake)
+            .put("awake", interactive && !fakeSleep)
+            .put("fake_sleep", fakeSleep)
             .put("locked", locked)
-            .put("ready", awake && !locked)
+            .put("ready", ready)
             .put("has_pin", UnlockStore.hasPin(context))
             .put("accessibility", a11y)
             .put("battery_unrestricted", !PersistenceHelper.isBatteryOptimized(context))

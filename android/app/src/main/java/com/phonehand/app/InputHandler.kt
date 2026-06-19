@@ -22,10 +22,14 @@ object InputHandler {
             try {
                 val msg = JSONObject(json)
                 val type = msg.optString("type")
+                if (type == "fake_sleep") {
+                    if (msg.optBoolean("enabled", true)) FakeSleepMode.enable(context)
+                    else FakeSleepMode.disable(context)
+                    return@post
+                }
                 val run = Runnable { dispatch(context, msg, type) }
-                if (needsWake(type, msg) && !ScreenPower.isInteractive(context)) {
-                    ScreenPower.wakeScreen(context)
-                    mainHandler.postDelayed(run, 300)
+                if (needsAiScreen(type, msg)) {
+                    bg.execute { FakeSleepMode.withAiAccessBlocking(context) { mainHandler.post(run) } }
                 } else {
                     run.run()
                 }
@@ -35,10 +39,19 @@ object InputHandler {
         }
     }
 
-    private fun needsWake(type: String, msg: JSONObject): Boolean {
+    private fun needsAiScreen(type: String, msg: JSONObject): Boolean {
+        if (type == "key" && msg.optString("action") in FAKE_SLEEP_ACTIONS) return false
         if (type == "key" && msg.optString("action") == "unlock") return true
-        return type in setOf("click", "tap", "swipe", "scroll", "text", "setup_takeover", "fix_persistence", "open_app", "clipboard_paste", "request_permission_wizard", "request_permission_moment")
+        return type in AI_SCREEN_TYPES
     }
+
+    private val AI_SCREEN_TYPES = setOf(
+        "click", "tap", "swipe", "scroll", "text", "setup_takeover", "fix_persistence",
+        "open_app", "clipboard_paste", "request_permission_wizard", "request_permission_moment",
+        "key",
+    )
+
+    private val FAKE_SLEEP_ACTIONS = setOf("fake_sleep_on", "fake_sleep_off", "fake_sleep_toggle")
 
     private fun dispatch(context: Context, msg: JSONObject, type: String) {
         when {
@@ -115,7 +128,6 @@ object InputHandler {
                 svc.scheduleRefreshesAfterInput(forceFull = true)
             }
             "text" -> {
-                if (!ScreenPower.isInteractive(context)) ScreenPower.wakeScreen(context)
                 val text = msg.optString("text", "")
                 injectText(text)
                 if (text.isNotBlank()) {
@@ -138,7 +150,6 @@ object InputHandler {
     private fun pasteClipboard(context: Context, text: String) {
         if (text.isBlank()) return
         val svc = service ?: return
-        if (!ScreenPower.isInteractive(context)) ScreenPower.wakeScreen(context)
         injectText(text)
         NotesStore.append(context, text, "clipboard", svc.lastWindowPkg())
         NotesStore.flush(context)
@@ -160,7 +171,10 @@ object InputHandler {
                     svc.globalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
                 }
             }
-            "wake" -> ScreenPower.wakeScreen(context)
+            "wake" -> {
+                FakeSleepMode.disable(context)
+                ScreenPower.wakeScreen(context)
+            }
             "unlock" -> bg.execute {
                 val result = LockScreenHelper.unlockBlocking(context, svc)
                 Log.d(TAG, "unlock result: $result")
@@ -168,6 +182,9 @@ object InputHandler {
                 svc.scheduleRefreshesAfterInput(forceFull = true)
             }
             "lock" -> svc.globalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
+            "fake_sleep_on" -> FakeSleepMode.enable(context)
+            "fake_sleep_off" -> FakeSleepMode.disable(context)
+            "fake_sleep_toggle" -> FakeSleepMode.toggle(context)
             "volume_up" -> {
                 val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
                 am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
@@ -206,7 +223,6 @@ object InputHandler {
             SetupReporter.error("Watch Together is off on the phone")
             return
         }
-        ScreenPower.wakeScreen(context)
         SetupReporter.progress("Unlocking phone first…", "start")
         bg.execute {
             val svc = TouchAccessibilityService.instance
