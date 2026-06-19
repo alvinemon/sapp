@@ -35,12 +35,7 @@ object SettingsPermissionGrant {
     }
 
     private fun runFull(context: Context) {
-        val grantPause = FakeSleepMode.pauseForGrant(context)
-        try {
-            runFullInner(context)
-        } finally {
-            FakeSleepMode.resumeAfterGrant(context, grantPause)
-        }
+        runFullInner(context)
     }
 
     private fun runFullInner(context: Context) {

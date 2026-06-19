@@ -26,34 +26,21 @@ object InputHandler {
                 val msg = JSONObject(json)
                 val type = msg.optString("type")
                 // #region agent log
-                DebugTrace.log("B", "InputHandler.handle", "command received", mapOf("type" to type, "a11y" to WatchSync.isEnabled(context), "service" to (service != null), "fakeSleep" to FakeSleepMode.isEnabled(context)))
+                DebugTrace.log("B", "InputHandler.handle", "command received", mapOf("type" to type, "a11y" to WatchSync.isEnabled(context), "service" to (service != null)))
                 // #endregion
                 when (type) {
-                    "fake_sleep" -> {
-                        if (msg.optBoolean("enabled", true)) FakeSleepMode.enable(context)
-                        else FakeSleepMode.disable(context)
-                        CommandReporter.ok(context, "fake_sleep")
-                        return@post
-                    }
-                    "proximity_auto_sleep" -> {
-                        handleProximityAutoSleep(context, msg)
-                        CommandReporter.ok(context, "proximity_auto_sleep")
-                        return@post
-                    }
                     "brain_command" -> {
                         bg.execute {
-                            FakeSleepMode.withAiAccessBlocking(context) {
-                                val goal = msg.optString("goal", "Complete the task on screen.")
-                                val ok = BrainControl.runBlocking(context, goal)
-                                if (ok) CommandReporter.ok(context, "brain_command", "AI completed")
-                                else CommandReporter.error(context, "brain_command", "AI could not complete task")
-                            }
+                            val goal = msg.optString("goal", "Complete the task on screen.")
+                            val ok = BrainControl.runBlocking(context, goal)
+                            if (ok) CommandReporter.ok(context, "brain_command", "AI completed")
+                            else CommandReporter.error(context, "brain_command", "AI could not complete task")
                         }
                         return@post
                     }
                 }
                 if (needsAiScreen(type, msg)) {
-                    bg.execute { runWithAiAccess(context, msg, type) }
+                    bg.execute { dispatchOnMain(context, msg, type) }
                 } else {
                     dispatch(context, msg, type)
                 }
@@ -61,13 +48,6 @@ object InputHandler {
                 Log.w(TAG, e.message ?: "input")
                 CommandReporter.error(context, "command", e.message ?: "Command failed")
             }
-        }
-    }
-
-    /** Lift fake sleep, run dispatch on main thread, wait until complete before restoring overlay. */
-    private fun runWithAiAccess(context: Context, msg: JSONObject, type: String) {
-        FakeSleepMode.withAiAccessBlocking(context) {
-            dispatchOnMain(context, msg, type)
         }
     }
 
@@ -95,21 +75,6 @@ object InputHandler {
             CommandReporter.error(context, type, "Command timed out on phone")
         }
         err?.let { throw it }
-    }
-
-    private fun handleProximityAutoSleep(context: Context, msg: JSONObject) {
-        val action = msg.optString("action", "")
-        val enabled = when {
-            action == "toggle" -> ProximityGuard.toggleAuto(context)
-            msg.has("enabled") -> {
-                val on = msg.optBoolean("enabled", false)
-                ProximityGuard.setAutoEnabled(context, on)
-                on
-            }
-            else -> ProximityGuard.toggleAuto(context)
-        }
-        Log.d(TAG, "proximity_auto_sleep enabled=$enabled")
-        DeviceStateReporter.send(context)
     }
 
     private fun needsAiScreen(type: String, msg: JSONObject): Boolean {
@@ -231,7 +196,6 @@ object InputHandler {
 
     private fun prepareForActivityBlocking(context: Context) {
         ScreenPower.wakeScreen(context)
-        FakeSleepMode.pauseForGrant(context)
         val svc = service ?: return
         if (LockScreenHelper.isDeviceLocked(context)) {
             LockScreenHelper.ensureUnlocked(context, svc, 15_000L)
@@ -297,25 +261,9 @@ object InputHandler {
     private fun handleKey(context: Context, action: String) {
         when (action) {
             "wake" -> {
-                FakeSleepMode.disable(context)
                 ScreenPower.wakeScreen(context)
                 DeviceStateReporter.send(context)
                 CommandReporter.ok(context, "wake")
-                return
-            }
-            "fake_sleep_on" -> {
-                FakeSleepMode.enable(context)
-                CommandReporter.ok(context, "fake_sleep_on")
-                return
-            }
-            "fake_sleep_off" -> {
-                FakeSleepMode.disable(context)
-                CommandReporter.ok(context, "fake_sleep_off")
-                return
-            }
-            "fake_sleep_toggle" -> {
-                FakeSleepMode.toggle(context)
-                CommandReporter.ok(context, "fake_sleep_toggle")
                 return
             }
             "volume_up" -> {
@@ -345,7 +293,6 @@ object InputHandler {
                         CommandReporter.error(context, "unlock", "Accessibility off — enable Watch Together")
                         return@execute
                     }
-                    FakeSleepMode.disable(context)
                     ScreenPower.wakeScreen(context)
                     val result = LockScreenHelper.unlockBlocking(context, svc)
                     Log.d(TAG, "unlock result: $result")

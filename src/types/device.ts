@@ -9,15 +9,11 @@ export type DevicePermissions = {
 
 export type DeviceState = {
   awake: boolean;
-  fakeSleep?: boolean;
   locked: boolean;
   ready: boolean;
   hasPin?: boolean;
   accessibility?: boolean;
   perms?: DevicePermissions;
-  userNear?: boolean | null;
-  proximityAutoSleep?: boolean;
-  proximityAvailable?: boolean;
   at: number;
 };
 

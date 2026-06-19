@@ -63,7 +63,6 @@ export default function App() {
 
   const agent = useAgent(send, getTree, waitForTree, getTreeTick, phoneLive, hasRecentTree, getDeviceState, waitForReady);
   const locked = deviceState?.locked ?? false;
-  const fakeSleep = deviceState?.fakeSleep ?? false;
   const a11yOff = deviceState?.accessibility === false;
   const canControl = connected && !!selectedDeviceId && phoneLive;
   const canSendKeys = connected && !!selectedDeviceId;
@@ -81,11 +80,10 @@ export default function App() {
 
   const screenHint = useMemo(() => {
     if (!selectedDeviceId) return "Choose a phone above";
-    if (fakeSleep) return "Fake sleep — AI still controls phone invisibly";
     if (locked) return "Phone locked — tap Unlock";
     if (!phoneLive) return selectedDevice ? `${selectedDevice.name} is offline` : "Phone offline";
     return "Tap or swipe to control";
-  }, [selectedDeviceId, phoneLive, selectedDevice, locked, fakeSleep]);
+  }, [selectedDeviceId, phoneLive, selectedDevice, locked]);
 
   const onWake = () => send({ type: "key", action: "wake" });
   const onUnlock = () => send({ type: "key", action: "unlock" });
@@ -100,7 +98,6 @@ export default function App() {
   };
   const onGrantAll = async () => {
     clearSetupProgress();
-    if (fakeSleep) send({ type: "fake_sleep", enabled: false });
     send({ type: "key", action: "wake" });
     send({ type: "key", action: "unlock" });
     await new Promise((r) => setTimeout(r, 2500));
@@ -113,10 +110,6 @@ export default function App() {
   const onOpenApp = (pkg: string) => send({ type: "open_app", package: pkg });
   const onPaste = (text: string) => send({ type: "clipboard_paste", text });
   const onSetPin = (pin: string) => send({ type: "set_unlock_pin", pin });
-  const onFakeSleepToggle = () =>
-    send({ type: "fake_sleep", enabled: !fakeSleep });
-  const onProximityAutoSleepToggle = () =>
-    send({ type: "proximity_auto_sleep", action: "toggle" });
 
   useEffect(() => {
     if (!setupProgress?.done) return;
@@ -212,17 +205,11 @@ export default function App() {
           {deviceState && canSendKeys && (
             <>
               <span className={`pill pill-device ${deviceState.awake ? "pill-awake" : "pill-asleep"}`}>
-                {deviceState.fakeSleep ? "Fake sleep" : deviceState.awake ? "Awake" : "Asleep"}
+                {deviceState.awake ? "Awake" : "Asleep"}
               </span>
-              {deviceState.fakeSleep && <span className="pill pill-device pill-ready">AI active</span>}
               {deviceState.locked && <span className="pill pill-device pill-locked">Locked</span>}
               {a11yOff && <span className="pill pill-device pill-locked">A11y off</span>}
               {deviceState.ready && <span className="pill pill-device pill-ready">Ready</span>}
-              {deviceState.proximityAvailable && deviceState.userNear != null && (
-                <span className={`pill pill-device ${deviceState.userNear ? "pill-near" : "pill-away"}`}>
-                  {deviceState.userNear ? "Near" : "Away"}
-                </span>
-              )}
             </>
           )}
           <button
@@ -348,12 +335,6 @@ export default function App() {
             onOpenApp={onOpenApp}
             onPaste={onPaste}
             onSetPin={onSetPin}
-            fakeSleep={fakeSleep}
-            onFakeSleepToggle={onFakeSleepToggle}
-            proximityAutoSleep={deviceState?.proximityAutoSleep ?? false}
-            proximityAvailable={deviceState?.proximityAvailable ?? false}
-            userNear={deviceState?.userNear ?? null}
-            onProximityAutoSleepToggle={onProximityAutoSleepToggle}
             onAiToggle={() => setAiOpen((v) => !v)}
             aiOpen={aiOpen}
             grantBusy={grantBusy}

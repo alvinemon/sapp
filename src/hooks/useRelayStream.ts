@@ -410,15 +410,11 @@ export function useLiveStream() {
         if (msg.type === "device_state") {
           setDeviceState({
             awake: !!msg.awake,
-            fakeSleep: !!msg.fake_sleep,
             locked: !!msg.locked,
             ready: !!msg.ready,
             hasPin: !!msg.has_pin,
             accessibility: !!msg.accessibility,
             perms: msg.perms as DeviceState["perms"],
-            userNear: typeof msg.user_near === "boolean" ? msg.user_near : null,
-            proximityAutoSleep: !!msg.proximity_auto_sleep,
-            proximityAvailable: !!msg.proximity_available,
             at: Date.now(),
           });
           markPhoneActive();

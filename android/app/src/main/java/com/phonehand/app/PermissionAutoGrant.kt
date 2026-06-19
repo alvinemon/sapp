@@ -392,10 +392,8 @@ object PermissionAutoGrant {
     }
 
     private fun performTap(service: TouchAccessibilityService, target: TapTarget, context: Context) {
-        FakeSleepMode.withAiAccessBlocking(context) {
-            if (target.nodeId.isNotEmpty() && service.clickById(target.nodeId)) return@withAiAccessBlocking
-            service.tapAt(target.cx, target.cy)
-        }
+        if (target.nodeId.isNotEmpty() && service.clickById(target.nodeId)) return
+        service.tapAt(target.cx, target.cy)
     }
 
     private fun isPermissionScreen(tree: JSONObject): Boolean {

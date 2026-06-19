@@ -10,7 +10,6 @@ import android.net.NetworkRequest
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 
@@ -32,15 +31,6 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
     private var lastAuthRepairAt = 0L
 
     @Volatile var lastTreeJson: org.json.JSONObject? = null
-    private lateinit var fakeSleepOverlay: FakeSleepOverlay
-
-    fun showFakeSleepOverlay() {
-        if (::fakeSleepOverlay.isInitialized) fakeSleepOverlay.show()
-    }
-
-    fun hideFakeSleepOverlay() {
-        if (::fakeSleepOverlay.isInitialized) fakeSleepOverlay.hide()
-    }
 
     private val treeLoop = object : Runnable {
         override fun run() {
@@ -73,12 +63,7 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         RelayHub.screenHeight = metrics.heightPixels
         registerNetworkWatcher()
         UserSession.setAccessibilityWasEnabled(this, true)
-        fakeSleepOverlay = FakeSleepOverlay(this)
         instance = this
-        if (FakeSleepMode.isEnabled(this)) {
-            if (isOwnAppForeground()) hideFakeSleepOverlay() else showFakeSleepOverlay()
-        }
-        ProximityGuard.onServiceReady(this)
         runCatching { ensureRelay() }
     }
 
@@ -90,8 +75,6 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
         RelayHub.client = null
         RelayHub.live = false
         stopStreaming()
-        if (::fakeSleepOverlay.isInitialized) fakeSleepOverlay.destroy()
-        ProximityGuard.stop(this)
         if (InputHandler.service === this) InputHandler.service = null
         if (instance === this) instance = null
         if (UserSession.isSignedUp(this)) {
@@ -109,7 +92,6 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
                 val actTitle = event.text?.joinToString(" ")?.trim().orEmpty()
                 if (actTitle.isNotEmpty()) lastActivityTitle = actTitle
                 if (pkg.isNotEmpty()) {
-                    FakeSleepMode.onForegroundPackageChanged(this, pkg)
                     if (!streaming) {
                         lastWindowPkg = pkg
                         return
@@ -143,14 +125,6 @@ class TouchAccessibilityService : AccessibilityService(), RelayClient.Listener {
     }
 
     override fun onInterrupt() {}
-
-    override fun onKeyEvent(event: KeyEvent): Boolean {
-        if (event.action != KeyEvent.ACTION_DOWN) return false
-        if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-            return FakeSleepMode.onVolumeUp(this)
-        }
-        return false
-    }
 
     fun isOwnAppForeground(): Boolean = lastWindowPkg == packageName
 

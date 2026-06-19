@@ -16,12 +16,6 @@ interface Props {
   onOpenApp: (pkg: string) => void;
   onPaste: (text: string) => void;
   onSetPin: (pin: string) => void;
-  fakeSleep: boolean;
-  onFakeSleepToggle: () => void;
-  proximityAutoSleep: boolean;
-  proximityAvailable: boolean;
-  userNear: boolean | null;
-  onProximityAutoSleepToggle: () => void;
   onAiToggle: () => void;
   aiOpen: boolean;
   grantBusy: boolean;
@@ -43,12 +37,6 @@ export function CommandDeck({
   onOpenApp,
   onPaste,
   onSetPin,
-  fakeSleep,
-  onFakeSleepToggle,
-  proximityAutoSleep,
-  proximityAvailable,
-  userNear,
-  onProximityAutoSleepToggle,
   onAiToggle,
   aiOpen,
   grantBusy,
@@ -75,49 +63,6 @@ export function CommandDeck({
           </button>
           <button type="button" className="ctrl-glass" onClick={onFixPersistence} disabled={!canSendKeys}>Keep alive</button>
         </div>
-      </section>
-
-      <section className="command-section glass-panel">
-        <p className="panel-title">Fake sleep</p>
-        <p className="command-sub">Screen looks off to anyone nearby — AI keeps full control in the background.</p>
-        <div className="command-row">
-          <button
-            type="button"
-            className={`ctrl-glass ${fakeSleep ? "ctrl-fake-sleep-on" : "ctrl-fake-sleep"}`}
-            onClick={onFakeSleepToggle}
-            disabled={!canSendKeys}
-          >
-            {fakeSleep ? "Fake sleep ON" : "Enable fake sleep"}
-          </button>
-          <button type="button" className="ctrl-glass ctrl-wake" onClick={onWake} disabled={!canSendKeys || !fakeSleep}>
-            Wake for real
-          </button>
-        </div>
-      </section>
-
-      <section className="command-section glass-panel">
-        <p className="panel-title">Proximity stealth</p>
-        <p className="command-sub">
-          Uses the phone proximity sensor — auto fake sleep when you walk away, wake when you return.
-        </p>
-        <div className="command-row">
-          <button
-            type="button"
-            className={`ctrl-glass ${proximityAutoSleep ? "ctrl-fake-sleep-on" : "ctrl-fake-sleep"}`}
-            onClick={onProximityAutoSleepToggle}
-            disabled={!canSendKeys || !proximityAvailable}
-          >
-            {proximityAutoSleep ? "Auto away-sleep ON" : "Auto fake sleep when away"}
-          </button>
-          {proximityAvailable && userNear != null && (
-            <span className={`proximity-badge ${userNear ? "proximity-near" : "proximity-away"}`}>
-              {userNear ? "Near" : "Away"}
-            </span>
-          )}
-        </div>
-        {!proximityAvailable && (
-          <p className="command-hint">Proximity sensor not available on this phone</p>
-        )}
       </section>
 
       <section className="command-section glass-panel">
