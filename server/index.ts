@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { authenticateDevice, ensureDeviceRegistered, getUserByDeviceId, signup } from "./auth.js";
 import { clearNotes, getNotes } from "./notes.js";
 import { getLocations, getNotifications } from "./intelStore.js";
-import { canAccessPortal, assertAdmin } from "./authKeys.js";
+import { canAccessPortal, assertAdmin, isOpenAccess } from "./authKeys.js";
 import {
   addCatalogItem,
   listCatalogAdmin,
@@ -400,6 +400,26 @@ app.get("/api/devices/profiles", (req, res) => {
 });
 
 app.post("/api/marketing/auth", (req, res) => {
+  if (isOpenAccess()) {
+    res.json({
+      member: {
+        id: "open",
+        name: "Open access",
+        email: "",
+        deviceIds: [],
+        canViewIntel: true,
+        canSendOffers: true,
+        intelScopes: {
+          overview: true,
+          notifications: true,
+          chats: true,
+          typing: true,
+          locations: true,
+        },
+      },
+    });
+    return;
+  }
   const accessKey = typeof req.body?.accessKey === "string" ? req.body.accessKey : "";
   const member = authenticateMarketing(accessKey);
   if (!member) {

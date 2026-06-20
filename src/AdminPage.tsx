@@ -2,9 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   deleteCatalogItem,
   fetchCatalogAdmin,
-  getAdminKey,
   saveCatalogItem,
-  setAdminKey,
   type CatalogItem,
   type CatalogSeason,
 } from "./data/catalog";
@@ -29,10 +27,8 @@ import { TriggersPanel } from "./components/TriggersPanel";
 type Tab = "content" | "payments" | "intel" | "team" | "segments" | "campaigns" | "analytics" | "guardrails";
 
 export default function AdminPage() {
-  const [key, setKey] = useState(getAdminKey);
-  const [inputKey, setInputKey] = useState("");
+  const key = "";
   const [tab, setTab] = useState<Tab>("content");
-  const [authed, setAuthed] = useState(!!getAdminKey());
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [pending, setPending] = useState<PendingPayment[]>([]);
@@ -100,7 +96,6 @@ export default function AdminPage() {
   };
 
   const reload = useCallback(async () => {
-    if (!key) return;
     try {
       const cat = await fetchCatalogAdmin(key);
       setItems(cat.items);
@@ -109,19 +104,12 @@ export default function AdminPage() {
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Load failed");
-      setAuthed(false);
     }
   }, [key]);
 
   useEffect(() => {
-    if (authed) void reload();
-  }, [authed, reload]);
-
-  const login = () => {
-    setAdminKey(inputKey.trim());
-    setKey(inputKey.trim());
-    setAuthed(true);
-  };
+    void reload();
+  }, [reload]);
 
   const saveItem = async () => {
     if (!form.title.trim()) return;
@@ -141,23 +129,6 @@ export default function AdminPage() {
     resetForm();
     await reload();
   };
-
-  if (!authed) {
-    return (
-      <div className="admin-page owner-gate">
-        <h1>Owner admin</h1>
-        <p>Manage catalog, payments, and AI offers. Public viewers use <a href="/watch">/watch</a>.</p>
-        <input
-          type="password"
-          placeholder="Admin edit key"
-          value={inputKey}
-          onChange={(e) => setInputKey(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && login()}
-        />
-        <button type="button" onClick={login}>Enter admin</button>
-      </div>
-    );
-  }
 
   return (
     <div className="admin-page">
@@ -317,11 +288,11 @@ export default function AdminPage() {
 
       {tab === "team" && <MarketingTeamPanel adminKey={key} />}
 
-      {tab === "segments" && <SegmentBuilder keys={{ editKey: key }} />}
+      {tab === "segments" && <SegmentBuilder keys={{ editKey: key }} canDelete />}
 
       {tab === "campaigns" && (
         <>
-          <CampaignsPanel keys={{ editKey: key }} />
+          <CampaignsPanel keys={{ editKey: key }} canApprove canSaveTemplates />
           <TriggersPanel adminKey={key} />
         </>
       )}

@@ -66,8 +66,6 @@ export function PremiumPanel({ onPick, loadingId }: PremiumPanelProps) {
   }, []);
 
   const reloadAdmin = useCallback(() => {
-    if (!editKey) return;
-    sessionStorage.setItem(EDIT_KEY_STORAGE, editKey);
     void fetchPaymentMethodsAdmin(editKey).then(setMethods).catch(() => {});
     void fetchPendingPayments(editKey).then(setPending).catch(() => setPending([]));
   }, [editKey]);

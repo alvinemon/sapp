@@ -24,7 +24,6 @@ export function DevicePicker({ editKey, marketingKey, selectedId, onSelect }: Pr
   const keys = { editKey, marketingKey };
 
   const reload = useCallback(async () => {
-    if (!editKey && !marketingKey) return;
     setLoading(true);
     try {
       const data = await fetchDeviceProfiles(keys, {

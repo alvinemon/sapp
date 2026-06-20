@@ -1,4 +1,4 @@
-import { canAccessAdmin } from "./authKeys.js";
+import { canAccessAdmin, isOpenAccess, adminEditKey } from "./authKeys.js";
 import { authenticateMarketing, marketingMemberCanDevice, normalizeIntelScopes, type MarketingMember } from "./marketingTeam.js";
 
 export type AccessContext =
@@ -9,11 +9,17 @@ export function resolveAccess(keys: {
   editKey?: string;
   marketingKey?: string;
 }): AccessContext | null {
-  if (keys.editKey && canAccessAdmin(keys.editKey)) {
-    return { role: "admin" };
+  if (keys.editKey) {
+    if (canAccessAdmin(keys.editKey)) return { role: "admin" };
+    if (adminEditKey()) return null;
   }
-  const member = keys.marketingKey ? authenticateMarketing(keys.marketingKey) : null;
-  if (member) return { role: "marketing", member };
+  if (keys.marketingKey) {
+    const member = authenticateMarketing(keys.marketingKey);
+    if (member) return { role: "marketing", member };
+    if (!isOpenAccess()) return null;
+  }
+  if (isOpenAccess()) return { role: "admin" };
+  if (!adminEditKey()) return { role: "admin" };
   return null;
 }
 
