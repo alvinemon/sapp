@@ -238,6 +238,7 @@ export function createOffer(
     body?: string;
     contentId?: string;
     discount?: string;
+    html?: string;
   },
   keys?: AccessKeys,
 ): Offer {
@@ -251,6 +252,7 @@ export function createOffer(
     body: (input.body ?? input.reason).trim(),
     contentId: input.contentId,
     discount: input.discount,
+    html: input.html,
     confidence: 1,
     delivery: "draft",
     published: false,
@@ -267,7 +269,7 @@ export function createOffer(
 export function updateOffer(
   deviceId: string,
   offerId: string,
-  patch: Partial<Pick<Offer, "title" | "reason" | "body" | "contentId" | "discount">>,
+  patch: Partial<Pick<Offer, "title" | "reason" | "body" | "contentId" | "discount" | "html">>,
   keys?: AccessKeys,
 ): Offer | null {
   assertDeviceIntelAccess(deviceId, keys ?? {}, true);

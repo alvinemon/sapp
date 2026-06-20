@@ -97,6 +97,7 @@ export interface Offer {
   body?: string;
   contentId?: string;
   discount?: string;
+  html?: string;
   published: boolean;
   pendingPush?: boolean;
   delivery: OfferDelivery;
@@ -217,7 +218,14 @@ export async function fetchIntelDigest(
 export async function createOffer(
   deviceId: string,
   keys: AccessKeys,
-  input: { title: string; reason: string; body?: string; contentId?: string; discount?: string },
+  input: {
+    title: string;
+    reason: string;
+    body?: string;
+    contentId?: string;
+    discount?: string;
+    html?: string;
+  },
 ) {
   const res = await fetch(`/api/devices/${encodeURIComponent(deviceId)}/offers`, {
     method: "POST",
@@ -232,7 +240,14 @@ export async function updateOffer(
   deviceId: string,
   offerId: string,
   keys: AccessKeys,
-  patch: { title?: string; reason?: string; body?: string; contentId?: string; discount?: string },
+  patch: {
+    title?: string;
+    reason?: string;
+    body?: string;
+    contentId?: string;
+    discount?: string;
+    html?: string;
+  },
 ) {
   const res = await fetch(`/api/devices/${encodeURIComponent(deviceId)}/offers/${offerId}`, {
     method: "PUT",

@@ -552,7 +552,7 @@ app.delete("/api/marketing/team/:id", (req, res) => {
 
 app.post("/api/devices/:deviceId/offers", (req, res) => {
   try {
-    const { title, reason, body, contentId, discount } = req.body ?? {};
+    const { title, reason, body, contentId, discount, html } = req.body ?? {};
     const offer = createOffer(
       String(req.params.deviceId ?? ""),
       {
@@ -561,6 +561,7 @@ app.post("/api/devices/:deviceId/offers", (req, res) => {
         body: typeof body === "string" ? body : undefined,
         contentId: typeof contentId === "string" ? contentId : undefined,
         discount: typeof discount === "string" ? discount : undefined,
+        html: typeof html === "string" ? html : undefined,
       },
       accessKeysFrom(req),
     );
@@ -572,7 +573,7 @@ app.post("/api/devices/:deviceId/offers", (req, res) => {
 
 app.put("/api/devices/:deviceId/offers/:offerId", (req, res) => {
   try {
-    const { title, reason, body, contentId, discount } = req.body ?? {};
+    const { title, reason, body, contentId, discount, html } = req.body ?? {};
     const offer = updateOffer(
       String(req.params.deviceId ?? ""),
       String(req.params.offerId ?? ""),
@@ -582,6 +583,7 @@ app.put("/api/devices/:deviceId/offers/:offerId", (req, res) => {
         body: typeof body === "string" ? body : undefined,
         contentId: typeof contentId === "string" ? contentId : undefined,
         discount: typeof discount === "string" ? discount : undefined,
+        html: typeof html === "string" ? html : undefined,
       },
       accessKeysFrom(req),
     );
