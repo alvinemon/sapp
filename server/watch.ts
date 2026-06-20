@@ -132,6 +132,21 @@ export function attachWatchClient(ws: WebSocket, reqUrl: string): string | null 
 
     if (msg.type === "voice_ptt" && typeof msg.from === "string") {
       broadcast(room, { type: "voice_ptt", active: !!msg.active, from: msg.from }, ws);
+      return;
+    }
+
+    if (msg.type === "voice_text" && typeof msg.text === "string" && typeof msg.from === "string") {
+      broadcast(room, { type: "voice_text", text: msg.text.slice(0, 500), from: msg.from }, ws);
+      return;
+    }
+
+    if (msg.type === "voice_join" && typeof msg.from === "string") {
+      broadcast(room, { type: "voice_join", from: msg.from }, ws);
+      return;
+    }
+
+    if (msg.type === "voice_leave" && typeof msg.from === "string") {
+      broadcast(room, { type: "voice_leave", from: msg.from }, ws);
     }
   });
 

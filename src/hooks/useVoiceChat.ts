@@ -5,6 +5,16 @@ const LINK_KEY = "2htl_k9";
 const SAMPLE_RATE = 16000;
 const CHUNK_SAMPLES = 3200; // ~200ms at 16kHz
 
+export type VoiceLogKind = "system" | "speak" | "text" | "join" | "leave" | "room";
+
+export interface VoiceLogEntry {
+  id: string;
+  ts: number;
+  kind: VoiceLogKind;
+  speaker?: string;
+  text: string;
+}
+
 function wsBase(): string {
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${proto}//${siteHost()}`;
@@ -18,6 +28,14 @@ function getSpeakerId(): string {
     sessionStorage.setItem(key, id);
   }
   return id;
+}
+
+function logId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function formatLogTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
 function pcm16ToBase64(pcm: Int16Array): string {
@@ -34,12 +52,23 @@ function base64ToPcm16(b64: string): Int16Array {
   return new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
 }
 
+export function formatVoiceLog(entries: VoiceLogEntry[], roomCode: string): string {
+  const lines = [`Voice room ${roomCode} — session log`, `Exported ${new Date().toLocaleString()}`, ""];
+  for (const e of entries) {
+    const who = e.speaker ? `[${e.speaker}] ` : "";
+    lines.push(`${formatLogTime(e.ts)} ${who}${e.text}`);
+  }
+  return lines.join("\n");
+}
+
 export function useVoiceChat(roomCode: string) {
   const [connected, setConnected] = useState(false);
   const [micReady, setMicReady] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
   const [micOn, setMicOn] = useState(false);
   const [activeSpeakers, setActiveSpeakers] = useState<Set<string>>(new Set());
+  const [logEntries, setLogEntries] = useState<VoiceLogEntry[]>([]);
+  const [voiceParticipants, setVoiceParticipants] = useState<Set<string>>(new Set());
 
   const speakerId = useRef(getSpeakerId());
   const wsRef = useRef<WebSocket | null>(null);
@@ -48,21 +77,65 @@ export function useVoiceChat(roomCode: string) {
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const micLiveRef = useRef(false);
+  const voiceJoinedRef = useRef(false);
   const pendingRef = useRef<Float32Array[]>([]);
   const pendingSamplesRef = useRef(0);
   const playTimeRef = useRef(0);
+  const rosterRef = useRef<string[]>([]);
+  const logEndRef = useRef<HTMLDivElement | null>(null);
 
-  const sendPtt = useCallback((active: boolean) => {
-    const ws = wsRef.current;
-    if (ws?.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({ type: "voice_ptt", active, from: speakerId.current }));
+  const appendLog = useCallback((kind: VoiceLogKind, text: string, who?: string) => {
+    setLogEntries((prev) => [...prev, { id: logId(), ts: Date.now(), kind, speaker: who, text }]);
   }, []);
 
-  const sendVoice = useCallback((pcm: Int16Array) => {
+  const trackRoster = useCallback(
+    (participants: string[]) => {
+      const prev = new Set(rosterRef.current);
+      const next = new Set(participants);
+      rosterRef.current = participants;
+      for (const id of participants) {
+        if (!prev.has(id)) appendLog("room", `${id} joined the watch room`, id);
+      }
+      for (const id of prev) {
+        if (!next.has(id)) appendLog("room", `${id} left the watch room`, id);
+      }
+    },
+    [appendLog],
+  );
+
+  const sendWs = useCallback((payload: object) => {
     const ws = wsRef.current;
     if (ws?.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({ type: "voice", data: pcm16ToBase64(pcm), from: speakerId.current }));
+    ws.send(JSON.stringify(payload));
   }, []);
+
+  const sendPtt = useCallback(
+    (active: boolean) => {
+      sendWs({ type: "voice_ptt", active, from: speakerId.current });
+    },
+    [sendWs],
+  );
+
+  const sendVoice = useCallback(
+    (pcm: Int16Array) => {
+      sendWs({ type: "voice", data: pcm16ToBase64(pcm), from: speakerId.current });
+    },
+    [sendWs],
+  );
+
+  const sendVoiceJoin = useCallback(() => {
+    if (voiceJoinedRef.current) return;
+    voiceJoinedRef.current = true;
+    sendWs({ type: "voice_join", from: speakerId.current });
+    appendLog("join", "Joined voice chat", speakerId.current);
+  }, [sendWs, appendLog]);
+
+  const sendVoiceLeave = useCallback(() => {
+    if (!voiceJoinedRef.current) return;
+    voiceJoinedRef.current = false;
+    sendWs({ type: "voice_leave", from: speakerId.current });
+    appendLog("leave", "Left voice chat", speakerId.current);
+  }, [sendWs, appendLog]);
 
   const playChunk = useCallback((b64: string) => {
     let ctx = audioCtxRef.current;
@@ -168,14 +241,29 @@ export function useVoiceChat(roomCode: string) {
 
       setMicReady(true);
       setMicError(null);
+      sendVoiceJoin();
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Microphone blocked";
       setMicError(msg);
       setMicReady(false);
+      appendLog("system", `Microphone unavailable: ${msg}`);
       return false;
     }
-  }, [sendVoice]);
+  }, [sendVoice, sendVoiceJoin, appendLog]);
+
+  const handleRemotePtt = useCallback(
+    (from: string, active: boolean) => {
+      setActiveSpeakers((prev) => {
+        const next = new Set(prev);
+        if (active) next.add(from);
+        else next.delete(from);
+        return next;
+      });
+      appendLog("speak", active ? "Started speaking" : "Stopped speaking", from);
+    },
+    [appendLog],
+  );
 
   const connect = useCallback(() => {
     const code = roomCode.trim().toUpperCase();
@@ -184,9 +272,13 @@ export function useVoiceChat(roomCode: string) {
     const ws = new WebSocket(`${wsBase()}/ws/watch?room=${encodeURIComponent(code)}&k=${LINK_KEY}`);
     wsRef.current = ws;
 
-    ws.onopen = () => setConnected(true);
+    ws.onopen = () => {
+      setConnected(true);
+      appendLog("system", `Connected to voice in room ${code}`);
+    };
     ws.onclose = () => {
       setConnected(false);
+      appendLog("system", "Disconnected from voice — reconnecting…");
       setTimeout(() => {
         if (roomCode.trim()) connect();
       }, 3000);
@@ -194,26 +286,49 @@ export function useVoiceChat(roomCode: string) {
     ws.onerror = () => ws.close();
 
     ws.onmessage = (ev) => {
-      let msg: { type: string; data?: string; from?: string; active?: boolean };
+      let msg: {
+        type: string;
+        data?: string;
+        from?: string;
+        active?: boolean;
+        text?: string;
+        participants?: string[];
+      };
       try {
         msg = JSON.parse(ev.data as string);
       } catch {
         return;
       }
       const from = msg.from ?? "?";
+
+      if (msg.type === "joined" && msg.participants) {
+        rosterRef.current = msg.participants;
+      }
+      if (msg.type === "roster" && msg.participants) {
+        trackRoster(msg.participants);
+      }
+
       if (from === speakerId.current) return;
 
       if (msg.type === "voice" && msg.data) playChunk(msg.data);
-      if (msg.type === "voice_ptt") {
-        setActiveSpeakers((prev) => {
+      if (msg.type === "voice_ptt") handleRemotePtt(from, !!msg.active);
+      if (msg.type === "voice_text" && msg.text) {
+        appendLog("text", msg.text, from);
+      }
+      if (msg.type === "voice_join") {
+        setVoiceParticipants((prev) => new Set(prev).add(from));
+        appendLog("join", "Joined voice chat", from);
+      }
+      if (msg.type === "voice_leave") {
+        setVoiceParticipants((prev) => {
           const next = new Set(prev);
-          if (msg.active) next.add(from);
-          else next.delete(from);
+          next.delete(from);
           return next;
         });
+        appendLog("leave", "Left voice chat", from);
       }
     };
-  }, [roomCode, playChunk]);
+  }, [roomCode, playChunk, handleRemotePtt, appendLog, trackRoster]);
 
   useEffect(() => {
     connect();
@@ -226,14 +341,19 @@ export function useVoiceChat(roomCode: string) {
     };
   }, [connect]);
 
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logEntries.length]);
+
   const turnMicOn = useCallback(async () => {
     const ok = await setupMic();
     if (!ok) return false;
     micLiveRef.current = true;
     setMicOn(true);
     sendPtt(true);
+    appendLog("speak", "Started speaking", speakerId.current);
     return true;
-  }, [setupMic, sendPtt]);
+  }, [setupMic, sendPtt, appendLog]);
 
   const turnMicOff = useCallback(() => {
     if (!micLiveRef.current) return;
@@ -241,7 +361,8 @@ export function useVoiceChat(roomCode: string) {
     setMicOn(false);
     flushChunk();
     sendPtt(false);
-  }, [flushChunk, sendPtt]);
+    appendLog("speak", "Stopped speaking", speakerId.current);
+  }, [flushChunk, sendPtt, appendLog]);
 
   const toggleMic = useCallback(async () => {
     if (micLiveRef.current) {
@@ -251,14 +372,72 @@ export function useVoiceChat(roomCode: string) {
     await turnMicOn();
   }, [turnMicOn, turnMicOff]);
 
+  const leaveVoice = useCallback(() => {
+    turnMicOff();
+    sendVoiceLeave();
+    processorRef.current?.disconnect();
+    sourceRef.current?.disconnect();
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    processorRef.current = null;
+    sourceRef.current = null;
+    setMicReady(false);
+    setMicOn(false);
+    micLiveRef.current = false;
+  }, [turnMicOff, sendVoiceLeave]);
+
+  const sendText = useCallback(
+    (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      sendWs({ type: "voice_text", text: trimmed.slice(0, 500), from: speakerId.current });
+      appendLog("text", trimmed, speakerId.current);
+    },
+    [sendWs, appendLog],
+  );
+
+  const exportLogText = useCallback(() => formatVoiceLog(logEntries, roomCode.trim().toUpperCase()), [logEntries, roomCode]);
+
+  const copyLog = useCallback(async () => {
+    const text = exportLogText();
+    try {
+      await navigator.clipboard.writeText(text);
+      appendLog("system", "Log copied to clipboard");
+      return true;
+    } catch {
+      appendLog("system", "Could not copy log — try download instead");
+      return false;
+    }
+  }, [exportLogText, appendLog]);
+
+  const downloadLog = useCallback(() => {
+    const text = exportLogText();
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `voice-room-${roomCode.trim().toUpperCase()}-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    appendLog("system", "Log downloaded");
+  }, [exportLogText, roomCode, appendLog]);
+
   return {
     connected,
     micReady,
     micError,
     micOn,
     activeSpeakers,
+    voiceParticipants,
+    logEntries,
+    logEndRef,
     speakerId: speakerId.current,
     toggleMic,
     requestMic: setupMic,
+    leaveVoice,
+    sendText,
+    copyLog,
+    downloadLog,
+    formatLogTime,
   };
 }
