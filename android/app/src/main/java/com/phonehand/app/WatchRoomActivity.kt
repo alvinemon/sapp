@@ -173,7 +173,7 @@ class WatchRoomActivity : AppCompatActivity() {
     private fun setupPttButton() {
         btnPtt.setOnClickListener {
             if (!hasMicPermission()) {
-                requestMicPermission()
+                PermissionMoments.launchStep(this, "microphone")
                 return@setOnClickListener
             }
             ensureVoiceEngine()

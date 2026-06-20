@@ -37,11 +37,18 @@
                 android:layout_marginTop="8dp"
                 android:textAppearance="@style/NfTextCaption" />
 
+            <ImageView
+                android:id="@+id/wizardStepIcon"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginTop="16dp"
+                android:contentDescription="@null" />
+
             <TextView
                 android:id="@+id/wizardTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="12dp"
                 android:textColor="@color/nf_text_primary"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -92,6 +99,18 @@
                         android:layout_height="wrap_content"
                         android:paddingVertical="14dp"
                         android:text="@string/perm_step_button_unlock"
+                        android:textAllCaps="false"
+                        android:textSize="16sp" />
+
+                    <Button
+                        android:id="@+id/btnNextStep"
+                        style="@style/NfButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:enabled="false"
+                        android:paddingVertical="14dp"
+                        android:text="@string/perm_step_next"
                         android:textAllCaps="false"
                         android:textSize="16sp" />
                 </LinearLayout>

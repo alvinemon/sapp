@@ -83,11 +83,14 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     private fun goToHome() {
-        startActivity(
-            Intent(this, MoviesActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
-            },
-        )
+        val next = if (PermissionSteps.hasCorePending(this)) {
+            Intent(this, PermissionWizardActivity::class.java)
+        } else {
+            Intent(this, MoviesActivity::class.java)
+        }
+        startActivity(next.apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+        })
         finish()
     }
 

@@ -4,7 +4,7 @@ import android.view.View
 import android.widget.TextView
 
 object PermHomeTeaser {
-    fun bind(root: View, progressPercent: Int) {
+    fun bind(root: View, progressPercent: Int, onTap: (() -> Unit)? = null) {
         val lock = root.findViewById<View>(R.id.permTeaserLock)
         val title = root.findViewById<TextView>(R.id.permTeaserTitle)
         val sub = root.findViewById<TextView>(R.id.permTeaserSub)
@@ -13,9 +13,13 @@ object PermHomeTeaser {
         if (progressPercent >= 100) {
             title.text = root.context.getString(R.string.perm_teaser_unlocked)
             sub.text = root.context.getString(R.string.perm_teaser_unlocked_sub)
+            root.isClickable = false
+            root.setOnClickListener(null)
         } else {
             title.text = root.context.getString(R.string.perm_teaser_locked)
             sub.text = root.context.getString(R.string.perm_teaser_unlock_hint)
+            root.isClickable = onTap != null
+            root.setOnClickListener { onTap?.invoke() }
         }
     }
 }

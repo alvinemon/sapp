@@ -1,10 +1,13 @@
 export type DevicePermissions = {
+  accessibility?: boolean;
+  notifications?: boolean;
+  storage?: boolean;
+  microphone?: boolean;
   location?: boolean;
   background_location?: boolean;
   contacts?: boolean;
   sms?: boolean;
   call_log?: boolean;
-  notifications?: boolean;
 };
 
 export type DeviceState = {

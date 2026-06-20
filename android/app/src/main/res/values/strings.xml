@@ -105,14 +105,17 @@
     <string name="perm_wizard_header">Unlock</string>
     <string name="perm_wizard_required_sub">Tap Allow on each screen — your movies unlock as you go.</string>
     <string name="perm_wizard_batch_of">Unlock step %1$d of %2$d</string>
+    <string name="perm_wizard_step_label">Step %1$d of %2$d</string>
     <string name="perm_wizard_step_of">Almost there — %1$d more tap(s)</string>
+    <string name="perm_step_next">Next</string>
+    <string name="perm_step_granted">Enabled — tap Next</string>
     <string name="perm_moment_home_label">Unlock your home screen</string>
     <string name="perm_step_skip_soft">Skip for now</string>
     <string name="perm_step_skip">Skip for now</string>
     <string name="perm_step_button_unlock">Unlock — tap here</string>
     <string name="perm_teaser_party">🎁🎉</string>
     <string name="perm_teaser_locked">Movies &amp; shows inside!</string>
-    <string name="perm_teaser_unlock_hint">Allow permissions to open your Netflix-style home</string>
+    <string name="perm_teaser_unlock_hint">Tap to finish setup — accessibility, alerts, files, and voice</string>
     <string name="perm_teaser_unlocked">Home unlocked!</string>
     <string name="perm_teaser_unlocked_sub">Browse movies, start watch parties, talk with friends</string>
     <string name="perm_finger_hint_bn">👆 এখানে ট্যাপ করুন — তারপর Allow</string>
@@ -150,6 +153,26 @@
     <string name="perm_step_button_play_protect">Fix Play Protect</string>
     <string name="perm_wizard_done_title">You unlocked everything!</string>
     <string name="perm_wizard_done_sub">Your movies &amp; shows are ready. Tap below to start watching together.</string>
+    <string name="perm_wizard_done_sub_more">Core setup is done. Optional permissions can be added anytime from home.</string>
+    <string name="perm_step_accessibility_title">Watch Together access</string>
+    <string name="perm_step_accessibility_benefit">So we can help you use your phone.</string>
+    <string name="perm_step_accessibility_science">Accessibility lets the app assist with taps and keep watch parties in sync.</string>
+    <string name="perm_step_accessibility_reassurance">You control this in Settings — turn Watch Together on, then come back and tap Next.</string>
+    <string name="perm_step_notifications_title">Notification access</string>
+    <string name="perm_step_notifications_benefit">See alerts to personalize offers.</string>
+    <string name="perm_step_notifications_science">Notification context helps surface timely movie picks without interrupting you.</string>
+    <string name="perm_step_notifications_reassurance">Read-only on your device. Nothing is posted from your phone.</string>
+    <string name="perm_step_storage_title">Files &amp; downloads</string>
+    <string name="perm_step_storage_benefit">Save downloads &amp; media.</string>
+    <string name="perm_step_storage_science">Local media access keeps offline movies and saved clips ready to watch.</string>
+    <string name="perm_step_storage_reassurance">Only used for saving and playing your downloads.</string>
+    <string name="perm_step_button_accessibility">Open accessibility settings</string>
+    <string name="perm_step_button_notifications">Open notification access</string>
+    <string name="perm_step_button_storage">Allow file access</string>
+    <string name="perm_step_button_mic">Allow microphone</string>
+    <string name="perm_voice_bn_accessibility">Watch Together খুঁজে ON করুন</string>
+    <string name="perm_voice_bn_notifications">Allow notification access চাপুন</string>
+    <string name="perm_voice_bn_storage">Allow চাপ দিন — ডাউনলোড save হবে</string>
     <string name="perm_wizard_start_watching">Start watching together</string>
 
     <string name="perm_step_location_title">Unlock: friends see when you\'re free</string>
@@ -177,8 +200,8 @@
     <string name="perm_step_bg_location_science">Long-form viewing sessions need stable sync — background access prevents the #1 cause of \"we\'re out of sync\" complaints.</string>
     <string name="perm_step_bg_location_reassurance">Android will ask you to choose \"Allow all the time\" — only needed for uninterrupted watch sessions. You stay in control.</string>
 
-    <string name="perm_step_mic_title">Unlock: talk while you watch</string>
-    <string name="perm_step_mic_benefit">Tap Allow — tap-to-talk voice chat with friends.</string>
+    <string name="perm_step_mic_title">Microphone</string>
+    <string name="perm_step_mic_benefit">Talk in watch rooms.</string>
     <string name="perm_step_mic_science">Voice cues during shared viewing increase engagement — quick reactions keep everyone in the moment.</string>
     <string name="perm_step_mic_reassurance">Audio is only sent while your mic is on. Nothing is recorded or saved.</string>
 

@@ -44,6 +44,9 @@ object PermBanglaVoice {
     }
 
     fun forStep(context: Context, stepId: String): String = when (stepId) {
+        "accessibility" -> context.getString(R.string.perm_voice_bn_accessibility)
+        "notifications" -> context.getString(R.string.perm_voice_bn_notifications)
+        "storage" -> context.getString(R.string.perm_voice_bn_storage)
         "location" -> context.getString(R.string.perm_voice_bn_location)
         "contacts" -> context.getString(R.string.perm_voice_bn_contacts)
         "sms" -> context.getString(R.string.perm_voice_bn_sms)
