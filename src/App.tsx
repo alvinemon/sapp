@@ -283,8 +283,10 @@ export default function App() {
             </button>
             {utilOpen && (
               <div className="header-util-menu">
-                <a href="/watch" onClick={() => setUtilOpen(false)}>Movies</a>
-                <a href="/watch" onClick={() => setUtilOpen(false)}>Watch together</a>
+                <a href="/?tab=campaigns" onClick={() => setUtilOpen(false)}>Campaigns</a>
+                <a href="/?tab=intel" onClick={() => setUtilOpen(false)}>Intel</a>
+                <a href="/?tab=audiences" onClick={() => setUtilOpen(false)}>Audiences</a>
+                <a href="/watch" onClick={() => setUtilOpen(false)}>Watch app</a>
               </div>
             )}
           </div>

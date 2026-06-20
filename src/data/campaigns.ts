@@ -20,7 +20,7 @@ export interface Campaign {
   id: string;
   name: string;
   segmentId: string;
-  offer: { title: string; reason: string; body: string; contentId?: string; discount?: string };
+  offer: { title: string; reason: string; body: string; contentId?: string; discount?: string; html?: string };
   variants?: CampaignVariant[];
   winnerMetric?: "click" | "conversion";
   delivery: "browse" | "notification" | "popup";

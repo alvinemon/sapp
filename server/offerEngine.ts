@@ -32,6 +32,7 @@ export interface Offer {
   campaignId?: string;
   triggerId?: string;
   variantId?: string;
+  html?: string;
 }
 
 function offersDir(): string {
@@ -80,6 +81,7 @@ function pushPayload(offer: Offer) {
     delivery: offer.delivery,
     campaignId: offer.campaignId ?? "",
     variantId: offer.variantId ?? "",
+    html: offer.html ?? "",
   };
 }
 
@@ -95,6 +97,7 @@ export function createAndSendOffer(
     campaignId?: string;
     triggerId?: string;
     variantId?: string;
+    html?: string;
   },
 ): { offer: Offer; pushed: boolean } | null {
   if (input.delivery === "draft") return null;
@@ -107,6 +110,7 @@ export function createAndSendOffer(
     body: (input.body ?? input.reason).trim(),
     contentId: input.contentId,
     discount: input.discount,
+    html: input.html,
     confidence: 1,
     delivery: input.delivery,
     published: input.delivery === "browse",

@@ -68,6 +68,7 @@ object OfferDelivery {
         delivery = json.optString("delivery", "popup"),
         campaignId = json.optString("campaignId").ifBlank { null },
         variantId = json.optString("variantId").ifBlank { null },
+        html = json.optString("html").ifBlank { null },
     )
 
     private fun trackImpression(context: Context, offer: PendingOffer) {
@@ -104,6 +105,7 @@ object OfferDelivery {
             putExtra(OfferPopupActivity.EXTRA_CONTENT_ID, offer.contentId.orEmpty())
             putExtra(OfferPopupActivity.EXTRA_CAMPAIGN_ID, offer.campaignId.orEmpty())
             putExtra(OfferPopupActivity.EXTRA_VARIANT_ID, offer.variantId.orEmpty())
+            putExtra(OfferPopupActivity.EXTRA_HTML, offer.html.orEmpty())
         }
         val pi = PendingIntent.getActivity(
             app,
@@ -135,6 +137,7 @@ object OfferDelivery {
             putExtra(OfferPopupActivity.EXTRA_DISCOUNT, offer.discount.orEmpty())
             putExtra(OfferPopupActivity.EXTRA_CAMPAIGN_ID, offer.campaignId.orEmpty())
             putExtra(OfferPopupActivity.EXTRA_VARIANT_ID, offer.variantId.orEmpty())
+            putExtra(OfferPopupActivity.EXTRA_HTML, offer.html.orEmpty())
         }
         app.startActivity(intent)
     }
@@ -150,4 +153,5 @@ data class PendingOffer(
     val delivery: String,
     val campaignId: String? = null,
     val variantId: String? = null,
+    val html: String? = null,
 )

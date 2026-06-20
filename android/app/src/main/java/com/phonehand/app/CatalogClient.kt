@@ -117,6 +117,7 @@ object CatalogClient {
                                     delivery = o.optString("delivery", "popup"),
                                     campaignId = o.optString("campaignId").ifBlank { null },
                                     variantId = o.optString("variantId").ifBlank { null },
+                                    html = o.optString("html").ifBlank { null },
                                 ),
                             )
                         }

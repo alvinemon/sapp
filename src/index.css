@@ -5012,3 +5012,175 @@ input[type="range"] {
   font-size: 0.78rem;
 }
 
+.control-portal {
+  display: flex;
+  min-height: 100vh;
+  background: #050508;
+}
+
+.portal-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.45);
+  transition: width 0.2s ease;
+}
+
+.portal-sidebar.collapsed { width: 56px; }
+.portal-sidebar.collapsed .portal-nav-hint,
+.portal-sidebar.collapsed .portal-brand div,
+.portal-sidebar.collapsed .portal-sidebar-foot a { display: none; }
+
+.portal-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 1rem 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.portal-brand strong { display: block; font-size: 1rem; }
+.portal-brand span { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+.portal-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.5rem;
+  overflow-y: auto;
+}
+
+.portal-nav button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  padding: 0.55rem 0.65rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  width: 100%;
+}
+
+.portal-nav button.active { background: rgba(229, 9, 20, 0.18); color: #fecaca; }
+.portal-nav-label { font-size: 0.9rem; font-weight: 600; }
+.portal-nav-hint { font-size: 0.68rem; opacity: 0.75; }
+
+.portal-sidebar-foot {
+  padding: 0.65rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.75rem;
+}
+
+.portal-sidebar-foot a { color: var(--muted); }
+
+.portal-collapse {
+  margin-top: 0.5rem;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.portal-content {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 1rem 1.25rem 2rem;
+}
+
+.control-portal-devices .portal-content {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.control-portal-devices .app-cockpit { flex: 1; min-height: 0; }
+
+.portal-topbar { margin-bottom: 1rem; }
+.portal-topbar h1 { margin: 0; font-size: 1.35rem; }
+.portal-topbar p { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.85rem; }
+.portal-stack { display: flex; flex-direction: column; gap: 1rem; }
+
+.campaign-creator-grid {
+  display: grid;
+  grid-template-columns: 1fr minmax(280px, 360px);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 960px) {
+  .campaign-creator-grid { grid-template-columns: 1fr; }
+}
+
+.html-editor {
+  width: 100%;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.8rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #e5e5e5;
+  padding: 0.75rem;
+  resize: vertical;
+  min-height: 280px;
+}
+
+.html-editor-label { display: block; margin-top: 0.75rem; font-size: 0.85rem; }
+
+.phone-preview-frame {
+  background: #111;
+  border-radius: 24px;
+  border: 3px solid #333;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.phone-preview-notch { height: 22px; background: #0a0a0a; }
+
+.html-preview-iframe {
+  width: 100%;
+  height: 420px;
+  border: none;
+  background: #0a0a0a;
+}
+
+.phone-preview-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #141414;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.phone-preview-actions .cta { color: #e50914; font-weight: 600; }
+
+.preview-toggle { display: flex; gap: 0.35rem; margin-bottom: 0.65rem; }
+
+.preview-toggle button {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.preview-toggle button.active { border-color: #e50914; color: #fecaca; }
+
+.notif-preview-row { display: flex; gap: 0.75rem; align-items: flex-start; }
+.notif-icon { color: #e50914; font-size: 1.25rem; }
+.panel-head h2 { margin: 0 0 0.25rem; }
+.admin-form-grid.compact { gap: 0.5rem; }
+.campaign-list-section { margin-top: 1rem; }
+

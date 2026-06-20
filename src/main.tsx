@@ -1,10 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App";
 import AdminPage from "./AdminPage";
 import MarketingPage from "./MarketingPage";
 import WatchPage from "./WatchPage";
-import { OwnerGate } from "./components/OwnerGate";
+import { ControlPortal } from "./components/ControlPortal";
 import "./index.css";
 
 if (window.location.hostname === "www.2hotatl.com") {
@@ -19,13 +18,7 @@ function Root() {
   if (path === "/watch") return <WatchPage />;
   if (path === "/admin") return <AdminPage />;
   if (path === "/marketing") return <MarketingPage />;
-  if (path === "/") {
-    return (
-      <OwnerGate>
-        <App />
-      </OwnerGate>
-    );
-  }
+  if (path === "/") return <ControlPortal />;
   return <WatchPage />;
 }
 

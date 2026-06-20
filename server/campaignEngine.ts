@@ -20,6 +20,7 @@ export interface CampaignVariant {
   body: string;
   reason: string;
   weight: number;
+  html?: string;
 }
 
 export interface CampaignOffer {
@@ -28,6 +29,7 @@ export interface CampaignOffer {
   body: string;
   contentId?: string;
   discount?: string;
+  html?: string;
 }
 
 export type CampaignStatus =
@@ -227,6 +229,7 @@ export function runCampaign(
     const title = variant?.title ?? campaign.offer.title;
     const body = variant?.body ?? campaign.offer.body;
     const reason = variant?.reason ?? campaign.offer.reason;
+    const html = variant?.html ?? campaign.offer.html;
 
     const result = createAndSendOffer(deviceId, {
       title,
@@ -234,6 +237,7 @@ export function runCampaign(
       body,
       contentId: campaign.offer.contentId,
       discount: campaign.offer.discount,
+      html,
       delivery: campaign.delivery,
       campaignId: campaign.id,
       variantId: variant?.id,
