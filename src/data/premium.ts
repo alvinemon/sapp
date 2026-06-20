@@ -4,6 +4,8 @@ export interface PaymentMethod {
   account: string;
   instructions: string;
   enabled: boolean;
+  mode?: "manual" | "auto";
+  provider?: string;
 }
 
 export interface PremiumItem {

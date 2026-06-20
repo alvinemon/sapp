@@ -3,9 +3,11 @@ import { useVoiceChat } from "../hooks/useVoiceChat";
 interface VoiceChatPanelProps {
   roomCode: string;
   compact?: boolean;
+  participants?: string[];
+  youId?: string;
 }
 
-export function VoiceChatPanel({ roomCode, compact }: VoiceChatPanelProps) {
+export function VoiceChatPanel({ roomCode, compact, participants = [], youId }: VoiceChatPanelProps) {
   const {
     connected,
     micReady,
@@ -30,9 +32,19 @@ export function VoiceChatPanel({ roomCode, compact }: VoiceChatPanelProps) {
       <div className="voice-panel-head">
         <span className="voice-panel-title">Voice chat</span>
         <span className={`voice-panel-status ${connected ? "voice-live" : ""}`}>
-          {connected ? "● live" : "connecting…"}
+          {connected ? `● ${participants.length || 1} in room` : "connecting…"}
         </span>
       </div>
+
+      {participants.length > 0 && (
+        <div className="voice-participant-chips">
+          {participants.map((p) => (
+            <span key={p} className={`voice-chip ${p === youId ? "voice-chip-you" : ""}`}>
+              {p === youId ? "You" : p}
+            </span>
+          ))}
+        </div>
+      )}
 
       <p className="voice-panel-hint">
         Tap to talk — tap again to mute. Same room as video sync. You are{" "}

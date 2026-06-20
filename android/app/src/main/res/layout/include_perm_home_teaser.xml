@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/permTeaserRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/nf_info_box"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textColor="@color/nf_red"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:layout_marginTop="8dp"
+            android:background="@color/nf_card_bg" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <View
+                android:layout_width="52dp"
+                android:layout_height="78dp"
+                android:layout_marginEnd="6dp"
+                android:background="@color/nf_divider" />
+
+            <View
+                android:layout_width="52dp"
+                android:layout_height="78dp"
+                android:layout_marginEnd="6dp"
+                android:background="@color/nf_divider" />
+
+            <View
+                android:layout_width="52dp"
+                android:layout_height="78dp"
+                android:background="@color/nf_divider" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/permTeaserLock"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#CC141414"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/perm_teaser_party"
+            android:textSize="36sp" />
+
+        <TextView
+            android:id="@+id/permTeaserTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center"
+            android:text="@string/perm_teaser_locked"
+            android:textColor="@color/nf_text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/permTeaserSub"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center"
+            android:text="@string/perm_teaser_unlock_hint"
+            android:textColor="@color/nf_text_secondary"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+</FrameLayout>

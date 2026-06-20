@@ -4,7 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0A0A12"
+    android:background="@color/nf_bg"
     android:fillViewport="true">
 
     <LinearLayout
@@ -19,7 +19,7 @@
             android:text="2hotatl"
             android:textSize="32sp"
             android:textStyle="bold"
-            android:textColor="#F0F0F8"
+            android:textColor="@color/nf_text_primary"
             android:gravity="center" />
 
         <TextView
@@ -44,7 +44,7 @@
                 android:layout_height="wrap_content"
                 android:inputType="text"
                 android:maxLines="1"
-                android:textColor="#F0F0F8" />
+                android:textColor="@color/nf_text_primary" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
@@ -151,17 +151,17 @@
                     android:hint="e.g. play Limbo"
                     android:inputType="text"
                     android:maxLines="2"
-                    android:textColor="#F0F0F8"
+                    android:textColor="@color/nf_text_primary"
                     android:background="#151520"
                     android:padding="12dp" />
 
                 <Button
                     android:id="@+id/btnAiRun"
+                    style="@style/NfButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:text="Go"
-                    android:backgroundTint="#7C5CFF" />
+                    android:text="Go" />
             </LinearLayout>
 
             <TextView

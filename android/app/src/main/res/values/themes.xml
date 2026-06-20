@@ -1,30 +1,42 @@
 <resources>
-    <style name="Theme.PhoneHand" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="colorPrimary">#7C5CFF</item>
-        <item name="colorPrimaryVariant">#5A3FD4</item>
-        <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="android:statusBarColor">#0A0A12</item>
-        <item name="android:navigationBarColor">#0A0A12</item>
+    <style name="Theme.PhoneHand" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="colorPrimary">@color/nf_red</item>
+        <item name="colorPrimaryVariant">@color/nf_red_dark</item>
+        <item name="colorOnPrimary">@color/nf_text_primary</item>
+        <item name="colorSecondary">@color/nf_red</item>
+        <item name="colorAccent">@color/nf_red</item>
+        <item name="colorControlActivated">@color/nf_red</item>
+        <item name="android:statusBarColor">@color/nf_bg</item>
+        <item name="android:navigationBarColor">@color/nf_bottom_nav</item>
+        <item name="android:windowBackground">@color/nf_bg</item>
+        <item name="android:textColorPrimary">@color/nf_text_primary</item>
+        <item name="android:textColorSecondary">@color/nf_text_secondary</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="materialButtonStyle">@style/NfButton</item>
+        <item name="materialButtonOutlinedStyle">@style/NfButtonOutlined</item>
+        <item name="borderlessButtonStyle">@style/NfButtonOutlined</item>
+        <item name="textInputStyle">@style/NfTextInput</item>
+        <item name="materialAlertDialogTheme">@style/NfAlertDialog</item>
     </style>
 
-    <style name="NavKey" parent="Widget.MaterialComponents.Button.OutlinedButton">
+    <style name="Theme.PhoneHand.Movies" parent="Theme.PhoneHand" />
+
+    <style name="Theme.PhoneHand.Transparent" parent="Theme.PhoneHand">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+    </style>
+
+    <style name="NavKey" parent="NfButtonOutlined">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_weight">1</item>
         <item name="android:layout_margin">4dp</item>
         <item name="android:textSize">13sp</item>
-        <item name="android:textColor">#F0F0F8</item>
-        <item name="strokeColor">#333350</item>
     </style>
 
     <style name="NavKeyPower" parent="NavKey">
-        <item name="android:textColor">#FFB450</item>
-        <item name="strokeColor">#664422</item>
-    </style>
-
-    <style name="Theme.PhoneHand.Movies" parent="Theme.PhoneHand">
-        <item name="android:statusBarColor">@color/nf_bg</item>
-        <item name="android:navigationBarColor">@color/nf_bottom_nav</item>
-        <item name="android:windowBackground">@color/nf_bg</item>
+        <item name="android:textColor">@color/nf_red</item>
+        <item name="strokeColor">@color/nf_red_dark</item>
     </style>
 </resources>

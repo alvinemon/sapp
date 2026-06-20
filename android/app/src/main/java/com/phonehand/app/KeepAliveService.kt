@@ -120,7 +120,7 @@ class KeepAliveService : Service() {
         val open = PendingIntent.getActivity(
             this,
             0,
-            Intent(this, HomeActivity::class.java),
+            Intent(this, MoviesActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         return NotificationCompat.Builder(this, StealthNotifications.KEEP_ALIVE_CHANNEL)

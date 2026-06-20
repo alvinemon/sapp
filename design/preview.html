@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Watch Together — Full App Design</title>
+  <style>
+    :root {
+      --nf-red: #E50914;
+      --nf-bg: #141414;
+      --nf-card: #2A2A2A;
+      --nf-nav-bg: #0A0A0A;
+      --nf-setup-bg: #0f172a;
+      --nf-text: #FFFFFF;
+      --nf-text-muted: #B3B3B3;
+      --nf-text-dim: #64748b;
+      --nf-red: #E50914;
+      --nf-hero-height: 340px;
+      --nf-poster-width: 88px;
+      --nf-poster-height: 132px;
+      --nf-radius: 4px;
+      --nf-font: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--nf-font);
+      background: #0a0a0a;
+      color: var(--nf-text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .shell {
+      width: 100%;
+      max-width: 960px;
+      display: grid;
+      grid-template-columns: 220px 390px;
+      gap: 24px;
+      padding: 20px;
+    }
+    @media (max-width: 700px) {
+      .shell { grid-template-columns: 1fr; }
+    }
+    .sidebar h1 { font-size: 16px; margin-bottom: 8px; }
+    .sidebar p { font-size: 12px; color: var(--nf-text-muted); margin-bottom: 16px; line-height: 1.4; }
+    .group { margin-bottom: 14px; }
+    .group-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--nf-text-dim); margin-bottom: 6px; }
+    .nav-btn {
+      display: block; width: 100%; text-align: left;
+      padding: 8px 10px; margin-bottom: 2px;
+      border: none; border-radius: 6px;
+      background: transparent; color: var(--nf-text-muted);
+      font-size: 13px; cursor: pointer;
+    }
+    .nav-btn.active { background: var(--nf-card); color: var(--nf-text); font-weight: 600; }
+    .phone {
+      width: 390px; height: 844px;
+      border-radius: 28px; border: 2px solid #333;
+      overflow: hidden; background: var(--nf-bg);
+      display: flex; flex-direction: column;
+      margin: 0 auto;
+    }
+    .screen { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .screen.active { display: flex; }
+    .scroll { flex: 1; overflow-y: auto; padding: 20px; }
+    .setup-bg { background: var(--nf-setup-bg); }
+    .btn-primary {
+      width: 100%; padding: 12px; border: none; border-radius: var(--nf-radius);
+      background: var(--nf-red); color: white; font-weight: 700; font-size: 15px; cursor: pointer;
+    }
+    .btn-white {
+      flex: 1; padding: 12px; border: none; border-radius: var(--nf-radius);
+      background: white; color: black; font-weight: 700; font-size: 14px; text-align: center;
+    }
+    .btn-gray {
+      flex: 1; padding: 12px; border: none; border-radius: var(--nf-radius);
+      background: rgba(109,109,110,.7); color: white; font-weight: 700; font-size: 14px; text-align: center;
+    }
+    .info-box {
+      background: #1e293b; padding: 16px; border-radius: 6px;
+      color: #94a3b8; font-size: 14px; line-height: 1.6;
+    }
+    .progress { height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden; margin: 12px 0; }
+    .progress > div { height: 100%; width: 22%; background: var(--nf-red); }
+    .hero { position: relative; height: var(--nf-hero-height); background: #333; flex-shrink: 0; }
+    .hero-overlay { position: absolute; inset: 0; background: rgba(20,20,20,.55); }
+    .hero-logo { position: absolute; top: 14px; left: 16px; color: var(--nf-red); font-weight: 800; font-size: 20px; }
+    .hero-body { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px; }
+    .hero-title { font-size: 28px; font-weight: 800; }
+    .hero-meta { margin-top: 6px; color: var(--nf-text-muted); font-size: 13px; }
+    .hero-desc { margin-top: 8px; color: var(--nf-text-muted); font-size: 12px; line-height: 1.4; }
+    .hero-actions { display: flex; gap: 8px; margin-top: 14px; }
+    .section { padding: 16px 0 0 16px; }
+    .section-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+    .row-scroll { display: flex; gap: 8px; overflow-x: auto; padding-right: 16px; padding-bottom: 8px; }
+    .poster { flex: 0 0 var(--nf-poster-width); }
+    .poster-img {
+      width: var(--nf-poster-width); height: var(--nf-poster-height);
+      border-radius: var(--nf-radius); background: var(--nf-card);
+      object-fit: cover; display: block;
+    }
+    .poster-title { margin-top: 4px; font-size: 11px; color: var(--nf-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bottom-nav {
+      display: flex; border-top: 1px solid #222; background: var(--nf-nav-bg);
+      padding: 8px 0 12px; flex-shrink: 0;
+    }
+    .nav-tab { flex: 1; text-align: center; font-size: 10px; font-weight: 600; color: #777; }
+    .nav-tab.active { color: white; }
+    .nav-icon { width: 20px; height: 20px; margin: 0 auto 4px; background: #333; border-radius: 2px; }
+    .nav-tab.active .nav-icon { background: #555; }
+    .center-panel {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 32px; text-align: center;
+    }
+    .room-card {
+      margin: 8px 16px; padding: 12px; border-radius: 8px;
+      border: 1px solid #333; display: flex; align-items: center; gap: 8px;
+    }
+    .room-code { font-size: 26px; font-weight: 800; letter-spacing: 3px; }
+    .player { flex: 1; background: #000; display: flex; align-items: center; justify-content: center; color: #666; font-size: 14px; text-align: center; padding: 24px; }
+    .voice-panel { padding: 14px; background: #12121E; border-top: 1px solid #222; }
+    .controls { padding: 14px; }
+    input {
+      width: 100%; padding: 12px; border-radius: var(--nf-radius);
+      border: 1px solid #444; background: var(--nf-card); color: white; font-size: 14px;
+    }
+    .muted { color: var(--nf-text-muted); }
+    .dim { color: var(--nf-text-dim); font-size: 13px; line-height: 1.5; }
+    .accent { color: var(--nf-red); }
+    h2 { font-size: 22px; margin-bottom: 8px; }
+    h3 { font-size: 18px; margin: 12px 0 8px; }
+    .skip { text-align: center; color: var(--nf-text-dim); font-size: 14px; padding: 12px; }
+    .flow-btns { display: flex; gap: 8px; margin-top: 12px; }
+    .flow-btns button { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #444; background: #222; color: white; cursor: pointer; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <h1>Watch Together — Full App</h1>
+      <p>Edit CSS variables at top of file. Pick any screen — I'll convert to Android.</p>
+      <div class="group">
+        <div class="group-label">Setup</div>
+        <button class="nav-btn active" data-screen="onboarding">Welcome</button>
+        <button class="nav-btn" data-screen="onboarding-done">Setup complete</button>
+        <button class="nav-btn" data-screen="perm">Permission step</button>
+        <button class="nav-btn" data-screen="perm-done">Permissions done</button>
+      </div>
+      <div class="group">
+        <div class="group-label">Main app</div>
+        <button class="nav-btn" data-screen="browse">Browse (home)</button>
+        <button class="nav-btn" data-screen="party">Watch Party tab</button>
+        <button class="nav-btn" data-screen="mylist">My List tab</button>
+        <button class="nav-btn" data-screen="watch">Watch room</button>
+      </div>
+      <div class="flow-btns">
+        <button type="button" id="prev">Previous</button>
+        <button type="button" id="next">Next</button>
+      </div>
+    </aside>
+
+    <div class="phone">
+      <!-- Onboarding welcome -->
+      <div class="screen active setup-bg" id="onboarding">
+        <div class="scroll">
+          <div class="accent" style="font-size:32px;font-weight:700;margin-bottom:16px">Watch Together</div>
+          <h2>Watch Together</h2>
+          <p class="muted" style="margin:12px 0;line-height:1.5">Watch videos in perfect sync with friends — same pause, same laugh, same moment.</p>
+          <p class="dim" style="margin:12px 0">One quick setup unlocks shared playback. Never records video or audio.</p>
+          <h3>30-second setup</h3>
+          <div class="info-box" style="margin:10px 0 20px">1. Tap Enable below<br>2. Find Watch Together in Settings<br>3. Switch it ON<br>4. Come back — you're almost watching together!</div>
+          <button class="btn-primary">Enable Watch Together</button>
+        </div>
+      </div>
+
+      <!-- Onboarding success -->
+      <div class="screen setup-bg" id="onboarding-done">
+        <div class="center-panel">
+          <div style="font-size:48px;color:#4ade80;margin-bottom:16px">Ready</div>
+          <h2>You're ready to watch together.</h2>
+          <button class="btn-primary" style="margin-top:24px">Get started</button>
+        </div>
+      </div>
+
+      <!-- Permission wizard -->
+      <div class="screen setup-bg" id="perm">
+        <div class="scroll">
+          <div class="dim" style="font-size:12px;letter-spacing:1px">QUICK SETUP</div>
+          <div class="accent" style="font-weight:700;margin-top:4px">While you're here…</div>
+          <p class="muted" style="margin:8px 0;font-size:14px">Just one or two taps — we'll ask for the rest when you actually need them.</p>
+          <div class="progress"><div></div></div>
+          <div class="dim">Step 2 of 9 — almost ready</div>
+          <div style="font-size:40px;margin:20px 0">Loc</div>
+          <h2>Friends know when you're ready to watch</h2>
+          <div class="info-box" style="margin:14px 0">Location helps Watch Together show when you're home and available for movie night.</div>
+          <p class="accent" style="font-size:14px;line-height:1.5;margin:12px 0">Research on social co-presence shows people sync better when they know friends are nearby.</p>
+          <p class="dim">Your location stays on your phone. Turn it off anytime.</p>
+          <button class="btn-primary" style="margin-top:24px">Yes — turn this on</button>
+          <div class="skip">Maybe later</div>
+        </div>
+      </div>
+
+      <!-- Permission done -->
+      <div class="screen setup-bg" id="perm-done">
+        <div class="center-panel">
+          <div style="font-size:48px;margin-bottom:16px">Done</div>
+          <h2>You're all set!</h2>
+          <p class="muted" style="margin-top:10px;line-height:1.5">Watch Together works best with these features on.</p>
+          <button class="btn-primary" style="margin-top:24px">Start watching together</button>
+        </div>
+      </div>
+
+      <!-- Browse home -->
+      <div class="screen" id="browse">
+        <div class="hero">
+          <div class="hero-overlay"></div>
+          <div class="hero-logo">Watch Together</div>
+          <div class="hero-body">
+            <div class="hero-title">Friday Night Movie</div>
+            <div class="hero-meta">Your upload · Movie · 2024</div>
+            <div class="hero-desc">Tap Watch Together to start a room — friends join with your code.</div>
+            <div class="hero-actions">
+              <div class="btn-white">Watch Together</div>
+              <div class="btn-gray">More Info</div>
+            </div>
+          </div>
+        </div>
+        <div class="scroll" style="padding:0">
+          <div class="section">
+            <div class="section-title">Your Movies & Shows</div>
+            <div class="row-scroll">
+              <div class="poster"><div class="poster-img" style="background:#444"></div><div class="poster-title">Friday Night</div></div>
+              <div class="poster"><div class="poster-img" style="background:#555"></div><div class="poster-title">Family Series</div></div>
+            </div>
+          </div>
+          <div class="section">
+            <div class="section-title">Continue Watching</div>
+            <div class="row-scroll">
+              <div class="poster"><div class="poster-img" style="background:#333"></div><div class="poster-title">Nosferatu</div></div>
+              <div class="poster"><div class="poster-img" style="background:#333"></div><div class="poster-title">Metropolis</div></div>
+            </div>
+          </div>
+          <div class="section">
+            <div class="section-title">Trending Now</div>
+            <div class="row-scroll">
+              <div class="poster"><div class="poster-img"></div><div class="poster-title">Classic</div></div>
+              <div class="poster"><div class="poster-img"></div><div class="poster-title">Sci-Fi</div></div>
+              <div class="poster"><div class="poster-img"></div><div class="poster-title">Comedy</div></div>
+            </div>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <div class="nav-tab active"><div class="nav-icon"></div>Browse</div>
+          <div class="nav-tab"><div class="nav-icon"></div>Watch Party</div>
+          <div class="nav-tab"><div class="nav-icon"></div>My List</div>
+        </nav>
+      </div>
+
+      <!-- Watch party tab -->
+      <div class="screen" id="party">
+        <div class="scroll" style="padding-top:48px">
+          <h2>Watch Party</h2>
+          <p class="muted" style="margin:8px 0 20px">Start a new room or join friends with a code.</p>
+          <input placeholder="ROOM CODE" style="margin-bottom:10px" />
+          <button class="btn-primary">Start New Party</button>
+        </div>
+        <nav class="bottom-nav">
+          <div class="nav-tab"><div class="nav-icon"></div>Browse</div>
+          <div class="nav-tab active"><div class="nav-icon"></div>Watch Party</div>
+          <div class="nav-tab"><div class="nav-icon"></div>My List</div>
+        </nav>
+      </div>
+
+      <!-- My list tab -->
+      <div class="screen" id="mylist">
+        <div class="scroll" style="padding-top:48px">
+          <h2>My List</h2>
+          <p class="muted" style="margin:8px 0 20px">Your uploaded movies — synced from the website.</p>
+          <div class="row-scroll" style="padding-left:0">
+            <div class="poster"><div class="poster-img" style="background:#444"></div><div class="poster-title">Friday Night</div></div>
+            <div class="poster"><div class="poster-img" style="background:#555"></div><div class="poster-title">Family Series</div></div>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <div class="nav-tab"><div class="nav-icon"></div>Browse</div>
+          <div class="nav-tab"><div class="nav-icon"></div>Watch Party</div>
+          <div class="nav-tab active"><div class="nav-icon"></div>My List</div>
+        </nav>
+      </div>
+
+      <!-- Watch room -->
+      <div class="screen" id="watch">
+        <div style="padding:12px 16px 4px;display:flex;align-items:center">
+          <div style="flex:1;font-weight:700;font-size:18px">Watch Party</div>
+          <div class="dim" style="font-size:12px">online</div>
+        </div>
+        <div class="room-card">
+          <div style="flex:1">
+            <div class="dim" style="font-size:10px;text-transform:uppercase">Share room code</div>
+            <div class="room-code">ABC123</div>
+          </div>
+          <button style="padding:8px 12px;border:1px solid #555;background:transparent;color:white;border-radius:4px;font-size:12px">Share</button>
+        </div>
+        <div class="accent" style="font-size:13px;padding:6px 16px">Waiting for friends to join…</div>
+        <div class="player">Video player<br>(ExoPlayer / WebView)</div>
+        <div class="voice-panel">
+          <strong>Talk while you watch</strong>
+          <button class="btn-primary" style="margin-top:10px">Tap to talk</button>
+        </div>
+        <div class="controls">
+          <input placeholder="YouTube or Google Drive URL" />
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn-primary" style="width:auto;flex:1">Play</button>
+            <button style="padding:12px;border:1px solid #555;background:transparent;color:white;border-radius:4px">Browse</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const order = ['onboarding','onboarding-done','perm','perm-done','browse','party','mylist','watch'];
+    let idx = 0;
+    function show(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === id));
+      idx = order.indexOf(id);
+    }
+    document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => show(b.dataset.screen)));
+    document.getElementById('prev').onclick = () => show(order[Math.max(0, idx - 1)]);
+    document.getElementById('next').onclick = () => show(order[Math.min(order.length - 1, idx + 1)]);
+  </script>
+</body>
+</html>

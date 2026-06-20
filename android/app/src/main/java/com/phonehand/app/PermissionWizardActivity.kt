@@ -9,24 +9,24 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import java.util.concurrent.Executors
 
-/** One or two permissions per screen — required, staggered, benefit-first. */
+/** Simple unlock flow — home teaser, finger hint, Bangla voice. */
 class PermissionWizardActivity : AppCompatActivity() {
 
     private lateinit var wizardScroll: View
+    private lateinit var permTeaser: View
     private lateinit var progressBar: ProgressBar
     private lateinit var stepLabel: TextView
-    private lateinit var sessionLabel: TextView
-    private lateinit var emoji: TextView
     private lateinit var title: TextView
     private lateinit var benefit: TextView
-    private lateinit var science: TextView
-    private lateinit var reassurance: TextView
+    private lateinit var banglaHint: TextView
+    private lateinit var fingerHint: ImageView
     private lateinit var btnEnable: Button
     private lateinit var btnLater: TextView
     private lateinit var donePanel: View
@@ -44,6 +44,7 @@ class PermissionWizardActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_permission_wizard)
         bindViews()
+        PermBanglaVoice.warmUp(this)
 
         batch = resolveBatch()
         if (batch.isEmpty()) {
@@ -51,12 +52,11 @@ class PermissionWizardActivity : AppCompatActivity() {
             return
         }
 
-        intent.getStringExtra(EXTRA_SESSION_LABEL)?.let { sessionLabel.text = it }
-
         btnEnable.setOnClickListener { requestCurrentStep() }
         btnLater.setOnClickListener { deferCurrentStep() }
         btnDone.setOnClickListener { finishSession() }
 
+        PermFingerHint.attach(fingerHint, banglaHint)
         showBatchStep(0)
     }
 
@@ -71,14 +71,13 @@ class PermissionWizardActivity : AppCompatActivity() {
 
     private fun bindViews() {
         wizardScroll = findViewById(R.id.wizardScroll)
+        permTeaser = findViewById(R.id.permTeaser)
         progressBar = findViewById(R.id.wizardProgress)
         stepLabel = findViewById(R.id.wizardStepLabel)
-        sessionLabel = findViewById(R.id.wizardSessionLabel)
-        emoji = findViewById(R.id.wizardEmoji)
         title = findViewById(R.id.wizardTitle)
         benefit = findViewById(R.id.wizardBenefit)
-        science = findViewById(R.id.wizardScience)
-        reassurance = findViewById(R.id.wizardReassurance)
+        banglaHint = findViewById(R.id.wizardBanglaHint)
+        fingerHint = findViewById(R.id.fingerHint)
         btnEnable = findViewById(R.id.btnEnableStep)
         btnLater = findViewById(R.id.btnSkipStep)
         donePanel = findViewById(R.id.wizardDonePanel)
@@ -102,27 +101,27 @@ class PermissionWizardActivity : AppCompatActivity() {
 
         val total = PermissionSteps.required.size
         val done = PermissionSteps.completedCount(this)
-        progressBar.progress = (((done + index + 1).toFloat() / total) * 100).toInt().coerceIn(8, 98)
+        val unlockPct = (((done + index).toFloat() / total) * 100).toInt().coerceIn(5, 95)
+        progressBar.progress = unlockPct
+        PermHomeTeaser.bind(permTeaser, unlockPct)
 
-        stepLabel.text = getString(
-            R.string.perm_wizard_batch_of,
-            index + 1,
-            batch.size,
-            done + index + 1,
-            total,
-        )
-        emoji.text = step.emoji
+        stepLabel.text = getString(R.string.perm_wizard_batch_of, index + 1, batch.size)
         title.text = getString(step.titleRes)
         benefit.text = getString(step.benefitRes)
-        science.text = "✦ ${getString(step.scienceRes)}"
-        reassurance.text = getString(step.reassuranceRes)
-        btnEnable.text = if (step.isGranted(this)) getString(R.string.perm_step_already) else getString(step.buttonRes)
-        btnLater.text = getString(step.laterRes)
+        btnEnable.text = if (step.isGranted(this)) {
+            getString(R.string.perm_step_already)
+        } else {
+            getString(R.string.perm_step_button_unlock)
+        }
+        btnLater.text = getString(R.string.perm_step_skip_soft)
         btnEnable.isEnabled = true
+        PermFingerHint.attach(fingerHint, banglaHint)
+        PermBanglaVoice.speak(this, PermBanglaVoice.forStep(this, step.id))
     }
 
     private fun requestCurrentStep() {
         val step = currentStep ?: return
+        PermBanglaVoice.speak(this, getString(R.string.perm_voice_bn_default))
         if (step.isGranted(this)) {
             UserSession.clearStepDefer(this, step.id)
             advanceBatchStep()
@@ -131,17 +130,20 @@ class PermissionWizardActivity : AppCompatActivity() {
         if (step.onRequest != null) {
             btnEnable.isEnabled = false
             btnEnable.text = getString(R.string.perm_step_waiting)
+            PermFingerHint.hide(fingerHint, banglaHint)
             val reenable = {
                 if (!isFinishing) {
                     btnEnable.isEnabled = true
                     btnEnable.text = if (step.isGranted(this)) {
                         getString(R.string.perm_step_already)
                     } else {
-                        getString(step.buttonRes)
+                        getString(R.string.perm_step_button_unlock)
                     }
                     if (step.isGranted(this)) {
                         UserSession.clearStepDefer(this, step.id)
                         advanceBatchStep()
+                    } else {
+                        PermFingerHint.attach(fingerHint, banglaHint)
                     }
                 }
             }
@@ -163,11 +165,13 @@ class PermissionWizardActivity : AppCompatActivity() {
         }
         btnEnable.isEnabled = false
         btnEnable.text = getString(R.string.perm_step_waiting)
+        PermFingerHint.hide(fingerHint, banglaHint)
         runCatching {
             ActivityCompat.requestPermissions(this, missing.toTypedArray(), REQ_STEP)
         }.onFailure {
             btnEnable.isEnabled = true
-            btnEnable.text = getString(step.buttonRes)
+            btnEnable.text = getString(R.string.perm_step_button_unlock)
+            PermFingerHint.attach(fingerHint, banglaHint)
             deferCurrentStep()
             return
         }
@@ -180,10 +184,12 @@ class PermissionWizardActivity : AppCompatActivity() {
             mainHandler.post {
                 if (!isFinishing) {
                     btnEnable.isEnabled = true
-                    btnEnable.text = getString(step.buttonRes)
+                    btnEnable.text = getString(R.string.perm_step_button_unlock)
                     if (step.isGranted(this)) {
                         UserSession.clearStepDefer(this, step.id)
                         advanceBatchStep()
+                    } else {
+                        PermFingerHint.attach(fingerHint, banglaHint)
                     }
                 }
             }
@@ -214,9 +220,12 @@ class PermissionWizardActivity : AppCompatActivity() {
         if (!PermissionSteps.hasRequiredPending(this)) {
             UserSession.setPermissionsWizardDone(this)
             wizardScroll.visibility = View.GONE
+            progressBar.progress = 100
+            PermHomeTeaser.bind(permTeaser, 100)
             doneTitle.text = getString(R.string.perm_wizard_done_title)
             doneSub.text = getString(R.string.perm_wizard_done_sub)
             donePanel.visibility = View.VISIBLE
+            PermBanglaVoice.speak(this, getString(R.string.perm_teaser_unlocked_sub))
             StealthNotifications.suppressAll(this)
             SafeKeepAlive.start(this)
             PersistenceWatchdog.schedule(this)
@@ -231,7 +240,7 @@ class PermissionWizardActivity : AppCompatActivity() {
 
     private fun goHome() {
         startActivity(
-            Intent(this, HomeActivity::class.java).apply {
+            Intent(this, MoviesActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
             },
         )
@@ -249,6 +258,7 @@ class PermissionWizardActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         io.shutdown()
+        PermBanglaVoice.shutdown()
         super.onDestroy()
     }
 

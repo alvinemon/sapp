@@ -2,8 +2,8 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/nf_bg"
     android:orientation="vertical"
-    android:background="#0A0A12"
     android:padding="16dp">
 
     <TextView
@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/family_library_title"
-        android:textColor="#F0F0F8"
+        android:textColor="@color/nf_text_primary"
         android:textSize="20sp"
         android:textStyle="bold" />
 
@@ -21,16 +21,16 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:text="@string/family_library_sub"
-        android:textColor="#8888A8"
+        android:textColor="@color/nf_text_secondary"
         android:textSize="13sp" />
 
     <ListView
         android:id="@+id/libraryList"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
         android:layout_marginTop="12dp"
-        android:divider="#222233"
+        android:layout_weight="1"
+        android:divider="@color/nf_divider"
         android:dividerHeight="1dp" />
 
 </LinearLayout>

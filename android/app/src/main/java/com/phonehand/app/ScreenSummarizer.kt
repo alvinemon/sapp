@@ -5,15 +5,42 @@ import org.json.JSONObject
 import kotlin.math.roundToInt
 
 object ScreenSummarizer {
+    private const val MAX_ACTIONS = 20
+    private const val MAX_CHARS = 2200
+
+    fun targetCoords(tree: JSONObject, num: Int): Pair<Float, Float>? =
+        buildTargetMap(tree)[num]
+
+    fun buildTargetMap(tree: JSONObject): Map<Int, Pair<Float, Float>> {
+        val map = linkedMapOf<Int, Pair<Float, Float>>()
+        val nodes = tree.optJSONArray("nodes") ?: return map
+        var n = 0
+        for (i in 0 until nodes.length()) {
+            val node = nodes.getJSONObject(i)
+            if (node.optInt("d", 0) == 1) continue
+            val k = node.optInt("k", 0) == 1
+            val e = node.optInt("e", 0) == 1
+            val s = node.optInt("s", 0) == 1
+            if (!k && !e && !s) continue
+            val b = node.getJSONArray("b")
+            val cx = ((b.getInt(0) + b.getInt(2)) / 2f)
+            val cy = ((b.getInt(1) + b.getInt(3)) / 2f)
+            n++
+            map[n] = cx to cy
+        }
+        return map
+    }
+
     fun compact(tree: JSONObject): String {
         val lines = mutableListOf<String>()
-        val title = tree.optString("title", tree.optString("popupTitle", ""))
         val pkg = tree.optString("pkg", "")
+        if (pkg.isNotEmpty()) lines.add("App: $pkg")
+        val title = tree.optString("title", tree.optString("popupTitle", ""))
         if (title.isNotEmpty()) lines.add("Screen: $title")
         else if (pkg.isNotEmpty()) lines.add("Screen: ${pkg.substringAfterLast('.')}")
 
         if (tree.optInt("popup", 0) == 1) {
-            lines.add("POPUP OPEN — handle popup buttons first")
+            lines.add("⚠ POPUP OPEN — tap popup targets first")
         }
 
         val nodes = tree.optJSONArray("nodes") ?: JSONArray()
@@ -31,13 +58,19 @@ object ScreenSummarizer {
             }
         }
 
-        for (i in 0 until nodes.length()) {
-            val n = nodes.getJSONObject(i)
-            if (n.optInt("d", 0) == 1) continue
+        val sorted = (0 until nodes.length()).map { nodes.getJSONObject(it) }
+            .filter { it.optInt("d", 0) != 1 }
+            .filter {
+                it.optInt("k", 0) == 1 || it.optInt("e", 0) == 1 || it.optInt("s", 0) == 1
+            }
+            .sortedWith(compareByDescending<JSONObject> { it.optInt("pop", 0) }
+                .thenBy { it.getJSONArray("b").getInt(1) }
+                .thenBy { it.getJSONArray("b").getInt(0) })
+
+        for (n in sorted) {
             val k = n.optInt("k", 0) == 1
             val e = n.optInt("e", 0) == 1
             val s = n.optInt("s", 0) == 1
-            if (!k && !e && !s) continue
             val text = n.optString("t", "").ifBlank {
                 when {
                     e -> "text field"
@@ -59,11 +92,13 @@ object ScreenSummarizer {
         }
 
         if (reading.isNotEmpty()) {
-            lines.add("Text: " + reading.take(10).joinToString(" | "))
+            lines.add("Visible text: " + reading.take(8).joinToString(" | "))
         }
-        for ((_, line, _) in actions.take(12)) lines.add(line)
+        for ((_, line, _) in actions.take(MAX_ACTIONS)) lines.add(line)
+        if (actions.isEmpty()) lines.add("(No targets — try back/home/swipe/unlock)")
+
         val out = lines.joinToString("\n")
-        return if (out.length > 1200) out.take(1200) + "…" else out
+        return if (out.length > MAX_CHARS) out.take(MAX_CHARS) + "…" else out
     }
 
     fun humanSummary(tree: JSONObject): String {

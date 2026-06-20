@@ -2,9 +2,16 @@
 <resources>
     <color name="ic_launcher_background">#141414</color>
     <color name="nf_red">#E50914</color>
+    <color name="nf_red_dark">#B20710</color>
     <color name="nf_bg">#141414</color>
-    <color name="nf_card_bg">#2A2A2A</color>
+    <color name="nf_card_bg">#2F2F2F</color>
+    <color name="nf_surface">#181818</color>
     <color name="nf_text_primary">#FFFFFF</color>
     <color name="nf_text_secondary">#B3B3B3</color>
+    <color name="nf_text_tertiary">#808080</color>
     <color name="nf_bottom_nav">#0A0A0A</color>
+    <color name="nf_divider">#404040</color>
+    <color name="nf_on_light">#000000</color>
+    <color name="nf_success">#46D369</color>
+    <color name="nf_player_bg">#000000</color>
 </resources>

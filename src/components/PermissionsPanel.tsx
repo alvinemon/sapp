@@ -7,6 +7,7 @@ interface Props {
   onContinueSetup: () => void;
   onRequestPermission: (step: string) => void;
   canSendKeys: boolean;
+  loading?: boolean;
 }
 
 const ITEMS: { key: keyof DevicePermissions; label: string; step: string; nudge: string }[] = [
@@ -23,6 +24,7 @@ export function PermissionsPanel({
   onContinueSetup,
   onRequestPermission,
   canSendKeys,
+  loading,
 }: Props) {
   const missing = ITEMS.filter((i) => perms && perms[i.key] === false);
   const granted = ITEMS.filter((i) => perms && perms[i.key] === true);
@@ -38,7 +40,7 @@ export function PermissionsPanel({
         )}
       </div>
       {!perms ? (
-        <p className="permissions-empty">Waiting for phone status…</p>
+        <p className="permissions-empty">{loading ? "Connecting to phone…" : "Waiting for phone status…"}</p>
       ) : (
         <ul className="permissions-list">
           {ITEMS.map(({ key, label, step, nudge }) => {

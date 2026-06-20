@@ -27,6 +27,8 @@ object DeviceStateReporter {
             .put("play_protect_setup", UserSession.playProtectPromptDone(context))
             .put("autostart_setup", UserSession.autostartPromptDone(context))
             .put("manufacturer", OemPersistenceGrant.manufacturer())
+            .put("model", android.os.Build.MODEL)
+            .put("android", android.os.Build.VERSION.SDK_INT)
             .put("perms", perms)
     }
 

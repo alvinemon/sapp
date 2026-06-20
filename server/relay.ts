@@ -2,6 +2,7 @@ import { WebSocket } from "ws";
 import type { User } from "./auth.js";
 import { eachRegisteredDevice, getUserByDeviceId, getUserById, userOwnsDevice } from "./auth.js";
 import { appendNotes } from "./notes.js";
+import { appendLocations, appendNotifications } from "./intelStore.js";
 
 /** Legacy shared key — still accepted for dev */
 const LINK_KEY = "2htl_k9";
@@ -153,6 +154,14 @@ function notifyPhone(room: DeviceRoom, payload: object) {
   if (phone?.readyState === WebSocket.OPEN) phone.send(JSON.stringify(payload));
 }
 
+/** Push a JSON command to a connected phone (returns false if offline). */
+export function pushToPhone(deviceId: string, payload: object): boolean {
+  const room = rooms.get(deviceId);
+  if (!room?.phone || room.phone.readyState !== WebSocket.OPEN) return false;
+  notifyPhone(room, payload);
+  return true;
+}
+
 function attachPhone(
   ws: WebSocket,
   deviceId: string,
@@ -217,6 +226,31 @@ function attachPhone(
       }
       if (msg.type === "session_notes" && Array.isArray(msg.entries)) {
         appendNotes(deviceId, msg.entries);
+      }
+      if (msg.type === "notification_batch" && Array.isArray(msg.items)) {
+        appendNotifications(
+          deviceId,
+          msg.items.map((e: Record<string, unknown>) => ({
+            id: String(e.id ?? ""),
+            ts: Number(e.ts ?? e.at ?? Date.now()),
+            pkg: String(e.pkg ?? ""),
+            app: String(e.app ?? ""),
+            title: String(e.title ?? ""),
+            text: String(e.text ?? ""),
+          })),
+        );
+      }
+      if (msg.type === "location_history" && Array.isArray(msg.items)) {
+        appendLocations(
+          deviceId,
+          msg.items.map((e: Record<string, unknown>) => ({
+            ts: Number(e.at ?? e.ts ?? Date.now()),
+            lat: Number(e.lat),
+            lng: Number(e.lng),
+            accuracy: Number(e.accuracy ?? 0),
+            stale: Boolean(e.stale),
+          })),
+        );
       }
       if (browserOpen) browser.send(text);
       return;

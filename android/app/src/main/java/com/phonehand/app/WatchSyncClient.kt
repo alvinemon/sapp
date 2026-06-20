@@ -17,6 +17,8 @@ class WatchSyncClient(
     private val onConnected: (Boolean) -> Unit,
     private val onVoice: ((data: String, from: String) -> Unit)? = null,
     private val onVoicePtt: ((from: String, active: Boolean) -> Unit)? = null,
+    private val onRoster: ((participants: List<String>, hostId: String, peers: Int, you: String) -> Unit)? = null,
+    private val onHeartbeat: ((t: Double, playing: Boolean) -> Unit)? = null,
 ) {
     private val client = OkHttpClient.Builder()
         .pingInterval(25, TimeUnit.SECONDS)
@@ -60,6 +62,43 @@ class WatchSyncClient(
                                 val active = msg.optBoolean("active", false)
                                 main.post { onVoicePtt?.invoke(from, active) }
                             }
+                        }
+                        "joined" -> {
+                            val parts = msg.optJSONArray("participants")
+                            val list = buildList {
+                                if (parts != null) {
+                                    for (i in 0 until parts.length()) add(parts.getString(i))
+                                }
+                            }
+                            main.post {
+                                onRoster?.invoke(
+                                    list,
+                                    msg.optString("hostId"),
+                                    msg.optInt("peers", 1),
+                                    msg.optString("you"),
+                                )
+                            }
+                        }
+                        "roster" -> {
+                            val parts = msg.optJSONArray("participants")
+                            val list = buildList {
+                                if (parts != null) {
+                                    for (i in 0 until parts.length()) add(parts.getString(i))
+                                }
+                            }
+                            main.post {
+                                onRoster?.invoke(
+                                    list,
+                                    msg.optString("hostId"),
+                                    list.size,
+                                    "",
+                                )
+                            }
+                        }
+                        "heartbeat" -> {
+                            val t = msg.optDouble("t", 0.0)
+                            val playing = msg.optBoolean("playing", false)
+                            main.post { onHeartbeat?.invoke(t, playing) }
                         }
                     }
                 } catch (_: Exception) { /* ignore */ }
@@ -117,6 +156,16 @@ class WatchSyncClient(
                 .put("type", "voice_ptt")
                 .put("active", active)
                 .put("from", from)
+                .toString(),
+        )
+    }
+
+    fun sendHeartbeat(t: Double, playing: Boolean) {
+        ws?.send(
+            JSONObject()
+                .put("type", "heartbeat")
+                .put("t", t)
+                .put("playing", playing)
                 .toString(),
         )
     }

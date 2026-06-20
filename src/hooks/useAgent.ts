@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import type { DeviceState } from "../types/device";
 import type { AgentAction, AgentResult } from "../utils/agent";
 import { MAX_AGENT_ROUNDS, runDeepSeekAgent } from "../utils/agent";
+import type { AgentDeviceContext } from "../utils/deviceGuide";
 import type { UiTree } from "../types/uiTree";
 import { compactTreeForAgent } from "../utils/screenGuide";
 
@@ -17,7 +18,16 @@ const SWIPE_MS = 180;
 export interface AgentLog {
   id: number;
   role: "user" | "agent" | "action" | "error";
+  kind: "user" | "plan" | "system" | "action" | "error";
   text: string;
+}
+
+function logKind(role: AgentLog["role"], text: string): AgentLog["kind"] {
+  if (role === "error") return "error";
+  if (role === "action") return "action";
+  if (role === "user") return "user";
+  if (text.startsWith("💭")) return "plan";
+  return "system";
 }
 
 function isBatchableTap(action: AgentAction): boolean {
@@ -33,11 +43,16 @@ export function useAgent(
   hasRecentTree: () => boolean,
   getDeviceState: () => DeviceState | null,
   waitForReady: (maxMs?: number) => Promise<boolean>,
+  getDeviceContext: () => AgentDeviceContext,
 ) {
   const [running, setRunning] = useState(false);
   const [logs, setLogs] = useState<AgentLog[]>([]);
+  const [runStep, setRunStep] = useState(0);
+  const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
+  const [lastGoal, setLastGoal] = useState("");
   const logId = useRef(0);
   const historyRef = useRef<{ role: "user" | "assistant"; content: string }[]>([]);
+  const stepRef = useRef(0);
 
   const waitForLiveTree = useCallback(async (maxMs = 4000): Promise<UiTree | null> => {
     const start = Date.now();
@@ -50,7 +65,8 @@ export function useAgent(
   }, [getTree]);
 
   const addLog = useCallback((role: AgentLog["role"], text: string) => {
-    setLogs((l) => [...l.slice(-40), { id: ++logId.current, role, text }]);
+    const kind = logKind(role, text);
+    setLogs((l) => [...l.slice(-40), { id: ++logId.current, role, kind, text }]);
   }, []);
 
   const ensureReady = useCallback(async () => {
@@ -147,6 +163,10 @@ export function useAgent(
   const runPrompt = useCallback(
     async (goal: string, _tree: UiTree | null) => {
       setRunning(true);
+      setLastGoal(goal);
+      setRunStartedAt(Date.now());
+      stepRef.current = 0;
+      setRunStep(0);
       addLog("user", goal);
       historyRef.current = [];
 
@@ -162,6 +182,8 @@ export function useAgent(
         let nextAgentPromise: Promise<AgentResult> | null = null;
 
         for (let round = 0; round < MAX_AGENT_ROUNDS; round++) {
+          stepRef.current = round + 1;
+          setRunStep(round + 1);
           const state = getDeviceState();
           if (state?.locked || !getTree()) {
             addLog("agent", "Phone locked — unlocking…");
@@ -179,14 +201,16 @@ export function useAgent(
           }
 
           const screen = compactTreeForAgent(currentTree);
+          const deviceCtx = getDeviceContext();
+          const deviceBlock = deviceCtx.manufacturer || deviceCtx.model ? `\n\nDevice:\n${deviceCtx.manufacturer ?? ""} ${deviceCtx.model ?? ""}`.trim() : "";
           const lockedHint = state?.locked ? "\n\n(Phone is LOCKED — use key unlock or swipe first.)" : "";
           const screenHint = screen.includes("black") || screen.length < 40
-            ? `${screen}${lockedHint}\n\n(Screen appears off — wake and unlock first.)`
-            : screen + lockedHint;
+            ? `${screen}${deviceBlock}${lockedHint}\n\n(Screen appears off — wake and unlock first.)`
+            : screen + deviceBlock + lockedHint;
 
           let result: AgentResult;
           try {
-            result = nextAgentPromise ?? await runDeepSeekAgent(taskPrompt, screenHint, historyRef.current);
+            result = nextAgentPromise ?? await runDeepSeekAgent(taskPrompt, screenHint, historyRef.current, deviceCtx);
             nextAgentPromise = null;
           } catch (e) {
             const msg = e instanceof Error ? e.message : "Agent failed";
@@ -197,6 +221,7 @@ export function useAgent(
             }
             break;
           }
+          if (result.thought) addLog("agent", `💭 ${result.thought.slice(0, 280)}`);
           addLog("agent", result.say);
           historyRef.current.push({ role: "user", content: `Task: ${taskPrompt}\nScreen: ${screen.slice(0, 300)}` });
           historyRef.current.push({ role: "assistant", content: result.say });
@@ -217,7 +242,12 @@ export function useAgent(
             taskPrompt = `Continue: ${goal}`;
             const nextTree = getTree();
             if (nextTree) {
-              nextAgentPromise = runDeepSeekAgent(taskPrompt, compactTreeForAgent(nextTree), historyRef.current);
+              nextAgentPromise = runDeepSeekAgent(
+                taskPrompt,
+                compactTreeForAgent(nextTree),
+                historyRef.current,
+                getDeviceContext(),
+              );
             }
           } else {
             await actionsPromise;
@@ -228,9 +258,11 @@ export function useAgent(
         addLog("error", e instanceof Error ? e.message : "Agent failed");
       } finally {
         setRunning(false);
+        setRunStep(0);
+        setRunStartedAt(null);
       }
     },
-    [getTree, getTreeTick, waitForTree, waitForLiveTree, ensureReady, getDeviceState, addLog, execActions],
+    [getTree, getTreeTick, waitForTree, waitForLiveTree, ensureReady, getDeviceState, getDeviceContext, addLog, execActions],
   );
 
   const clearLogs = useCallback(() => {
@@ -238,7 +270,9 @@ export function useAgent(
     historyRef.current = [];
   }, []);
 
-  return { running, logs, runPrompt, clearLogs, ensureReady };
+  const elapsedMs = runStartedAt ? Date.now() - runStartedAt : 0;
+
+  return { running, logs, runPrompt, clearLogs, ensureReady, runStep, runStartedAt, lastGoal, maxSteps: MAX_AGENT_ROUNDS };
 }
 
 function ScreenPowerNeedsWake(state: DeviceState | null): boolean {

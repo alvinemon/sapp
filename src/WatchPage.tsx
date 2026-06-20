@@ -11,7 +11,8 @@ import { fetchPremium, fetchPaymentMethods } from "./data/premium";
 import type { FreeCatalogItem } from "./data/freeCatalog";
 import { fetchFreeCatalog } from "./data/freeCatalog";
 import { useWatchSync } from "./hooks/useWatchSync";
-import { loadContinueWatching, saveContinueWatching } from "./utils/continueWatching";
+import { fetchCatalog, fetchPublishedOffers, type Offer } from "./data/catalog";
+import { recordOfferEvent } from "./data/campaigns";
 import { randomRoomCode, resolveVideoUrl, type ResolvedVideo } from "./utils/videoUrl";
 
 declare global {
@@ -81,13 +82,63 @@ export default function WatchPage() {
 
   const [loadingPickId, setLoadingPickId] = useState<string | null>(null);
 
-  const { connected, peers, remoteUrl, sendState, sendUrl, onRemoteState, withApplying } = useWatchSync(room);
+  const [publishedOffers, setPublishedOffers] = useState<Offer[]>([]);
+
+  const {
+    connected,
+    peers,
+    participants,
+    youId,
+    remoteUrl,
+    sendState,
+    sendUrl,
+    onRemoteState,
+    withApplying,
+    startHostHeartbeat,
+  } = useWatchSync(room);
 
   useEffect(() => {
-    void fetchFreeCatalog().then((d) => setFreeItems(d.items)).catch(() => {});
+    void fetchCatalog().then((d) => {
+      const free = d.items.filter((i) => i.free && i.type === "movie");
+      setFreeItems(
+        free.map((i) => ({
+          id: i.id,
+          title: i.title,
+          year: i.year ?? 2024,
+          category: i.category ?? "Catalog",
+          kind: "movie" as const,
+          streamUrl: i.url ?? "",
+          thumb: i.thumb,
+        })),
+      );
+      const prem = d.items.filter((i) => !i.free);
+      setPremiumItems(
+        prem.map((i) => ({
+          id: i.id,
+          title: i.title,
+          description: i.description,
+          thumbnail: i.thumb,
+          price: i.price ?? "",
+          currency: i.currency ?? "BDT",
+          methodIds: i.methodIds ?? [],
+          locked: i.locked ?? true,
+          url: i.url,
+        })),
+      );
+    }).catch(() => {});
+    void fetchFreeCatalog().then((d) => setFreeItems((prev) => (prev.length ? prev : d.items))).catch(() => {});
     void fetchFamilyLibrary().then((d) => setFamilyItems(d.items)).catch(() => {});
-    void fetchPremium().then((d) => setPremiumItems(d.items)).catch(() => {});
+    void fetchPremium().then((d) => setPremiumItems((prev) => (prev.length ? prev : d.items))).catch(() => {});
     void fetchPaymentMethods().then(setPaymentMethods).catch(() => {});
+    void fetchPublishedOffers().then((d) => {
+      setPublishedOffers(d.offers);
+      for (const o of d.offers) {
+        void recordOfferEvent(o.id, o.deviceId || "web", "impression", {
+          campaignId: o.campaignId,
+          variantId: o.variantId,
+        });
+      }
+    }).catch(() => {});
   }, []);
 
   const featured = useMemo(() => {
@@ -460,8 +511,38 @@ export default function WatchPage() {
         )}
 
         <section className="nf-voice-section">
-          <VoiceChatPanel roomCode={room} compact />
+          <VoiceChatPanel roomCode={room} compact participants={participants} youId={youId} />
         </section>
+
+        {publishedOffers.length > 0 && (
+          <ContentRow title="Recommended for you">
+            {publishedOffers.map((o) => (
+              <div
+                key={o.id}
+                className="nf-offer-card glass-panel"
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  void recordOfferEvent(o.id, o.deviceId || "web", "click", {
+                    campaignId: o.campaignId,
+                    variantId: o.variantId,
+                  });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    void recordOfferEvent(o.id, o.deviceId || "web", "click", {
+                      campaignId: o.campaignId,
+                      variantId: o.variantId,
+                    });
+                  }
+                }}
+              >
+                <strong>{o.title}</strong>
+                <p>{o.reason}</p>
+              </div>
+            ))}
+          </ContentRow>
+        )}
       </main>
 
       {video && (

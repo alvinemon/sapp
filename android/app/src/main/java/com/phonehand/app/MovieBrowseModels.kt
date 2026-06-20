@@ -33,8 +33,8 @@ fun FreeCatalogItem.toBrowseItem(): MovieBrowseItem = MovieBrowseItem(
 fun FamilyLibraryItem.toBrowseItem(): MovieBrowseItem = MovieBrowseItem(
     id = id,
     title = title,
-    subtitle = description.ifBlank { "Family library" },
-    description = description.ifBlank { "Tap to watch together with your family." },
+    subtitle = "Your upload · ${if (description.contains("series", ignoreCase = true) || description.contains("show", ignoreCase = true)) "Series" else "Movie"}",
+    description = description.ifBlank { "Tap to start a watch party with friends." },
     thumbUrl = thumbnail.ifBlank { PosterLoader.placeholderUrl(title) },
     streamUrl = url,
     source = "family",

@@ -2,131 +2,134 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0f172a">
+    android:background="@color/nf_bg">
 
     <ScrollView
         android:id="@+id/wizardScroll"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fillViewport="true"
-        android:padding="24dp">
+        android:padding="20dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/perm_wizard_header"
-                android:textColor="#64748b"
-                android:textSize="13sp"
-                android:letterSpacing="0.05" />
-
-            <TextView
-                android:id="@+id/wizardSessionLabel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/perm_moment_home_label"
-                android:textColor="#7C5CFF"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:lineSpacingExtra="3dp"
-                android:text="@string/perm_wizard_required_sub"
-                android:textColor="#94a3b8"
-                android:textSize="14sp" />
+            <include
+                android:id="@+id/permTeaser"
+                layout="@layout/include_perm_home_teaser" />
 
             <ProgressBar
                 android:id="@+id/wizardProgress"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
-                android:layout_height="8dp"
-                android:layout_marginTop="12dp"
+                android:layout_height="4dp"
                 android:max="100"
                 android:progress="0"
-                android:progressTint="#7C5CFF"
-                android:progressBackgroundTint="#1e293b" />
+                android:progressTint="@color/nf_red"
+                android:progressBackgroundTint="@color/nf_card_bg" />
 
             <TextView
                 android:id="@+id/wizardStepLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:textColor="#94a3b8"
-                android:textSize="13sp" />
-
-            <TextView
-                android:id="@+id/wizardEmoji"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
-                android:textSize="52sp" />
+                android:layout_marginTop="8dp"
+                android:textAppearance="@style/NfTextCaption" />
 
             <TextView
                 android:id="@+id/wizardTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:textColor="#FFFFFF"
-                android:textSize="24sp"
+                android:textColor="@color/nf_text_primary"
+                android:textSize="22sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/wizardBenefit"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:background="#1e293b"
-                android:lineSpacingExtra="5dp"
-                android:padding="18dp"
-                android:textColor="#e2e8f0"
-                android:textSize="16sp" />
-
-            <TextView
-                android:id="@+id/wizardScience"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:drawablePadding="8dp"
+                android:layout_marginTop="8dp"
                 android:lineSpacingExtra="4dp"
-                android:textColor="#a78bfa"
-                android:textSize="14sp" />
+                android:textAppearance="@style/NfTextBody" />
 
             <TextView
-                android:id="@+id/wizardReassurance"
+                android:id="@+id/wizardBanglaHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:lineSpacingExtra="3dp"
-                android:textColor="#64748b"
-                android:textSize="13sp" />
+                android:layout_marginTop="14dp"
+                android:background="@drawable/nf_info_box"
+                android:lineSpacingExtra="4dp"
+                android:padding="12dp"
+                android:text="@string/perm_finger_hint_bn"
+                android:textColor="@color/nf_text_primary"
+                android:textSize="15sp" />
 
-            <Button
-                android:id="@+id/btnEnableStep"
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
-                android:paddingVertical="14dp"
-                android:textAllCaps="false"
-                android:textSize="16sp" />
+                android:layout_marginTop="20dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <ImageView
+                        android:id="@+id/fingerHint"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_finger_point"
+                        android:visibility="gone" />
+
+                    <Button
+                        android:id="@+id/btnEnableStep"
+                        style="@style/NfButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingVertical="14dp"
+                        android:text="@string/perm_step_button_unlock"
+                        android:textAllCaps="false"
+                        android:textSize="16sp" />
+                </LinearLayout>
+            </FrameLayout>
 
             <TextView
                 android:id="@+id/btnSkipStep"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="10dp"
                 android:gravity="center"
-                android:padding="12dp"
-                android:text="@string/perm_step_skip"
-                android:textColor="#64748b"
-                android:textSize="14sp" />
+                android:padding="10dp"
+                android:text="@string/perm_step_skip_soft"
+                android:textAppearance="@style/NfTextCaption" />
+
+            <View
+                android:id="@+id/wizardEmoji"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/wizardScience"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/wizardReassurance"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/wizardSessionLabel"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
 
         </LinearLayout>
     </ScrollView>
@@ -140,20 +143,16 @@
         android:padding="32dp"
         android:visibility="gone">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🎉"
-            android:textSize="64sp" />
+        <include layout="@layout/include_perm_home_teaser" />
 
         <TextView
             android:id="@+id/wizardDoneTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="20dp"
             android:gravity="center"
             android:text="@string/perm_wizard_done_title"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/nf_text_primary"
             android:textSize="22sp"
             android:textStyle="bold" />
 
@@ -161,18 +160,16 @@
             android:id="@+id/wizardDoneSub"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="8dp"
             android:gravity="center"
-            android:lineSpacingExtra="4dp"
-            android:text="@string/perm_wizard_done_sub"
-            android:textColor="#94a3b8"
-            android:textSize="15sp" />
+            android:textAppearance="@style/NfTextBody" />
 
         <Button
             android:id="@+id/btnWizardDone"
+            style="@style/NfButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
+            android:layout_marginTop="24dp"
             android:text="@string/perm_wizard_start_watching"
             android:textAllCaps="false" />
 

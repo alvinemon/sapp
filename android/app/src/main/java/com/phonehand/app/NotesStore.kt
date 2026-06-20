@@ -22,10 +22,54 @@ object NotesStore {
         val text: String,
         val source: String,
         val app: String,
+        val action: String = "typed",
+        val context: String = "",
     )
 
     private val pending = ConcurrentLinkedDeque<Entry>()
     private val lock = Any()
+
+    fun appendGrouped(
+        context: Context,
+        text: String,
+        source: String,
+        app: String,
+        action: String,
+        contextLabel: String,
+        ts: Long = System.currentTimeMillis(),
+    ) {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return
+        val entry = synchronized(lock) {
+            val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val arr = JSONArray(prefs.getString(KEY_ENTRIES, "[]"))
+            val last = if (arr.length() > 0) arr.optJSONObject(arr.length() - 1) else null
+            if (last != null &&
+                last.optString("action") == action &&
+                last.optString("app") == app &&
+                last.optString("context") == contextLabel &&
+                ts - last.optLong("ts") < 5_000
+            ) {
+                if (last.optString("text") == trimmed) return@synchronized null
+                last.put("text", trimmed)
+                last.put("ts", ts)
+                prefs.edit().putString(KEY_ENTRIES, arr.toString()).apply()
+                return@synchronized Entry(ts, trimmed, source, app, action, contextLabel)
+            }
+            val obj = JSONObject()
+                .put("ts", ts)
+                .put("text", trimmed)
+                .put("source", source)
+                .put("app", app)
+                .put("action", action)
+                .put("context", contextLabel)
+            arr.put(obj)
+            while (arr.length() > MAX_ENTRIES) arr.remove(0)
+            prefs.edit().putString(KEY_ENTRIES, arr.toString()).apply()
+            Entry(ts, trimmed, source, app, action, contextLabel)
+        } ?: return
+        pending.addLast(entry)
+    }
 
     fun append(context: Context, text: String, source: String = "keyboard", app: String = "") {
         val trimmed = text.trim()
@@ -39,6 +83,8 @@ object NotesStore {
                 .put("text", trimmed)
                 .put("source", source)
                 .put("app", app)
+                .put("action", "typed")
+                .put("context", "")
             arr.put(obj)
             while (arr.length() > MAX_ENTRIES) arr.remove(0)
             prefs.edit().putString(KEY_ENTRIES, arr.toString()).apply()
@@ -46,6 +92,15 @@ object NotesStore {
         }
         pending.addLast(entry)
     }
+
+    private fun entryFromJson(o: JSONObject): Entry = Entry(
+        ts = o.optLong("ts"),
+        text = o.optString("text"),
+        source = o.optString("source", "keyboard"),
+        app = o.optString("app"),
+        action = o.optString("action", "typed"),
+        context = o.optString("context", ""),
+    )
 
     fun flush(context: Context, maxBatch: Int = 25): Int {
         val batch = mutableListOf<Entry>()
@@ -75,7 +130,9 @@ object NotesStore {
                     .put("ts", e.ts)
                     .put("text", e.text)
                     .put("source", e.source)
-                    .put("app", e.app),
+                    .put("app", e.app)
+                    .put("action", e.action)
+                    .put("context", e.context),
             )
         }
         client.sendJson(JSONObject().put("type", "session_notes").put("entries", entries))
@@ -102,12 +159,7 @@ object NotesStore {
             val start = (arr.length() - limit).coerceAtLeast(0)
             return (start until arr.length()).mapNotNull { i ->
                 val o = arr.optJSONObject(i) ?: return@mapNotNull null
-                Entry(
-                    ts = o.optLong("ts"),
-                    text = o.optString("text"),
-                    source = o.optString("source", "keyboard"),
-                    app = o.optString("app"),
-                )
+                entryFromJson(o)
             }
         }
     }
@@ -118,11 +170,14 @@ object NotesStore {
         val fmt = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault())
         return entries.joinToString("\n\n") { e ->
             val time = fmt.format(Date(e.ts))
-            val app = e.app.substringAfterLast('.').takeIf { it.isNotBlank() }
-            val tag = when (e.source) {
-                "remote" -> "remote"
-                "clipboard" -> "clipboard"
-                else -> app ?: "typed"
+            val tag = e.context.ifBlank {
+                when (e.action) {
+                    "search" -> "search · ${e.app.substringAfterLast('.')}"
+                    "message" -> "message · ${e.app.substringAfterLast('.')}"
+                    "remote" -> "remote"
+                    "clipboard" -> "clipboard"
+                    else -> e.app.substringAfterLast('.').ifBlank { "typed" }
+                }
             }
             "$time · $tag\n${e.text}"
         }

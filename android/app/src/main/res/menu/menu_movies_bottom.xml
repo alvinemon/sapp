@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/nav_home"
-        android:icon="@android:drawable/ic_menu_compass"
-        android:title="@string/movies_nav_home" />
-    <item
-        android:id="@+id/nav_movies"
+        android:id="@+id/nav_browse"
         android:checked="true"
-        android:icon="@android:drawable/ic_media_play"
-        android:title="@string/movies_nav_movies" />
+        android:icon="@drawable/ic_nav_browse"
+        android:title="@string/movies_nav_browse" />
+    <item
+        android:id="@+id/nav_party"
+        android:icon="@drawable/ic_nav_party"
+        android:title="@string/movies_nav_party" />
     <item
         android:id="@+id/nav_my_list"
-        android:icon="@android:drawable/ic_menu_agenda"
+        android:icon="@drawable/ic_nav_list"
         android:title="@string/movies_nav_my_list" />
 </menu>

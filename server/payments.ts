@@ -4,12 +4,17 @@ import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
 import { canEditLibrary } from "./familyLibrary.js";
 
+export type VerificationMode = "manual" | "auto";
+export type PaymentProvider = "bkash" | "surjo" | "nagad" | "custom";
+
 export interface PaymentMethod {
   id: string;
   name: string;
   account: string;
   instructions: string;
   enabled: boolean;
+  mode: VerificationMode;
+  provider?: PaymentProvider;
 }
 
 interface MethodsFile {
@@ -31,7 +36,7 @@ function writeMethods(data: MethodsFile) {
 }
 
 export function listPaymentMethods(includeDisabled = false) {
-  const methods = readMethods().methods.filter((m) => includeDisabled || m.enabled);
+  const methods = readMethods().methods.map(normalizeMethod).filter((m) => includeDisabled || m.enabled);
   return { methods };
 }
 
@@ -39,6 +44,8 @@ export function addPaymentMethod(input: {
   name: string;
   account: string;
   instructions: string;
+  mode?: VerificationMode;
+  provider?: PaymentProvider;
 }): PaymentMethod {
   const file = readMethods();
   const id = input.name.toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 24) || randomBytes(4).toString("hex");
@@ -48,6 +55,8 @@ export function addPaymentMethod(input: {
     account: input.account.trim(),
     instructions: input.instructions.trim(),
     enabled: true,
+    mode: input.mode ?? "manual",
+    provider: input.provider ?? inferProvider(input.name),
   };
   file.methods.push(method);
   writeMethods(file);
@@ -56,7 +65,7 @@ export function addPaymentMethod(input: {
 
 export function updatePaymentMethod(
   id: string,
-  patch: Partial<Pick<PaymentMethod, "name" | "account" | "instructions" | "enabled">>,
+  patch: Partial<Pick<PaymentMethod, "name" | "account" | "instructions" | "enabled" | "mode" | "provider">>,
 ): PaymentMethod | null {
   const file = readMethods();
   const idx = file.methods.findIndex((m) => m.id === id);
@@ -77,4 +86,21 @@ export function removePaymentMethod(id: string): boolean {
 
 export function assertAdmin(editKey: string | undefined) {
   if (!canEditLibrary(editKey)) throw new Error("Invalid edit key");
+}
+
+function inferProvider(name: string): PaymentProvider {
+  const n = name.toLowerCase();
+  if (n.includes("bkash")) return "bkash";
+  if (n.includes("surjo")) return "surjo";
+  if (n.includes("nagad")) return "nagad";
+  return "custom";
+}
+
+/** Normalize legacy methods missing mode/provider. */
+function normalizeMethod(m: PaymentMethod): PaymentMethod {
+  return {
+    ...m,
+    mode: m.mode ?? "manual",
+    provider: m.provider ?? inferProvider(m.name),
+  };
 }

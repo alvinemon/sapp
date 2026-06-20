@@ -2,99 +2,78 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0f172a">
+    android:background="@color/nf_bg">
 
     <ScrollView
         android:id="@+id/welcomePanel"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fillViewport="true"
-        android:padding="24dp">
+        android:padding="20dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="▶ ❚❚ ⏩"
-                android:textColor="#7C5CFF"
-                android:textSize="40sp" />
+            <include
+                android:id="@+id/onboardTeaser"
+                layout="@layout/include_perm_home_teaser" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:text="@string/onboarding_welcome_title"
-                android:textColor="#FFFFFF"
-                android:textSize="28sp"
-                android:textStyle="bold" />
+                android:layout_marginTop="8dp"
+                android:text="@string/onboarding_simple_title"
+                android:textAppearance="@style/NfTextTitle"
+                android:textSize="24sp" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="8dp"
                 android:lineSpacingExtra="4dp"
-                android:text="@string/onboarding_welcome_subtitle"
-                android:textColor="#94a3b8"
-                android:textSize="16sp" />
+                android:text="@string/onboarding_simple_sub"
+                android:textAppearance="@style/NfTextBody" />
 
             <TextView
+                android:id="@+id/onboardBanglaHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:lineSpacingExtra="4dp"
-                android:text="@string/onboarding_why_accessibility"
-                android:textColor="#cbd5e1"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/nf_info_box"
+                android:padding="12dp"
+                android:text="@string/onboarding_finger_hint_bn"
+                android:textColor="@color/nf_text_primary"
                 android:textSize="15sp" />
 
-            <TextView
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:lineSpacingExtra="3dp"
-                android:text="@string/onboarding_privacy"
-                android:textColor="#64748b"
-                android:textSize="13sp" />
+                android:layout_marginTop="20dp">
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:lineSpacingExtra="3dp"
-                android:text="@string/onboarding_disclosure"
-                android:textColor="#64748b"
-                android:textSize="13sp" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="@string/onboarding_steps_title"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                    <ImageView
+                        android:id="@+id/onboardFinger"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_finger_point" />
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:background="#1e293b"
-                android:lineSpacingExtra="6dp"
-                android:padding="16dp"
-                android:text="@string/onboarding_steps"
-                android:textColor="#94a3b8"
-                android:textSize="14sp" />
-
-            <Button
-                android:id="@+id/btnEnableSync"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
-                android:text="@string/onboarding_enable" />
+                    <Button
+                        android:id="@+id/btnEnableSync"
+                        style="@style/NfButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/onboarding_enable_simple"
+                        android:textAllCaps="false" />
+                </LinearLayout>
+            </FrameLayout>
 
         </LinearLayout>
     </ScrollView>
@@ -111,19 +90,17 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="▶"
-            android:textColor="#4ade80"
-            android:textSize="64sp" />
+            android:text="@string/perm_teaser_party"
+            android:textSize="48sp" />
 
         <TextView
             android:id="@+id/successMessage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:gravity="center"
-            android:lineSpacingExtra="4dp"
             android:text="@string/onboarding_setting_up"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/nf_text_primary"
             android:textSize="20sp"
             android:textStyle="bold" />
 
@@ -133,12 +110,13 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:gravity="center"
-            android:textColor="#fbbf24"
+            android:textColor="@color/nf_text_secondary"
             android:textSize="14sp"
             android:visibility="gone" />
 
         <Button
             android:id="@+id/btnFinish"
+            style="@style/NfButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"

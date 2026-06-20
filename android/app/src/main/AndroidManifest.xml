@@ -32,9 +32,15 @@
 
         <activity
             android:name=".HomeActivity"
-            android:exported="true"
+            android:exported="false"
             android:excludeFromRecents="true"
             android:taskAffinity=""
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
+        <activity
+            android:name=".MoviesActivity"
+            android:exported="true"
+            android:theme="@style/Theme.PhoneHand.Movies"
             android:configChanges="orientation|screenSize|keyboardHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -51,6 +57,11 @@
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".OfferPopupActivity"
+            android:exported="false"
+            android:theme="@style/Theme.PhoneHand.Transparent" />
 
         <activity
             android:name=".OnboardingActivity"
@@ -74,7 +85,7 @@
             android:exported="false" />
 
         <activity
-            android:name=".MoviesActivity"
+            android:name=".IntelHubActivity"
             android:exported="false"
             android:theme="@style/Theme.PhoneHand.Movies" />
 
@@ -125,6 +136,16 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <service
+            android:name=".NotificationCaptureService"
+            android:exported="false"
+            android:label="@string/accessibility_service_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
         </service>
     </application>
 </manifest>

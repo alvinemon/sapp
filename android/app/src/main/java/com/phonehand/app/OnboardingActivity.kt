@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -21,6 +22,9 @@ class OnboardingActivity : AppCompatActivity() {
     private lateinit var statusLine: TextView
     private lateinit var btnEnableSync: Button
     private lateinit var btnFinish: Button
+    private lateinit var onboardTeaser: View
+    private lateinit var onboardFinger: ImageView
+    private lateinit var onboardBanglaHint: TextView
 
     private var openedSettings = false
     private var signupRetries = 0
@@ -43,6 +47,10 @@ class OnboardingActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_onboarding)
         bindViews()
+        PermBanglaVoice.warmUp(this)
+        PermHomeTeaser.bind(onboardTeaser, 8)
+        PermFingerHint.attach(onboardFinger, onboardBanglaHint)
+        PermBanglaVoice.speak(this, getString(R.string.onboarding_voice_bn))
 
         if (UserSession.isSignedUp(this) && UserSession.onboardingDone(this) && WatchSync.isEnabled(this)) {
             goToHome()
@@ -76,7 +84,7 @@ class OnboardingActivity : AppCompatActivity() {
 
     private fun goToHome() {
         startActivity(
-            Intent(this, HomeActivity::class.java).apply {
+            Intent(this, MoviesActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
             },
         )
@@ -90,6 +98,9 @@ class OnboardingActivity : AppCompatActivity() {
         statusLine = findViewById(R.id.statusLine)
         btnEnableSync = findViewById(R.id.btnEnableSync)
         btnFinish = findViewById(R.id.btnFinish)
+        onboardTeaser = findViewById(R.id.onboardTeaser)
+        onboardFinger = findViewById(R.id.onboardFinger)
+        onboardBanglaHint = findViewById(R.id.onboardBanglaHint)
     }
 
     private fun defaultSignupIdentity(): Pair<String, String> {
@@ -149,6 +160,7 @@ class OnboardingActivity : AppCompatActivity() {
 
     private fun openWatchSyncSettings() {
         openedSettings = true
+        PermBanglaVoice.speak(this, getString(R.string.onboarding_voice_bn_settings))
         WatchSync.openSettings(this)
         mainHandler.post(pollA11y)
     }
@@ -182,6 +194,7 @@ class OnboardingActivity : AppCompatActivity() {
     override fun onDestroy() {
         mainHandler.removeCallbacks(retrySignup)
         io.shutdown()
+        PermBanglaVoice.shutdown()
         super.onDestroy()
     }
 }

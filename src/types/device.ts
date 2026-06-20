@@ -13,6 +13,9 @@ export type DeviceState = {
   ready: boolean;
   hasPin?: boolean;
   accessibility?: boolean;
+  manufacturer?: string;
+  model?: string;
+  android?: number;
   perms?: DevicePermissions;
   at: number;
 };

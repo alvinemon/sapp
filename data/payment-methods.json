@@ -5,14 +5,27 @@
       "name": "bKash",
       "account": "01XXXXXXXXX",
       "instructions": "1. Open bKash app\n2. Send Money to the number above\n3. Enter the amount shown\n4. Use your name as reference\n5. Paste the Transaction ID below",
-      "enabled": true
+      "enabled": true,
+      "mode": "manual",
+      "provider": "bkash"
+    },
+    {
+      "id": "surjo",
+      "name": "Surjo Pay",
+      "account": "merchant@surjo",
+      "instructions": "1. Open Surjo Pay\n2. Pay the shown amount\n3. Paste the Transaction ID below",
+      "enabled": true,
+      "mode": "manual",
+      "provider": "surjo"
     },
     {
       "id": "nagad",
       "name": "Nagad",
       "account": "01XXXXXXXXX",
       "instructions": "1. Open Nagad app\n2. Send Money to the number above\n3. Enter the amount shown\n4. Paste the Transaction ID below",
-      "enabled": true
+      "enabled": true,
+      "mode": "manual",
+      "provider": "nagad"
     }
   ]
 }

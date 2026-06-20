@@ -11,7 +11,7 @@
         android:layout_height="180dp"
         app:cardBackgroundColor="@color/nf_card_bg"
         app:cardCornerRadius="4dp"
-        app:cardElevation="4dp"
+        app:cardElevation="0dp"
         xmlns:app="http://schemas.android.com/apk/res-auto">
 
         <ImageView

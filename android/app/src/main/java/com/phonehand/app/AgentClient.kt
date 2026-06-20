@@ -12,19 +12,19 @@ import java.util.concurrent.TimeUnit
 object AgentClient {
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(90, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .build()
 
     private val jsonType = "application/json; charset=utf-8".toMediaType()
 
-    fun run(context: Context, prompt: String, screen: String, history: JSONArray): JSONObject {
-        val body = JSONObject()
+    fun run(context: Context, prompt: String, screen: String, history: JSONArray, device: JSONObject? = null): JSONObject {
+        val payload = JSONObject()
             .put("prompt", prompt)
             .put("screen", screen)
             .put("history", history)
-            .toString()
-            .toRequestBody(jsonType)
+        if (device != null) payload.put("device", device)
+        val body = payload.toString().toRequestBody(jsonType)
 
         var lastErr = "AI not available"
         for (host in RelayHost.hosts(context)) {

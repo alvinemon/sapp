@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0A0A12">
+    android:background="@color/nf_bg">
 
     <LinearLayout
         android:id="@+id/headerBar"
@@ -13,7 +13,7 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="16dp"
+        android:paddingStart="8dp"
         android:paddingEnd="16dp"
         android:paddingTop="12dp"
         android:paddingBottom="4dp"
@@ -22,13 +22,24 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <TextView
+            android:id="@+id/btnBack"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
+            android:text="@string/watch_back"
+            android:textColor="@color/nf_text_primary"
+            android:textSize="22sp" />
+
+        <TextView
             android:id="@+id/logoText"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:text="@string/watch_title"
-            android:textColor="#F0F0F8"
-            android:textSize="20sp"
+            android:textColor="@color/nf_red"
+            android:textSize="18sp"
             android:textStyle="bold" />
 
         <TextView
@@ -36,8 +47,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="offline"
-            android:textColor="#8888A8"
-            android:textSize="12sp" />
+            android:textColor="@color/nf_text_tertiary"
+            android:textSize="12sp"
+            tools:ignore="HardcodedText" />
     </LinearLayout>
 
     <LinearLayout
@@ -64,25 +76,25 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/watch_room_share_label"
-                android:textColor="#8888A8"
-                android:textSize="11sp"
-                android:textAllCaps="true" />
+                android:textAllCaps="true"
+                android:textColor="@color/nf_text_tertiary"
+                android:textSize="11sp" />
 
             <TextView
                 android:id="@+id/roomCodeDisplay"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:letterSpacing="0.15"
-                android:textColor="#F0F0F8"
+                android:text="-----"
+                android:textColor="@color/nf_text_primary"
                 android:textSize="28sp"
                 android:textStyle="bold"
-                android:text="-----"
                 tools:ignore="HardcodedText" />
         </LinearLayout>
 
         <Button
             android:id="@+id/btnShareRoom"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            style="@style/NfButtonOutlined"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="6dp"
@@ -91,7 +103,7 @@
 
         <Button
             android:id="@+id/btnNewRoom"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            style="@style/NfButtonOutlined"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/watch_new_room"
@@ -106,22 +118,42 @@
         android:layout_marginEnd="16dp"
         android:layout_marginTop="6dp"
         android:text="@string/watch_waiting_friends"
-        android:textColor="#7C5CFF"
-        android:textSize="13sp"
+        android:textColor="@color/nf_text_tertiary"
+        android:textSize="12sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/roomShareCard" />
+
+    <HorizontalScrollView
+        android:id="@+id/participantScroll"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="4dp"
+        android:scrollbars="none"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/participantStatus">
+
+        <LinearLayout
+            android:id="@+id/participantChips"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingBottom="4dp" />
+    </HorizontalScrollView>
 
     <FrameLayout
         android:id="@+id/playerContainer"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="8dp"
-        android:background="#000000"
+        android:background="@color/nf_player_bg"
         app:layout_constraintBottom_toTopOf="@id/voicePanel"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/participantStatus">
+        app:layout_constraintTop_toBottomOf="@id/participantScroll">
 
         <androidx.media3.ui.PlayerView
             android:id="@+id/playerView"
@@ -144,7 +176,7 @@
             android:gravity="center"
             android:padding="24dp"
             android:text="@string/watch_empty_hint"
-            android:textColor="#8888A8"
+            android:textColor="@color/nf_text_tertiary"
             android:textSize="15sp" />
     </FrameLayout>
 
@@ -152,7 +184,7 @@
         android:id="@+id/voicePanel"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="#12121E"
+        android:background="@color/nf_surface"
         android:orientation="vertical"
         android:padding="14dp"
         app:layout_constraintBottom_toTopOf="@id/controlsPanel"
@@ -163,7 +195,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/watch_voice_panel_title"
-            android:textColor="#F0F0F8"
+            android:textColor="@color/nf_text_primary"
             android:textSize="14sp"
             android:textStyle="bold" />
 
@@ -172,23 +204,34 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:textColor="#F472B6"
+            android:textColor="@color/nf_red"
             android:textSize="13sp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/voiceReconnectHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/watch_voice_reconnect"
+            android:textColor="@color/nf_text_tertiary"
+            android:textSize="12sp"
             android:visibility="gone" />
 
         <Button
             android:id="@+id/btnPtt"
+            style="@style/NfButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:text="@string/voice_ptt_hold"
-            app:backgroundTint="#7C5CFF" />
+            android:text="@string/voice_ptt_hold" />
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/controlsPanel"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:background="@color/nf_bg"
         android:orientation="vertical"
         android:padding="14dp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -199,27 +242,34 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/watch_room_hint"
-            android:visibility="gone">
+            android:visibility="gone"
+            app:boxBackgroundColor="@color/nf_card_bg"
+            app:hintTextColor="@color/nf_text_tertiary">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/roomInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="textCapCharacters"
-                android:maxLength="8" />
+                android:maxLength="8"
+                android:textColor="@color/nf_text_primary" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
+            style="@style/NfTextInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:hint="@string/watch_url_hint">
+            android:hint="@string/watch_url_hint"
+            app:boxBackgroundColor="@color/nf_card_bg"
+            app:hintTextColor="@color/nf_text_tertiary">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/urlInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textUri" />
+                android:inputType="textUri"
+                android:textColor="@color/nf_text_primary" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <LinearLayout
@@ -230,6 +280,7 @@
 
             <Button
                 android:id="@+id/btnPlay"
+                style="@style/NfButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -237,7 +288,7 @@
 
             <Button
                 android:id="@+id/btnBrowseCatalog"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                style="@style/NfButtonOutlined"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"

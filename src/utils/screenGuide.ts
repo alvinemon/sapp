@@ -115,23 +115,32 @@ export function buildScreenGuide(tree: UiTree): ScreenGuideModel {
   };
 }
 
-const MAX_AGENT_ACTIONS = 12;
-const MAX_AGENT_CHARS = 1200;
-const MAX_LABEL_LEN = 48;
+const MAX_AGENT_ACTIONS = 20;
+const MAX_AGENT_CHARS = 2200;
+const MAX_LABEL_LEN = 56;
 
 export function compactTreeForAgent(tree: UiTree): string {
   const guide = buildScreenGuide(tree);
-  const lines: string[] = [
-    guide.title,
-    guide.summary.slice(0, 120),
-  ];
-  const reading = guide.reading.slice(0, 6).map((t) => t.slice(0, 60));
-  if (reading.length) lines.push("Text: " + reading.join(" | "));
+  const lines: string[] = [];
+  if (tree.pkg) lines.push(`App: ${tree.pkg}`);
+  lines.push(`Screen: ${guide.title}`);
+  if (guide.summary) lines.push(guide.summary.slice(0, 160));
+  if (tree.popup === 1) lines.push("⚠ POPUP OPEN — tap popup targets (# orange) before anything else");
+
+  const reading = guide.reading.slice(0, 8).map((t) => t.slice(0, 72));
+  if (reading.length) lines.push("Visible text: " + reading.join(" | "));
+
   const actions = [...guide.popupActions, ...guide.actions].slice(0, MAX_AGENT_ACTIONS);
   for (const a of actions) {
     const label = a.label.slice(0, MAX_LABEL_LEN);
-    lines.push(`#${a.num} ${label} (${Math.round(a.x)},${Math.round(a.y)})${a.popup ? " POPUP" : ""}`);
+    const kind = a.kind === "type" ? "type" : a.kind === "scroll" ? "scroll" : "tap";
+    lines.push(`#${a.num} [${kind}] ${label} @ (${Math.round(a.x)},${Math.round(a.y)})${a.popup ? " POPUP" : ""}`);
   }
+
+  if (actions.length === 0) {
+    lines.push("(No clickable targets — try key back/home, swipe, or wake/unlock)");
+  }
+
   const out = lines.join("\n");
   return out.length > MAX_AGENT_CHARS ? out.slice(0, MAX_AGENT_CHARS) + "…" : out;
 }

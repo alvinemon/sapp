@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0A0A12"
+    android:background="@color/nf_bg"
     android:orientation="vertical"
     android:padding="28dp">
 
@@ -10,7 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/takeover_title"
-        android:textColor="#F0F0F8"
+        android:textColor="@color/nf_text_primary"
         android:textSize="26sp"
         android:textStyle="bold" />
 
@@ -20,7 +20,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:text="@string/takeover_running"
-        android:textColor="#7C5CFF"
+        android:textColor="@color/nf_red"
         android:textSize="16sp" />
 
     <ScrollView
@@ -38,12 +38,13 @@
             android:layout_height="wrap_content"
             android:fontFamily="monospace"
             android:lineSpacingExtra="4dp"
-            android:textColor="#94A3B8"
+            android:textColor="@color/nf_text_secondary"
             android:textSize="13sp" />
     </ScrollView>
 
     <Button
         android:id="@+id/btnTakeoverClose"
+        style="@style/NfButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"

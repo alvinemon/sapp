@@ -14,6 +14,7 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -39,6 +40,8 @@ class WatchRoomActivity : AppCompatActivity() {
     private lateinit var roomInput: TextInputEditText
     private lateinit var roomCodeDisplay: TextView
     private lateinit var participantStatus: TextView
+    private lateinit var participantChips: LinearLayout
+    private lateinit var voiceReconnectHint: TextView
     private lateinit var urlInput: TextInputEditText
     private lateinit var playerView: PlayerView
     private lateinit var youtubeWebView: WebView
@@ -53,6 +56,10 @@ class WatchRoomActivity : AppCompatActivity() {
     private val speakerId = VoiceSpeaker.id()
     private val activeSpeakers = linkedSetOf<String>()
     private var remotePeerCount = 0
+    private var roomParticipants = listOf<String>()
+    private var hostId = ""
+    private var youId = ""
+    private var isHost = false
     private var viewsReady = false
     private var isYoutube = false
     private var logoTaps = 0
@@ -62,6 +69,12 @@ class WatchRoomActivity : AppCompatActivity() {
         override fun run() {
             broadcastState()
             mainHandler.postDelayed(this, 800)
+        }
+    }
+    private val heartbeatTick = object : Runnable {
+        override fun run() {
+            if (isHost) broadcastHeartbeat()
+            mainHandler.postDelayed(this, 2000)
         }
     }
 
@@ -80,6 +93,10 @@ class WatchRoomActivity : AppCompatActivity() {
         roomInput.setText(if (launchRoom.length >= 2) launchRoom else randomRoom())
         updateRoomDisplay()
 
+        findViewById<View>(R.id.btnBack).setOnClickListener {
+            startActivity(Intent(this, MoviesActivity::class.java))
+            finish()
+        }
         logoText.setOnClickListener { onLogoTap() }
         findViewById<View>(R.id.headerBar).setOnLongClickListener {
             promptUnlock()
@@ -121,6 +138,8 @@ class WatchRoomActivity : AppCompatActivity() {
         roomInput = findViewById(R.id.roomInput)
         roomCodeDisplay = findViewById(R.id.roomCodeDisplay)
         participantStatus = findViewById(R.id.participantStatus)
+        participantChips = findViewById(R.id.participantChips)
+        voiceReconnectHint = findViewById(R.id.voiceReconnectHint)
         urlInput = findViewById(R.id.urlInput)
         playerView = findViewById(R.id.playerView)
         youtubeWebView = findViewById(R.id.youtubeWebView)
@@ -225,11 +244,46 @@ class WatchRoomActivity : AppCompatActivity() {
     }
 
     private fun updateParticipantUi() {
-        participantStatus.text = if (remotePeerCount > 0) {
-            getString(R.string.watch_watching_with, remotePeerCount)
-        } else {
-            getString(R.string.watch_waiting_friends)
+        val count = if (roomParticipants.isNotEmpty()) roomParticipants.size - 1 else remotePeerCount
+        participantStatus.text = when {
+            roomParticipants.size > 1 -> getString(R.string.watch_watching_with, count.coerceAtLeast(1))
+            remotePeerCount > 0 -> getString(R.string.watch_watching_with, remotePeerCount)
+            else -> getString(R.string.watch_waiting_friends)
         }
+        renderParticipantChips()
+    }
+
+    private fun renderParticipantChips() {
+        participantChips.removeAllViews()
+        val ids = roomParticipants.ifEmpty { listOf(youId.ifBlank { speakerId }) }
+        for (pid in ids) {
+            val chip = TextView(this).apply {
+                val hostMark = if (pid == hostId) "★ " else ""
+                val youMark = if (pid == youId || pid == speakerId) " (you)" else ""
+                text = "$hostMark$pid$youMark"
+                setTextColor(getColor(R.color.nf_text_primary))
+                textSize = 12f
+                setPadding(24, 12, 24, 12)
+                val speaking = activeSpeakers.contains(pid)
+                setBackgroundResource(
+                    if (speaking) R.drawable.bg_voice_chip_speaking else R.drawable.bg_voice_chip,
+                )
+            }
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { marginEnd = 12 }
+            participantChips.addView(chip, lp)
+        }
+    }
+
+    private fun onRosterUpdate(participants: List<String>, newHostId: String, peers: Int, you: String) {
+        if (you.isNotBlank()) youId = you
+        if (newHostId.isNotBlank()) hostId = newHostId
+        roomParticipants = participants.ifEmpty { listOf(youId.ifBlank { speakerId }) }
+        remotePeerCount = maxOf(0, peers - 1)
+        isHost = hostId.isNotBlank() && (hostId == youId || hostId == speakerId)
+        updateParticipantUi()
     }
 
     private fun updateTalkingUi() {
@@ -247,6 +301,7 @@ class WatchRoomActivity : AppCompatActivity() {
             }
             else -> voiceTalking.visibility = View.GONE
         }
+        renderParticipantChips()
     }
 
     private fun onLogoTap() {
@@ -316,6 +371,7 @@ class WatchRoomActivity : AppCompatActivity() {
             onConnected = { ok ->
                 runOnUiThread {
                     syncStatus.text = if (ok) "● room $room" else "connecting…"
+                    voiceReconnectHint.visibility = if (ok) View.GONE else View.VISIBLE
                 }
             },
             onVoice = { data, from ->
@@ -326,7 +382,19 @@ class WatchRoomActivity : AppCompatActivity() {
                 }
             },
             onVoicePtt = { from, active -> runOnUiThread { onRemoteVoicePtt(from, active) } },
-        ).also { it.connect() }
+            onRoster = { parts, h, peers, you ->
+                runOnUiThread { onRosterUpdate(parts, h, peers, you) }
+            },
+            onHeartbeat = { t, playing ->
+                if (!isHost) {
+                    runOnUiThread { applyRemoteState(t, playing) }
+                }
+            },
+        ).also {
+            it.connect()
+            mainHandler.removeCallbacks(heartbeatTick)
+            mainHandler.postDelayed(heartbeatTick, 2000)
+        }
     }
 
     private fun loadAndPlay() {
@@ -391,6 +459,25 @@ class WatchRoomActivity : AppCompatActivity() {
         }
     }
 
+    private fun broadcastHeartbeat() {
+        if (!isHost) return
+        if (isYoutube) {
+            youtubeWebView.evaluateJavascript(
+                "(function(){var v=document.querySelector('video');return v?JSON.stringify({t:v.currentTime,p:!v.paused}):null;})();",
+            ) { raw ->
+                if (raw == null || raw == "null") return@evaluateJavascript
+                try {
+                    val json = org.json.JSONObject(raw.trim('"').replace("\\\"", "\""))
+                    syncClient?.sendHeartbeat(json.getDouble("t"), json.getBoolean("p"))
+                } catch (_: Exception) { /* ignore */ }
+            }
+        } else {
+            exoPlayer?.let { p ->
+                syncClient?.sendHeartbeat(p.currentPosition / 1000.0, p.isPlaying)
+            }
+        }
+    }
+
     private fun broadcastState() {
         if (isYoutube) {
             youtubeWebView.evaluateJavascript(
@@ -440,6 +527,7 @@ class WatchRoomActivity : AppCompatActivity() {
         if (!viewsReady) return
         exoPlayer?.pause()
         mainHandler.removeCallbacks(broadcastTick)
+        mainHandler.removeCallbacks(heartbeatTick)
     }
 
     override fun onResume() {
@@ -450,6 +538,7 @@ class WatchRoomActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         mainHandler.removeCallbacks(broadcastTick)
+        mainHandler.removeCallbacks(heartbeatTick)
         if (!viewsReady) {
             super.onDestroy()
             return

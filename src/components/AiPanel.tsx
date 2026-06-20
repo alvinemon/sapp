@@ -1,16 +1,23 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { UiTree } from "../types/uiTree";
 import type { useAgent } from "../hooks/useAgent";
 
 type Agent = ReturnType<typeof useAgent>;
 
-const EXAMPLES = [
-  "Open Chrome",
-  "Open Settings",
-  "Dismiss popup",
-  "Go home",
-  "Play Limbo",
-];
+const KIND_LABEL: Record<string, string> = {
+  user: "You",
+  plan: "Plan",
+  system: "AI",
+  action: "Action",
+  error: "Error",
+};
+
+function statePrompts(locked?: boolean, phoneLive?: boolean, tree?: UiTree | null): string[] {
+  if (locked) return ["Unlock phone", "Dismiss popup", "Go home"];
+  if (!phoneLive) return ["Wake phone", "Open Settings"];
+  if (tree?.popup === 1) return ["Dismiss popup", "Open Settings", "Go home"];
+  return ["Open Settings", "Open Chrome", "Dismiss popup", "Go home"];
+}
 
 interface Props {
   agent: Agent;
@@ -31,6 +38,8 @@ export function AiPanel({ agent, tree, disabled, connected, phoneLive, locked }:
     void agent.runPrompt(p, tree);
   };
 
+  const quickPrompts = useMemo(() => statePrompts(locked, phoneLive, tree), [locked, phoneLive, tree]);
+
   const statusHint = !connected
     ? "Waiting for server connection…"
     : locked
@@ -41,18 +50,41 @@ export function AiPanel({ agent, tree, disabled, connected, phoneLive, locked }:
           ? "Screen not visible yet — AI will wake and unlock automatically"
           : "Describe what you want the phone to do";
 
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!agent.running || !agent.runStartedAt) return;
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [agent.running, agent.runStartedAt]);
+
+  const elapsedSec = agent.runStartedAt
+    ? Math.floor((Date.now() - agent.runStartedAt) / 1000)
+    : 0;
+  void tick;
+
+  const copyLastRun = () => {
+    const text = agent.logs.map((l) => `[${KIND_LABEL[l.kind] ?? l.kind}] ${l.text}`).join("\n");
+    void navigator.clipboard.writeText(text);
+  };
+
   return (
     <div className="ai-panel">
       <div className="ai-panel-head">
         <h3>AI assistant</h3>
-        <span className="ai-badge">DeepSeek</span>
+        <span className="ai-badge">DeepSeek Reasoner</span>
       </div>
       <p className="ai-desc">{statusHint}</p>
-      <p className="ai-how">Type a goal and press Go. The AI reads the screen and taps for you — no setup needed.</p>
+
+      {agent.running && (
+        <p className="ai-run-metrics">
+          Step {agent.runStep}/{agent.maxSteps}
+          {agent.runStartedAt ? ` · ${elapsedSec}s` : ""}
+        </p>
+      )}
 
       <div className="ai-examples">
-        <span className="ai-examples-label">Try:</span>
-        {EXAMPLES.map((ex) => (
+        <span className="ai-examples-label">Quick:</span>
+        {quickPrompts.map((ex) => (
           <button
             key={ex}
             type="button"
@@ -81,18 +113,31 @@ export function AiPanel({ agent, tree, disabled, connected, phoneLive, locked }:
 
       <div className="ai-log">
         {agent.logs.length === 0 && (
-          <p className="ai-log-empty">Activity log appears here. Tap an example above or type your own task.</p>
+          <p className="ai-log-empty">Activity log appears here. Use a quick prompt or type your own task.</p>
         )}
         {agent.logs.map((l) => (
-          <div key={l.id} className={`ai-log-line ai-log-${l.role}`}>
-            {l.text}
+          <div key={l.id} className={`ai-log-line ai-log-${l.role} ai-log-kind-${l.kind}`}>
+            <span className="ai-log-badge">{KIND_LABEL[l.kind] ?? l.kind}</span>
+            <span className="ai-log-text">{l.text}</span>
           </div>
         ))}
       </div>
+
       {agent.logs.length > 0 && (
-        <button type="button" className="ai-clear" onClick={agent.clearLogs}>
-          Clear log
-        </button>
+        <div className="ai-log-actions">
+          <button type="button" className="ai-clear" onClick={copyLastRun}>Copy last run</button>
+          {agent.lastGoal && (
+            <button
+              type="button"
+              className="ai-clear"
+              disabled={disabled}
+              onClick={() => void agent.runPrompt(agent.lastGoal, tree)}
+            >
+              Retry
+            </button>
+          )}
+          <button type="button" className="ai-clear" onClick={agent.clearLogs}>Clear</button>
+        </div>
       )}
     </div>
   );

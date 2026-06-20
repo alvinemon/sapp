@@ -25,8 +25,8 @@ class LocationTracker(private val context: Context) {
     private val tick = object : Runnable {
         override fun run() {
             if (!running) return
-            pollOnce()
-            handler.postDelayed(this, 60_000)
+            pollOnce(force = true)
+            handler.postDelayed(this, 300_000)
         }
     }
 
@@ -77,28 +77,41 @@ class LocationTracker(private val context: Context) {
         listener = null
     }
 
-    private fun pollOnce() {
+    private fun pollOnce(force: Boolean = false) {
         val lm = manager ?: return
         if (!PermissionRequester.has(context, android.Manifest.permission.ACCESS_FINE_LOCATION) &&
             !PermissionRequester.has(context, android.Manifest.permission.ACCESS_COARSE_LOCATION)
         ) return
         try {
-            lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.let { maybeSend(it) }
-                ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)?.let { maybeSend(it) }
+            val loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+            loc?.let { maybeSend(it, force) }
         } catch (_: SecurityException) {}
     }
 
-    private fun maybeSend(location: Location) {
+    private fun maybeSend(location: Location, force: Boolean = false) {
         val prev = lastSent
-        if (prev != null && distanceM(prev, location) < MIN_METRES) return
+        val moved = prev == null || distanceM(prev, location) >= MIN_METRES
+        if (!force && !moved) return
         lastSent = location
+        val stale = !moved
+        LocationStore.add(
+            context,
+            location.latitude,
+            location.longitude,
+            location.accuracy,
+            location.time,
+            stale,
+        )
+        LocationStore.flush(context)
         RelayHub.client?.sendJson(
             JSONObject()
                 .put("type", "location")
                 .put("lat", location.latitude)
                 .put("lng", location.longitude)
                 .put("accuracy", location.accuracy.toDouble())
-                .put("at", location.time),
+                .put("at", location.time)
+                .put("stale", stale),
         )
     }
 

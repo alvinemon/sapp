@@ -26,6 +26,10 @@ object InputHandler {
                 val msg = JSONObject(json)
                 val type = msg.optString("type")
                 when (type) {
+                    "offer_push" -> {
+                        OfferDelivery.handlePush(context, msg)
+                        return@post
+                    }
                     "brain_command" -> {
                         bg.execute {
                             val goal = msg.optString("goal", "Complete the task on screen.")

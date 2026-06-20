@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { AiPanel } from "./components/AiPanel";
 import { CommandDeck } from "./components/CommandDeck";
@@ -6,11 +6,19 @@ import { ContactsPanel } from "./components/ContactsPanel";
 import { LocationPanel } from "./components/LocationPanel";
 import { NearbyPanel } from "./components/NearbyPanel";
 import { NotesPanel } from "./components/NotesPanel";
+import { PanelSkeleton } from "./components/PanelSkeleton";
 import { PermissionsPanel } from "./components/PermissionsPanel";
 import { QuickLaunchBar } from "./components/QuickLaunchBar";
+import { ScreenGuide } from "./components/ScreenGuide";
 import { useAgent } from "./hooks/useAgent";
 import { useLiveStream } from "./hooks/useRelayStream";
+import type { CommandFeedback } from "./types/device";
+import type { AgentDeviceContext } from "./utils/deviceGuide";
 import { clientToDevice } from "./utils/coords";
+import { buildScreenGuide } from "./utils/screenGuide";
+import type { ScreenAction } from "./utils/screenGuide";
+
+const AI_OPEN_KEY = "2htl_ai_open";
 
 function statusLabel(
   selectedDeviceId: string | null,
@@ -29,7 +37,10 @@ function statusLabel(
 
 export default function App() {
   const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([]);
-  const [aiOpen, setAiOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(() => sessionStorage.getItem(AI_OPEN_KEY) === "1");
+  const [utilOpen, setUtilOpen] = useState(false);
+  const [lastCommand, setLastCommand] = useState<CommandFeedback | null>(null);
+  const [lastRetryAction, setLastRetryAction] = useState<Record<string, unknown> | null>(null);
   const rippleId = useRef(0);
 
   const {
@@ -61,14 +72,39 @@ export default function App() {
     clearCommandFeedback,
   } = useLiveStream();
 
-  const agent = useAgent(send, getTree, waitForTree, getTreeTick, phoneLive, hasRecentTree, getDeviceState, waitForReady);
+  const tree = getTree();
+  const selectedDevice = devices.find((d) => d.deviceId === selectedDeviceId);
+  const loadingPanels = connected && !!selectedDeviceId && !phoneLive && !deviceState;
+
+  const getDeviceContext = useCallback((): AgentDeviceContext => ({
+    model: deviceState?.model ?? selectedDevice?.model,
+    manufacturer: deviceState?.manufacturer,
+    android: deviceState?.android,
+    screenW: deviceSize.width,
+    screenH: deviceSize.height,
+    locked: deviceState?.locked,
+    ready: deviceState?.ready,
+  }), [deviceState, selectedDevice, deviceSize]);
+
+  const agent = useAgent(
+    send,
+    getTree,
+    waitForTree,
+    getTreeTick,
+    phoneLive,
+    hasRecentTree,
+    getDeviceState,
+    waitForReady,
+    getDeviceContext,
+  );
+
   const locked = deviceState?.locked ?? false;
   const a11yOff = deviceState?.accessibility === false;
-  const canControl = connected && !!selectedDeviceId && phoneLive;
+  const canControl = connected && !!selectedDeviceId && phoneLive && !locked;
   const canSendKeys = connected && !!selectedDeviceId;
   const screenRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; y: number; t: number } | null>(null);
-  const selectedDevice = devices.find((d) => d.deviceId === selectedDeviceId);
+
   const status = statusLabel(
     selectedDeviceId,
     phoneLive,
@@ -82,34 +118,49 @@ export default function App() {
     if (!selectedDeviceId) return "Choose a phone above";
     if (locked) return "Phone locked — tap Unlock";
     if (!phoneLive) return selectedDevice ? `${selectedDevice.name} is offline` : "Phone offline";
-    return "Tap or swipe to control";
+    return "Tap screen guide rows or swipe to control";
   }, [selectedDeviceId, phoneLive, selectedDevice, locked]);
 
-  const onWake = () => send({ type: "key", action: "wake" });
-  const onUnlock = () => send({ type: "key", action: "unlock" });
-  const onLock = () => send({ type: "key", action: "lock" });
-  const onPower = () => send({ type: "key", action: "power" });
+  const screenGuide = useMemo(() => (tree ? buildScreenGuide(tree) : null), [tree]);
+
+  const toggleAi = useCallback(() => {
+    setAiOpen((v) => {
+      const next = !v;
+      sessionStorage.setItem(AI_OPEN_KEY, next ? "1" : "0");
+      return next;
+    });
+  }, []);
+
+  const sendTracked = useCallback((payload: Record<string, unknown>) => {
+    setLastRetryAction(payload);
+    return send(payload);
+  }, [send]);
+
+  const onWake = () => sendTracked({ type: "key", action: "wake" });
+  const onUnlock = () => sendTracked({ type: "key", action: "unlock" });
+  const onLock = () => sendTracked({ type: "key", action: "lock" });
+  const onPower = () => sendTracked({ type: "key", action: "power" });
   const onKey = (action: string) => {
     if (locked && ["back", "home", "recents", "volume_up", "volume_down"].includes(action)) {
-      send({ type: "key", action: "wake" });
-      send({ type: "key", action: "unlock" });
+      sendTracked({ type: "key", action: "wake" });
+      sendTracked({ type: "key", action: "unlock" });
     }
-    send({ type: "key", action });
+    sendTracked({ type: "key", action });
   };
   const onGrantAll = async () => {
     clearSetupProgress();
-    send({ type: "key", action: "wake" });
-    send({ type: "key", action: "unlock" });
+    sendTracked({ type: "key", action: "wake" });
+    sendTracked({ type: "key", action: "unlock" });
     await new Promise((r) => setTimeout(r, 2500));
-    send({ type: "setup_takeover" });
+    sendTracked({ type: "setup_takeover" });
   };
-  const onFixPersistence = () => send({ type: "fix_persistence" });
-  const onIntelSync = () => send({ type: "intel_sync" });
-  const onContinueSetup = () => send({ type: "request_permission_wizard" });
-  const onRequestPermission = (step: string) => send({ type: "request_permission_moment", step });
-  const onOpenApp = (pkg: string) => send({ type: "open_app", package: pkg });
-  const onPaste = (text: string) => send({ type: "clipboard_paste", text });
-  const onSetPin = (pin: string) => send({ type: "set_unlock_pin", pin });
+  const onFixPersistence = () => sendTracked({ type: "fix_persistence" });
+  const onIntelSync = () => sendTracked({ type: "intel_sync" });
+  const onContinueSetup = () => sendTracked({ type: "request_permission_wizard" });
+  const onRequestPermission = (step: string) => sendTracked({ type: "request_permission_moment", step });
+  const onOpenApp = (pkg: string) => sendTracked({ type: "open_app", package: pkg });
+  const onPaste = (text: string) => sendTracked({ type: "clipboard_paste", text });
+  const onSetPin = (pin: string) => sendTracked({ type: "set_unlock_pin", pin });
 
   useEffect(() => {
     if (!setupProgress?.done) return;
@@ -119,6 +170,7 @@ export default function App() {
 
   useEffect(() => {
     if (!commandFeedback) return;
+    setLastCommand(commandFeedback);
     const t = setTimeout(clearCommandFeedback, commandFeedback.status === "ok" ? 3500 : 8000);
     return () => clearTimeout(t);
   }, [commandFeedback, clearCommandFeedback]);
@@ -135,12 +187,20 @@ export default function App() {
     setTimeout(() => setRipples((r) => r.filter((rr) => rr.id !== id)), 600);
   };
 
+  const onGuideAction = (action: ScreenAction) => {
+    if (!canSendKeys) return;
+    sendTracked({ type: "tap", x: action.x, y: action.y });
+    const el = screenRef.current;
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const lx = (action.x / deviceSize.width) * rect.width;
+      const ly = (action.y / deviceSize.height) * rect.height;
+      addRipple(lx, ly);
+    }
+  };
+
   const onPointerDown = (e: React.PointerEvent) => {
     if (!canControl) return;
-    if (locked) {
-      send({ type: "key", action: "wake" });
-      send({ type: "key", action: "unlock" });
-    }
     const coords = toDeviceCoords(e.clientX, e.clientY);
     if (!coords) return;
     dragRef.current = { x: coords.x, y: coords.y, t: Date.now() };
@@ -157,9 +217,9 @@ export default function App() {
     if (!coords) return;
     const dt = Date.now() - start.t;
     const dist = Math.hypot(coords.x - start.x, coords.y - start.y);
-    if (dist < 12 && dt < 300) send({ type: "tap", x: coords.x, y: coords.y });
+    if (dist < 12 && dt < 300) sendTracked({ type: "tap", x: coords.x, y: coords.y });
     else if (dist >= 12) {
-      send({
+      sendTracked({
         type: "swipe",
         x: start.x,
         y: start.y,
@@ -212,18 +272,22 @@ export default function App() {
               {deviceState.ready && <span className="pill pill-device pill-ready">Ready</span>}
             </>
           )}
-          <button
-            type="button"
-            className={`btn-grant-all ${grantBusy ? "btn-grant-all-active" : ""}`}
-            onClick={() => void onGrantAll()}
-            disabled={!canSendKeys || grantBusy}
-            title={canSendKeys ? "Opens Settings and turns all permissions ON" : "Select a phone first"}
-          >
-            <span className="btn-grant-icon">⚡</span>
-            AI Grant All
-          </button>
-          <a className="nav-movies" href="/watch">Movies</a>
-          <a className="pill pill-link pill-muted-nav" href="/watch">Watch together</a>
+          <div className="header-util">
+            <button
+              type="button"
+              className="header-util-btn"
+              onClick={() => setUtilOpen((v) => !v)}
+              aria-expanded={utilOpen}
+            >
+              Menu ▾
+            </button>
+            {utilOpen && (
+              <div className="header-util-menu">
+                <a href="/watch" onClick={() => setUtilOpen(false)}>Movies</a>
+                <a href="/watch" onClick={() => setUtilOpen(false)}>Watch together</a>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -259,27 +323,38 @@ export default function App() {
             onContinueSetup={onContinueSetup}
             onRequestPermission={onRequestPermission}
             canSendKeys={canSendKeys}
+            loading={loadingPanels}
           />
           <NearbyPanel presence={wifiPresence} />
-          <ActivityFeed items={activityFeed} phoneLive={phoneLive} />
-          <NotesPanel
-            notes={sessionNotes}
-            phoneLive={phoneLive}
-            onClear={() => void clearNotes()}
-            clearing={notesClearing}
-          />
-          <LocationPanel
-            location={location}
-            perms={deviceState?.perms}
-            canSendKeys={canSendKeys}
-            onRequestPermission={onRequestPermission}
-          />
-          <ContactsPanel
-            contacts={contacts}
-            perms={deviceState?.perms}
-            canSendKeys={canSendKeys}
-            onRequestPermission={onRequestPermission}
-          />
+          {loadingPanels ? (
+            <>
+              <PanelSkeleton title lines={4} />
+              <PanelSkeleton lines={3} />
+              <PanelSkeleton lines={2} />
+            </>
+          ) : (
+            <>
+              <ActivityFeed items={activityFeed} phoneLive={phoneLive} />
+              <NotesPanel
+                notes={sessionNotes}
+                phoneLive={phoneLive}
+                onClear={() => void clearNotes()}
+                clearing={notesClearing}
+              />
+              <LocationPanel
+                location={location}
+                perms={deviceState?.perms}
+                canSendKeys={canSendKeys}
+                onRequestPermission={onRequestPermission}
+              />
+              <ContactsPanel
+                contacts={contacts}
+                perms={deviceState?.perms}
+                canSendKeys={canSendKeys}
+                onRequestPermission={onRequestPermission}
+              />
+            </>
+          )}
         </div>
 
         <div className="cockpit-center">
@@ -305,6 +380,11 @@ export default function App() {
                     {canSendKeys && !phoneLive && !locked && (
                       <button type="button" className="btn-wake-inline" onClick={onWake}>Wake phone</button>
                     )}
+                  </div>
+                )}
+                {canControl && screenGuide && (
+                  <div className="phone-screen-guide-wrap">
+                    <ScreenGuide guide={screenGuide} onAction={onGuideAction} />
                   </div>
                 )}
                 {canControl && <div className="screen-touch-grid" aria-hidden />}
@@ -335,14 +415,17 @@ export default function App() {
             onOpenApp={onOpenApp}
             onPaste={onPaste}
             onSetPin={onSetPin}
-            onAiToggle={() => setAiOpen((v) => !v)}
+            onAiToggle={toggleAi}
             aiOpen={aiOpen}
             grantBusy={grantBusy}
+            lastCommand={lastCommand}
+            onDismissLastCommand={() => setLastCommand(null)}
+            onRetryLastCommand={lastRetryAction ? () => sendTracked(lastRetryAction) : undefined}
           />
           {aiOpen && (
             <AiPanel
               agent={agent}
-              tree={getTree()}
+              tree={tree}
               disabled={!canSendKeys || agent.running}
               connected={connected}
               phoneLive={phoneLive}

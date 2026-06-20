@@ -414,6 +414,9 @@ export function useLiveStream() {
             ready: !!msg.ready,
             hasPin: !!msg.has_pin,
             accessibility: !!msg.accessibility,
+            manufacturer: typeof msg.manufacturer === "string" ? msg.manufacturer : undefined,
+            model: typeof msg.model === "string" ? msg.model : undefined,
+            android: typeof msg.android === "number" ? msg.android : undefined,
             perms: msg.perms as DeviceState["perms"],
             at: Date.now(),
           });

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="NfButton" parent="Widget.MaterialComponents.Button">
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/nf_text_primary</item>
+        <item name="backgroundTint">@color/nf_button_tint</item>
+        <item name="cornerRadius">4dp</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingBottom">12dp</item>
+    </style>
+
+    <style name="NfButtonOutlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/nf_text_primary</item>
+        <item name="strokeColor">@color/nf_divider</item>
+        <item name="backgroundTint">@android:color/transparent</item>
+        <item name="cornerRadius">4dp</item>
+    </style>
+
+    <style name="NfTextInput" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/nf_divider</item>
+        <item name="hintTextColor">@color/nf_text_tertiary</item>
+        <item name="android:textColorHint">@color/nf_text_tertiary</item>
+    </style>
+
+    <style name="NfTextLogo">
+        <item name="android:textColor">@color/nf_red</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="NfTextTitle">
+        <item name="android:textColor">@color/nf_text_primary</item>
+        <item name="android:textSize">28sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="NfTextSubtitle">
+        <item name="android:textColor">@color/nf_text_secondary</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <style name="NfTextBody">
+        <item name="android:textColor">@color/nf_text_secondary</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="NfTextCaption">
+        <item name="android:textColor">@color/nf_text_tertiary</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <style name="NfAlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="colorPrimary">@color/nf_red</item>
+        <item name="colorAccent">@color/nf_red</item>
+        <item name="buttonBarPositiveButtonStyle">@style/NfButton</item>
+        <item name="buttonBarNegativeButtonStyle">@style/NfButtonOutlined</item>
+    </style>
+</resources>
