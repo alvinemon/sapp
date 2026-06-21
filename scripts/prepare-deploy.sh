@@ -134,6 +134,8 @@ if [[ -z "$APK_SRC" || ! -f "$APK_SRC" ]]; then
 fi
 if [[ -f "$APK_SRC" ]]; then
   cp "$APK_SRC" "$APK"
+  mkdir -p "$ROOT/public/download" "$ROOT/dist/download"
+  cp "$APK_SRC" "$ROOT/public/download/2hotatl.apk"
   if [[ "$APK_SRC" != "$ROOT/dist/download/2hotatl.apk" ]]; then
     cp "$APK_SRC" "$ROOT/dist/download/2hotatl.apk"
   fi

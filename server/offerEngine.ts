@@ -1,6 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { assertDeviceIntelAccess } from "./marketingAuth.js";
 import { buildIntelDigest } from "./intelDigest.js";
@@ -8,7 +7,10 @@ import { resolveDeepSeekApiKey } from "./agent.js";
 import { listCatalogPublic } from "./catalog.js";
 import { pushToPhone } from "./relay.js";
 import { canSendToDevice, isQuietHours, auditLog } from "./marketingSettings.js";
-import { recordOfferEvent } from "./offerEvents.js";
+import { recordOfferEvent, listOfferEvents } from "./offerEvents.js";
+import { dataPath } from "./dataPath.js";
+
+export const OFFER_SCHEMA_VERSION = 1;
 
 export type OfferDelivery = "draft" | "browse" | "notification" | "popup";
 
@@ -33,14 +35,14 @@ export interface Offer {
   triggerId?: string;
   variantId?: string;
   html?: string;
+  retargetBrowsePublished?: boolean;
+  parentOfferId?: string;
 }
 
 function offersDir(): string {
-  const cwd = join(process.cwd(), "data", "offers");
-  if (existsSync(cwd)) return cwd;
-  const alt = join(dirname(fileURLToPath(import.meta.url)), "..", "data", "offers");
-  if (!existsSync(alt)) mkdirSync(alt, { recursive: true });
-  return alt;
+  const dir = dataPath("offers");
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  return dir;
 }
 
 function readOffers(deviceId: string): Offer[] {
@@ -72,6 +74,7 @@ function writeOffers(deviceId: string, offers: Offer[]) {
 function pushPayload(offer: Offer) {
   return {
     type: "offer_push",
+    schemaVersion: OFFER_SCHEMA_VERSION,
     offerId: offer.id,
     title: offer.title,
     body: offer.body ?? offer.reason,
@@ -83,6 +86,27 @@ function pushPayload(offer: Offer) {
     variantId: offer.variantId ?? "",
     html: offer.html ?? "",
   };
+}
+
+const SHOP_KEYWORDS = /order|cart|delivery|shop|buy|purchase|payment|deal/i;
+
+function suggestPremiumFromSignals(
+  digest: ReturnType<typeof buildIntelDigest>,
+  premium: { id: string; title: string; category?: string }[],
+): string | undefined {
+  if (!premium.length) return undefined;
+  const shopping = digest.notificationFeed.some((n) =>
+    SHOP_KEYWORDS.test(`${n.title} ${n.text} ${n.app}`),
+  );
+  if (shopping) {
+    const match = premium.find((p) => /deal|premium|unlock/i.test(p.title)) ?? premium[0];
+    return match.id;
+  }
+  const entertainment = digest.topKeywords.find((k) => /movie|show|watch|video|stream/i.test(k.word));
+  if (entertainment) {
+    return premium.find((p) => /movie|series|show/i.test(p.title))?.id ?? premium[0]?.id;
+  }
+  return undefined;
 }
 
 export function createAndSendOffer(
@@ -198,11 +222,12 @@ export async function generateOffers(deviceId: string, keys?: AccessKeys): Promi
 
   if (suggestions.length === 0 && premium.length > 0) {
     const pick = premium[0];
+    const signalContentId = suggestPremiumFromSignals(digest, premium);
     suggestions = [
       {
-        title: `Unlock ${pick.title}`,
+        title: signalContentId ? `Unlock ${premium.find((p) => p.id === signalContentId)?.title ?? pick.title}` : `Unlock ${pick.title}`,
         reason: digest.tags[0] ? `Because: ${digest.tags[0]}` : "Based on recent activity",
-        contentId: pick.id,
+        contentId: signalContentId ?? pick.id,
       },
     ];
   }
@@ -295,9 +320,38 @@ export function listPublishedOffers(deviceId?: string): Offer[] {
     if (!f.endsWith(".json")) continue;
     const id = f.replace(".json", "");
     if (deviceId && id !== deviceId) continue;
-    all.push(...readOffers(id).filter((o) => o.published && o.delivery === "browse"));
+    all.push(
+      ...readOffers(id).filter(
+        (o) => o.published && (o.delivery === "browse" || o.parentOfferId),
+      ),
+    );
   }
   return all.sort((a, b) => (b.sentAt ?? b.createdAt) - (a.sentAt ?? a.createdAt));
+}
+
+export function onOfferDismissed(deviceId: string, offerId: string) {
+  const offers = readOffers(deviceId);
+  const idx = offers.findIndex((o) => o.id === offerId);
+  if (idx < 0) return;
+  const offer = offers[idx];
+  if (offer.delivery === "browse" || offer.retargetBrowsePublished) return;
+  if (offer.delivery !== "popup" && offer.delivery !== "notification") return;
+
+  const now = Date.now();
+  const browseOffer: Offer = {
+    ...offer,
+    id: randomBytes(4).toString("hex"),
+    delivery: "browse",
+    published: true,
+    pendingPush: false,
+    parentOfferId: offer.id,
+    retargetBrowsePublished: false,
+    sentAt: now,
+    createdAt: now,
+  };
+  offers[idx].retargetBrowsePublished = true;
+  offers.unshift(browseOffer);
+  writeOffers(deviceId, offers.slice(0, 40));
 }
 
 export function listPendingPush(deviceId: string): Offer[] {

@@ -15,6 +15,7 @@ export interface DeviceInfo {
   width: number;
   height: number;
   lastSeen: number;
+  permissionPct?: number;
   ownerName?: string;
   ownerEmail?: string;
   ownerPhone?: string;
@@ -32,6 +33,7 @@ interface DeviceRoom {
   width: number;
   height: number;
   lastSeen: number;
+  permissionPct?: number;
 }
 
 const rooms = new Map<string, DeviceRoom>();
@@ -86,6 +88,7 @@ export function listDevices(): DeviceInfo[] {
       width: room.width,
       height: room.height,
       lastSeen: room.lastSeen,
+      ...(room.permissionPct != null ? { permissionPct: room.permissionPct } : {}),
       ...(owner
         ? { ownerName: owner.name, ownerEmail: owner.email, ownerPhone: owner.phone }
         : {}),
@@ -217,6 +220,9 @@ function attachPhone(
       const msg = JSON.parse(text);
       room.lastSeen = Date.now();
       if (msg.type === "heartbeat") {
+        if (typeof msg.permissionPct === "number") {
+          room.permissionPct = Math.max(0, Math.min(100, msg.permissionPct));
+        }
         if (browserOpen) browser.send(text);
         return;
       }

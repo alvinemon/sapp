@@ -12,7 +12,9 @@ import {
   getGuardrails,
   isQuietHours,
 } from "./marketingSettings.js";
-import { recordOfferEvent } from "./offerEvents.js";
+import { recordOfferEvent, listOfferEvents } from "./offerEvents.js";
+
+const WINNER_MIN_IMPRESSIONS = 20;
 
 export interface CampaignVariant {
   id: string;
@@ -86,6 +88,8 @@ function writeCampaigns(campaigns: Campaign[]) {
 
 function pickVariant(campaign: Campaign, deviceIndex: number): CampaignVariant | null {
   if (!campaign.variants?.length) return null;
+  const winner = resolveAbWinner(campaign);
+  if (winner) return winner;
   const total = campaign.variants.reduce((s, v) => s + v.weight, 0);
   let roll = deviceIndex % total;
   for (const v of campaign.variants) {
@@ -93,6 +97,63 @@ function pickVariant(campaign: Campaign, deviceIndex: number): CampaignVariant |
     if (roll < 0) return v;
   }
   return campaign.variants[0];
+}
+
+const AB_MIN_IMPRESSIONS = 20;
+
+function resolveAbWinner(campaign: Campaign): CampaignVariant | null {
+  if (!campaign.variants?.length || campaign.variants.length < 2) return null;
+  const events = listOfferEvents({ campaignId: campaign.id }).filter((e) => e.type === "impression");
+  if (events.length < AB_MIN_IMPRESSIONS) return null;
+  const metric = campaign.winnerMetric ?? "click";
+  const scores = campaign.variants.map((v) => {
+    const impressions = events.filter((e) => e.variantId === v.id).length;
+    const clicks = listOfferEvents({ campaignId: campaign.id }).filter(
+      (e) => e.variantId === v.id && e.type === "click",
+    ).length;
+    const conversions = listOfferEvents({ campaignId: campaign.id }).filter(
+      (e) => e.variantId === v.id && e.type === "conversion",
+    ).length;
+    const rate = metric === "conversion"
+      ? (impressions ? conversions / impressions : 0)
+      : (impressions ? clicks / impressions : 0);
+    return { v, impressions, rate };
+  });
+  const eligible = scores.filter((s) => s.impressions >= AB_MIN_IMPRESSIONS / campaign.variants!.length);
+  if (!eligible.length) return null;
+  eligible.sort((a, b) => b.rate - a.rate);
+  return eligible[0]?.v ?? null;
+}
+
+function variantImpressions(campaignId: string, variantId: string): number {
+  return listOfferEvents({ campaignId }).filter(
+    (e) => e.variantId === variantId && e.type === "impression",
+  ).length;
+}
+
+function allVariantsReady(campaign: Campaign): boolean {
+  return (campaign.variants ?? []).every(
+    (v) => variantImpressions(campaign.id, v.id) >= WINNER_MIN_IMPRESSIONS,
+  );
+}
+
+function selectWinner(campaign: Campaign): CampaignVariant | null {
+  if (!campaign.variants?.length) return null;
+  const metric = campaign.winnerMetric ?? "click";
+  let best: CampaignVariant | null = null;
+  let bestScore = -1;
+  for (const v of campaign.variants) {
+    const events = listOfferEvents({ campaignId: campaign.id }).filter((e) => e.variantId === v.id);
+    const score =
+      metric === "conversion"
+        ? events.filter((e) => e.type === "conversion").length
+        : events.filter((e) => e.type === "click").length;
+    if (score > bestScore) {
+      bestScore = score;
+      best = v;
+    }
+  }
+  return best;
 }
 
 export function listCampaigns(keys?: { editKey?: string; marketingKey?: string }): Campaign[] {
@@ -217,6 +278,7 @@ export function runCampaign(
   writeCampaigns(all);
 
   let i = 0;
+  let winnerVariant: CampaignVariant | null = null;
   for (const deviceId of deviceIds) {
     const sentToday = countOffersSentToday(deviceId);
     const gate = canSendToDevice(deviceId, sentToday);
@@ -225,7 +287,15 @@ export function runCampaign(
       continue;
     }
 
-    const variant = pickVariant(campaign, i++);
+    let variant = pickVariant(campaign, i++);
+    if (campaign.variants?.length) {
+      if (winnerVariant) {
+        variant = winnerVariant;
+      } else if (allVariantsReady(campaign)) {
+        winnerVariant = selectWinner(campaign);
+        if (winnerVariant) variant = winnerVariant;
+      }
+    }
     const title = variant?.title ?? campaign.offer.title;
     const body = variant?.body ?? campaign.offer.body;
     const reason = variant?.reason ?? campaign.offer.reason;

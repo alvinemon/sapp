@@ -1,7 +1,16 @@
+import { useEffect, useState } from "react";
 import type { PortalTab } from "./ControlPortal";
 
 interface Props {
   onNavigate: (tab: PortalTab) => void;
+}
+
+interface GrowthPulse {
+  sent: number;
+  clicks: number;
+  unlocks: number;
+  automationRate: number;
+  coveragePercent: number;
 }
 
 const ACTIONS: {
@@ -56,9 +65,17 @@ const ACTIONS: {
 ];
 
 export function PortalDashboard({ onNavigate }: Props) {
+  const [pulse, setPulse] = useState<GrowthPulse | null>(null);
   const hour = new Date().getHours();
   const greeting =
     hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
+  useEffect(() => {
+    void fetch("/api/growth-pulse")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setPulse(d as GrowthPulse | null))
+      .catch(() => setPulse(null));
+  }, []);
 
   return (
     <div className="portal-dashboard">
@@ -71,6 +88,20 @@ export function PortalDashboard({ onNavigate }: Props) {
           </p>
         </div>
       </header>
+
+      {pulse && (
+        <section className="portal-growth-pulse glass-panel">
+          <h3>Growth pulse · last 24 hours</h3>
+          <p className="portal-pulse-line">
+            <strong>{pulse.sent}</strong> sent → <strong>{pulse.clicks}</strong> clicks →{" "}
+            <strong>{pulse.unlocks}</strong> unlocks
+          </p>
+          <div className="portal-pulse-kpis">
+            <span>Automation {pulse.automationRate}%</span>
+            <span>Coverage {pulse.coveragePercent}%</span>
+          </div>
+        </section>
+      )}
 
       <div className="portal-action-grid">
         {ACTIONS.map((action) => (

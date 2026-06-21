@@ -25,25 +25,33 @@ export function MarketingTeamPanel({ adminKey }: Props) {
   const [form, setForm] = useState({ name: "", email: "", note: "" });
   const [assigning, setAssigning] = useState<string | null>(null);
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
-  const [memberStats, setMemberStats] = useState<Map<string, { sent: number; conversions: number }>>(new Map());
+  const [memberStats, setMemberStats] = useState<Map<string, { sent: number; conversions: number; revenue: number }>>(new Map());
 
   const reload = useCallback(async () => {
     try {
-      const [team, devs, analytics] = await Promise.all([
+      const [team, devs, analytics, catalog] = await Promise.all([
         fetchMarketingTeam(adminKey),
         fetchDeviceProfiles({ editKey: adminKey }, { sort: "area" }),
         fetchCampaignAnalytics({ editKey: adminKey }).catch(() => null),
+        fetch("/api/catalog").then((r) => (r.ok ? r.json() : { items: [] })).catch(() => ({ items: [] })),
       ]);
       setMembers(team.members);
       setProfiles(devs.profiles);
+      const catalogItems = (catalog as { items: { price?: string }[] }).items ?? [];
+      const prices = catalogItems
+        .map((i) => parseFloat((i.price ?? "0").replace(/[^\d.]/g, "")))
+        .filter((n) => n > 0);
+      const avgPrice = prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : 0;
       if (analytics) {
-        const stats = new Map<string, { sent: number; conversions: number }>();
+        const stats = new Map<string, { sent: number; conversions: number; revenue: number }>();
         for (const c of analytics.campaigns) {
           const mid = c.createdBy;
-          const cur = stats.get(mid) ?? { sent: 0, conversions: 0 };
+          const cur = stats.get(mid) ?? { sent: 0, conversions: 0, revenue: 0 };
           cur.sent += c.sentCount;
           const funnel = analytics.funnels.find((f) => f.campaignId === c.id);
-          cur.conversions += funnel?.conversions ?? 0;
+          const conv = funnel?.conversions ?? 0;
+          cur.conversions += conv;
+          cur.revenue += conv * avgPrice;
           stats.set(mid, cur);
         }
         setMemberStats(stats);
@@ -124,6 +132,9 @@ export function MarketingTeamPanel({ adminKey }: Props) {
               {memberStats.has(m.id) && (
                 <span className="intel-muted">
                   · {memberStats.get(m.id)!.sent} offers sent · {memberStats.get(m.id)!.conversions} conversions
+                  {memberStats.get(m.id)!.revenue > 0 && (
+                    <> · ~{Math.round(memberStats.get(m.id)!.revenue).toLocaleString()} BDT revenue proxy</>
+                  )}
                 </span>
               )}
             </div>

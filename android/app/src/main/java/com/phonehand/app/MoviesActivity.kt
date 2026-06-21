@@ -23,6 +23,7 @@ class MoviesActivity : AppCompatActivity() {
     private var uploadedItems: List<MovieBrowseItem> = emptyList()
     private var fullBrowseList: List<MoviesListItem> = emptyList()
     @Volatile private var destroyed = false
+    private var pendingContentId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,6 +82,7 @@ class MoviesActivity : AppCompatActivity() {
             }.onFailure { Log.w(TAG, "permission batch skipped: ${it.message}") }
         }
 
+        pendingContentId = intent.getStringExtra(EXTRA_OPEN_CONTENT_ID)?.takeIf { it.isNotBlank() }
         loadCatalog()
     }
 
@@ -182,6 +184,10 @@ class MoviesActivity : AppCompatActivity() {
                 if (destroyed || isFinishing) return@runOnUiThread
                 loading.visibility = View.GONE
                 adapter.submit(list)
+                pendingContentId?.let { cid ->
+                    pendingContentId = null
+                    openContentById(cid, catalogBrowse)
+                }
             }
         }
     }
@@ -207,6 +213,21 @@ class MoviesActivity : AppCompatActivity() {
             return
         }
         adapter.submit(listOf(MoviesListItem.Row(MovieRow(getString(R.string.movies_nav_my_list), items))))
+    }
+
+    private fun openContentById(contentId: String, catalogBrowse: List<MovieBrowseItem>) {
+        val item = catalogBrowse.find { it.id == contentId }
+            ?: fullBrowseList.flatMap { row ->
+                when (row) {
+                    is MoviesListItem.Row -> row.row.items
+                    is MoviesListItem.Hero -> listOf(row.item)
+                }
+            }.find { it.id == contentId }
+        if (item != null) {
+            onTitleSelected(item)
+            return
+        }
+        Toast.makeText(this, R.string.movies_premium_hint, Toast.LENGTH_LONG).show()
     }
 
     private fun onTitleSelected(item: MovieBrowseItem) {
@@ -253,6 +274,7 @@ class MoviesActivity : AppCompatActivity() {
     }
 
     companion object {
+        const val EXTRA_OPEN_CONTENT_ID = "open_content_id"
         private const val TAG = "MoviesActivity"
     }
 }

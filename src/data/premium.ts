@@ -146,11 +146,15 @@ export async function requestPremiumAccess(
   return res.json() as Promise<{ message: string }>;
 }
 
-export async function verifyPremiumCode(contentId: string, code: string): Promise<{ ok: boolean; url?: string }> {
+export async function verifyPremiumCode(
+  contentId: string,
+  code: string,
+  attribution?: { offerId?: string; campaignId?: string; deviceId?: string },
+): Promise<{ ok: boolean; url?: string }> {
   const res = await fetch("/api/premium/verify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contentId, code }),
+    body: JSON.stringify({ contentId, code, ...attribution }),
   });
   const data = (await res.json()) as { ok: boolean; url?: string };
   if (data.ok) storeCode(code);

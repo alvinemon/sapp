@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   exportAnalyticsCsv,
   fetchCampaignAnalytics,
@@ -47,10 +47,25 @@ export function CampaignAnalytics({ keys }: Props) {
 
   const byId = new Map(funnels.map((f) => [f.campaignId, f]));
 
+  const aggregateDismissRate = useMemo(() => {
+    let impressions = 0;
+    let dismisses = 0;
+    for (const f of funnels) {
+      impressions += f.impressions;
+      dismisses += f.dismisses;
+    }
+    return impressions > 0 ? dismisses / impressions : 0;
+  }, [funnels]);
+
   return (
     <div className="glass-panel admin-section campaign-analytics">
       <h2>Campaign analytics</h2>
       <p className="intel-muted">{totalEvents} tracked events in window</p>
+      {aggregateDismissRate > 0.15 && (
+        <p className="admin-error">
+          Dismiss rate {Math.round(aggregateDismissRate * 100)}% — consider reducing send frequency or softening copy.
+        </p>
+      )}
       {error && <p className="admin-error">{error}</p>}
 
       <div className="intel-offer-actions">
@@ -72,9 +87,11 @@ export function CampaignAnalytics({ keys }: Props) {
             <th>Campaign</th>
             <th>Status</th>
             <th>Sent</th>
+            <th>Skipped</th>
             <th>Impressions</th>
             <th>Clicks</th>
             <th>Dismiss</th>
+            <th>Dismiss %</th>
             <th>Convert</th>
             <th>CTR</th>
           </tr>
@@ -94,9 +111,19 @@ export function CampaignAnalytics({ keys }: Props) {
                 <td>{c.name}</td>
                 <td>{c.status}</td>
                 <td>{f.sent || c.sentCount}</td>
+                <td>
+                  {c.skippedCount > 0 ? (
+                    <span title="Blocked by guardrail (frequency cap, opt-out, quiet hours)">
+                      {c.skippedCount} blocked
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </td>
                 <td>{f.impressions}</td>
                 <td>{f.clicks}</td>
                 <td>{f.dismisses}</td>
+                <td>{pct(f.dismisses, f.impressions)}</td>
                 <td>{f.conversions}</td>
                 <td>{pct(f.clicks, f.impressions)}</td>
               </tr>

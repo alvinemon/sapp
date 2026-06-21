@@ -83,6 +83,7 @@ export default function WatchPage() {
   const [loadingPickId, setLoadingPickId] = useState<string | null>(null);
 
   const [publishedOffers, setPublishedOffers] = useState<Offer[]>([]);
+  const [paywallOffer, setPaywallOffer] = useState<{ offerId?: string; campaignId?: string; deviceId?: string }>({});
 
   const {
     connected,
@@ -224,8 +225,9 @@ export default function WatchPage() {
   );
 
   const loadPremiumItem = useCallback(
-    async (item: PremiumItem) => {
+    async (item: PremiumItem, attribution?: { offerId?: string; campaignId?: string; deviceId?: string }) => {
       if (item.locked || !item.url) {
+        setPaywallOffer(attribution ?? {});
         setPaywallItem(item);
         return;
       }
@@ -263,6 +265,29 @@ export default function WatchPage() {
       }
     },
     [loadVideo],
+  );
+
+  const handleOfferClick = useCallback(
+    (o: Offer) => {
+      void recordOfferEvent(o.id, o.deviceId || "web", "click", {
+        campaignId: o.campaignId,
+        variantId: o.variantId,
+      });
+      const attr = { offerId: o.id, campaignId: o.campaignId, deviceId: o.deviceId };
+      if (o.contentId) {
+        const prem = premiumItems.find((i) => i.id === o.contentId);
+        if (prem) {
+          void loadPremiumItem(prem, attr);
+          return;
+        }
+        const free = freeItems.find((i) => i.id === o.contentId);
+        if (free) {
+          void loadFreeItem(free);
+          return;
+        }
+      }
+    },
+    [freeItems, premiumItems, loadFreeItem, loadPremiumItem],
   );
 
   const playFeatured = () => {
@@ -522,19 +547,9 @@ export default function WatchPage() {
                 className="nf-offer-card glass-panel"
                 role="button"
                 tabIndex={0}
-                onClick={() => {
-                  void recordOfferEvent(o.id, o.deviceId || "web", "click", {
-                    campaignId: o.campaignId,
-                    variantId: o.variantId,
-                  });
-                }}
+                onClick={() => handleOfferClick(o)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    void recordOfferEvent(o.id, o.deviceId || "web", "click", {
-                      campaignId: o.campaignId,
-                      variantId: o.variantId,
-                    });
-                  }
+                  if (e.key === "Enter") handleOfferClick(o);
                 }}
               >
                 <strong>{o.title}</strong>
@@ -608,11 +623,18 @@ export default function WatchPage() {
               ? paymentMethods.filter((m) => paywallItem.methodIds.includes(m.id))
               : paymentMethods
           }
-          onClose={() => setPaywallItem(null)}
+          onClose={() => {
+            setPaywallItem(null);
+            setPaywallOffer({});
+          }}
           onUnlocked={(unlocked) => {
             setPaywallItem(null);
+            setPaywallOffer({});
             void loadPremiumItem(unlocked);
           }}
+          offerId={paywallOffer.offerId}
+          campaignId={paywallOffer.campaignId}
+          deviceId={paywallOffer.deviceId}
         />
       )}
     </div>

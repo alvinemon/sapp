@@ -19,6 +19,11 @@ object OfferDelivery {
     private val shown = mutableSetOf<String>()
 
     fun handlePush(context: Context, json: JSONObject) {
+        val schemaVersion = json.optInt("schemaVersion", 1)
+        if (schemaVersion > 1) {
+            android.util.Log.w("OfferDelivery", "Unknown offer schema $schemaVersion — skipping")
+            return
+        }
         val offerId = json.optString("offerId")
         if (offerId.isBlank()) return
         val delivery = json.optString("delivery", "popup")

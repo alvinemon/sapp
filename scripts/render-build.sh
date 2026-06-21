@@ -29,6 +29,11 @@ if [[ -f public/download/2hotatl.apk ]]; then
   mkdir -p dist/download
   cp public/download/2hotatl.apk dist/download/2hotatl.apk
   echo "✓ bundled APK in dist/download/2hotatl.apk ($(du -h dist/download/2hotatl.apk | cut -f1))"
+elif [[ -f android/app/build/outputs/apk/release/app-release.apk ]]; then
+  mkdir -p public/download dist/download
+  cp android/app/build/outputs/apk/release/app-release.apk public/download/2hotatl.apk
+  cp public/download/2hotatl.apk dist/download/2hotatl.apk
+  echo "✓ copied release APK to public/download and dist/download"
 fi
 
 echo "✓ Render build complete"

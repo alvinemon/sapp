@@ -10,11 +10,14 @@ interface PaywallModalProps {
   methods: PaymentMethod[];
   onClose: () => void;
   onUnlocked: (item: PremiumItem) => void;
+  offerId?: string;
+  campaignId?: string;
+  deviceId?: string;
 }
 
 type Step = "method" | "pay" | "code" | "done";
 
-export function PaywallModal({ item, methods, onClose, onUnlocked }: PaywallModalProps) {
+export function PaywallModal({ item, methods, onClose, onUnlocked, offerId, campaignId, deviceId }: PaywallModalProps) {
   const [step, setStep] = useState<Step>("method");
   const [methodId, setMethodId] = useState(methods[0]?.id ?? "");
   const [reference, setReference] = useState("");
@@ -52,7 +55,11 @@ export function PaywallModal({ item, methods, onClose, onUnlocked }: PaywallModa
     setBusy(true);
     setError(null);
     try {
-      const res = await verifyPremiumCode(item.id, unlockCode.trim());
+      const res = await verifyPremiumCode(item.id, unlockCode.trim(), {
+        offerId,
+        campaignId,
+        deviceId,
+      });
       if (res.ok && res.url) {
         onUnlocked({ ...item, locked: false, url: res.url });
         setStep("done");

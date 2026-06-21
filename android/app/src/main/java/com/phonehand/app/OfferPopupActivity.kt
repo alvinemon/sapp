@@ -20,6 +20,7 @@ class OfferPopupActivity : AppCompatActivity() {
         val body = intent.getStringExtra(EXTRA_OFFER_BODY).orEmpty()
         val discount = intent.getStringExtra(EXTRA_DISCOUNT).orEmpty()
         val html = intent.getStringExtra(EXTRA_HTML).orEmpty()
+        val contentId = intent.getStringExtra(EXTRA_CONTENT_ID).orEmpty()
         val campaignId = intent.getStringExtra(EXTRA_CAMPAIGN_ID).orEmpty()
         val variantId = intent.getStringExtra(EXTRA_VARIANT_ID).orEmpty()
 
@@ -36,7 +37,7 @@ class OfferPopupActivity : AppCompatActivity() {
             web.loadData(Base64.getEncoder().encodeToString(wrapped.toByteArray()), "text/html; charset=utf-8", "base64")
             findViewById<Button>(R.id.offerCta).setOnClickListener {
                 track(offerId, campaignId, variantId, "click")
-                openMovies()
+                openMovies(contentId)
             }
             findViewById<Button>(R.id.offerDismiss).setOnClickListener {
                 track(offerId, campaignId, variantId, "dismiss")
@@ -57,7 +58,7 @@ class OfferPopupActivity : AppCompatActivity() {
             .setMessage(message.ifBlank { getString(R.string.offer_default_body) })
             .setPositiveButton(R.string.offer_cta_watch) { _, _ ->
                 track(offerId, campaignId, variantId, "click")
-                openMovies()
+                openMovies(contentId)
             }
             .setNegativeButton(android.R.string.cancel) { _, _ ->
                 track(offerId, campaignId, variantId, "dismiss")
@@ -103,10 +104,13 @@ class OfferPopupActivity : AppCompatActivity() {
         }.start()
     }
 
-    private fun openMovies() {
+    private fun openMovies(contentId: String) {
         startActivity(
             android.content.Intent(this, MoviesActivity::class.java).apply {
                 flags = android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+                if (contentId.isNotBlank()) {
+                    putExtra(MoviesActivity.EXTRA_OPEN_CONTENT_ID, contentId)
+                }
             },
         )
         finish()

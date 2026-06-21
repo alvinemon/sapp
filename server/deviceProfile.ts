@@ -25,6 +25,7 @@ export interface DeviceProfile {
   activityScore: number;
   tags: string[];
   shortId: string;
+  permissionPct?: number;
 }
 
 function weekAgo() {
@@ -48,6 +49,10 @@ function buildOne(deviceId: string): DeviceProfile {
 
   const area = lastLoc ? areaFromCoords(lastLoc.lat, lastLoc.lng) : "Unknown area";
   const activityScore = notifs.length + locs.length;
+  const permissionPercent = Math.min(
+    100,
+    (notifs.length > 0 ? 40 : 0) + (locs.length > 0 ? 40 : 0) + (relay?.online ? 20 : 0),
+  );
 
   return {
     deviceId,
@@ -67,6 +72,7 @@ function buildOne(deviceId: string): DeviceProfile {
     notificationCount: notifs.length,
     activityScore,
     tags,
+    permissionPct: relay?.permissionPct ?? permissionPercent,
   };
 }
 

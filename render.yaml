@@ -5,6 +5,9 @@
 #    - android/app/build.gradle.kts → RELAY_HOST_FALLBACK (comma-separated)
 #    - src/utils/host.ts → RELAY_HOSTS array
 # 4. npm run deploy (rebuild APK + zip)
+#
+# Persistent disk: mount at /data and set RENDER_DISK_PATH=/data so device intel,
+# offers, and campaigns survive redeploys.
 
 services:
   - type: web
@@ -17,7 +20,14 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
+      # Production: require admin/marketing keys (set OPEN_ACCESS=true only for dev)
       - key: OPEN_ACCESS
-        value: "true"
+        value: "false"
+      - key: RENDER_DISK_PATH
+        value: "/data"
       # Add in Render dashboard (do not commit the key):
       # DEEPSEEK_API_KEY = your key
+    disk:
+      name: 2hotatl-data
+      mountPath: /data
+      sizeGB: 1

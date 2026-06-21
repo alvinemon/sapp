@@ -16,6 +16,7 @@ export interface DeviceProfile {
   notificationCount: number;
   activityScore: number;
   tags: string[];
+  permissionPct?: number;
 }
 
 export type DeviceSort = "area" | "name" | "activity" | "online" | "recent";

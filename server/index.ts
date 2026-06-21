@@ -15,7 +15,7 @@ import {
   removeCatalogItem,
   updateCatalogItem,
 } from "./catalog.js";
-import { generateOffers, listOffers, listPublishedOffers, listPendingPush, publishOffer, createOffer, updateOffer, sendOffer, ackOfferDelivery, countOffersSentToday } from "./offerEngine.js";
+import { generateOffers, listOffers, listPublishedOffers, listPendingPush, publishOffer, createOffer, updateOffer, sendOffer, ackOfferDelivery, countOffersSentToday, onOfferDismissed } from "./offerEngine.js";
 import { buildIntelDigest } from "./intelDigest.js";
 import { listDeviceProfilesAdmin, listDeviceProfilesForMember, listAreas, type DeviceSort } from "./deviceProfile.js";
 import {
@@ -83,6 +83,7 @@ import {
   funnelForCampaign,
   analyticsSummary,
   exportEventsCsv,
+  growthPulse,
 } from "./offerEvents.js";
 import {
   getGuardrails,
@@ -658,7 +659,15 @@ app.post("/api/offers/:offerId/events", (req, res) => {
     triggerId: typeof req.body?.triggerId === "string" ? req.body.triggerId : undefined,
     variantId: typeof req.body?.variantId === "string" ? req.body.variantId : undefined,
   });
+  if (type === "dismiss") {
+    onOfferDismissed(deviceId, String(req.params.offerId ?? ""));
+  }
   res.json(event);
+});
+
+app.get("/api/growth-pulse", (_req, res) => {
+  const since24h = Date.now() - 86_400_000;
+  res.json(growthPulse(since24h));
 });
 
 app.get("/api/segments", (req, res) => {

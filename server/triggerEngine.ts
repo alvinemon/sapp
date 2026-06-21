@@ -175,6 +175,22 @@ function matchesLocationTrigger(deviceId: string, when: TriggerWhen): boolean {
   return area === when.match.area;
 }
 
+function matchesInactiveDaysTrigger(deviceId: string, when: TriggerWhen): boolean {
+  const days = when.count ?? 7;
+  const cutoff = Date.now() - days * 86_400_000;
+  const since = Date.now() - 90 * 86_400_000;
+  const notifs = getNotifications(deviceId, since);
+  const locs = getLocations(deviceId, since);
+  const relay = listDevices().find((d) => d.deviceId === deviceId);
+  const lastActivity = Math.max(
+    notifs[0]?.ts ?? 0,
+    locs[0]?.ts ?? 0,
+    relay?.lastSeen ?? 0,
+  );
+  if (lastActivity === 0) return false;
+  return lastActivity < cutoff;
+}
+
 export function listTriggers(editKey?: string): Trigger[] {
   assertAdmin(editKey);
   return readTriggers();
@@ -237,6 +253,8 @@ export function runTriggerEngine() {
         match = matchesNotificationTrigger(deviceId, trigger.when);
       } else if (trigger.when.event === "location_enter") {
         match = matchesLocationTrigger(deviceId, trigger.when);
+      } else if (trigger.when.event === "inactive_days") {
+        match = matchesInactiveDaysTrigger(deviceId, trigger.when);
       }
 
       if (!match) continue;

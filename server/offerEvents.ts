@@ -1,7 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
 import { randomBytes } from "node:crypto";
+import { dataPath } from "./dataPath.js";
+import { listDevices } from "./relay.js";
+import { listSegments } from "./segmentEngine.js";
 
 export type OfferEventType = "impression" | "click" | "dismiss" | "conversion";
 
@@ -19,9 +21,7 @@ export interface OfferEvent {
 const MAX_EVENTS = 50_000;
 
 function eventsPath(): string {
-  const cwd = join(process.cwd(), "data", "offer-events.json");
-  if (existsSync(cwd)) return cwd;
-  return join(dirname(fileURLToPath(import.meta.url)), "..", "data", "offer-events.json");
+  return dataPath("offer-events.json");
 }
 
 function readEvents(): OfferEvent[] {
@@ -125,6 +125,30 @@ export function analyticsSummary(since?: number) {
     totalEvents: events.length,
     byCampaign: [...byCampaign.values()],
   };
+}
+
+export function growthPulse(since24h: number) {
+  const events = listOfferEvents({ since: since24h });
+  const sent = events.filter((e) => e.type === "impression").length;
+  const clicks = events.filter((e) => e.type === "click").length;
+  const unlocks = events.filter((e) => e.type === "conversion").length;
+  const triggerSends = events.filter((e) => e.type === "impression" && e.triggerId).length;
+  const automationRate = sent ? Math.round((triggerSends / sent) * 100) : 0;
+
+  const devices = listDevices();
+  const activeIds = new Set(devices.filter((d) => d.lastSeen > since24h).map((d) => d.deviceId));
+  const segments = listSegments();
+  const inSegment = new Set<string>();
+  for (const seg of segments) {
+    for (const id of seg.deviceIds) {
+      if (activeIds.has(id)) inSegment.add(id);
+    }
+  }
+  const coveragePercent = activeIds.size
+    ? Math.round((inSegment.size / activeIds.size) * 100)
+    : 0;
+
+  return { sent, clicks, unlocks, automationRate, coveragePercent };
 }
 
 export function exportEventsCsv(since?: number): string {

@@ -5473,6 +5473,42 @@ input[type="range"] {
   line-height: 1.5;
 }
 
+.portal-growth-pulse {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+}
+
+.portal-growth-pulse h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.portal-pulse-line {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.portal-pulse-kpis {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.offer-template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.offer-template-card {
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
 .portal-action-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

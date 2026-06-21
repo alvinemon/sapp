@@ -88,6 +88,7 @@ export function DevicePicker({ editKey, marketingKey, selectedId, onSelect }: Pr
               <th>Area</th>
               <th>Owner</th>
               <th>Activity</th>
+              <th>Permissions</th>
               <th>Tags</th>
               <th>Last seen</th>
             </tr>
@@ -120,6 +121,11 @@ export function DevicePicker({ editKey, marketingKey, selectedId, onSelect }: Pr
                 <td>
                   <span>{p.notificationCount} alerts</span>
                   <small>score {p.activityScore}</small>
+                  {p.permissionPct != null && (
+                    <span className="intel-tag" title="Permission setup">
+                      {p.permissionPct}% perms
+                    </span>
+                  )}
                 </td>
                 <td>
                   <div className="intel-tags compact">

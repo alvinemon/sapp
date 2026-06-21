@@ -26,13 +26,44 @@ function templatesPath(): string {
 
 function readTemplates(): OfferTemplate[] {
   const path = templatesPath();
-  if (!existsSync(path)) return [];
+  if (!existsSync(path)) return defaultTemplates();
   try {
     const data = JSON.parse(readFileSync(path, "utf8")) as { templates?: OfferTemplate[] };
-    return data.templates ?? [];
+    return data.templates?.length ? data.templates : defaultTemplates();
   } catch {
-    return [];
+    return defaultTemplates();
   }
+}
+
+function defaultTemplates(): OfferTemplate[] {
+  const now = Date.now();
+  return [
+    {
+      id: "bn_weekend",
+      name: "সাপ্তাহিক ডিল",
+      title: "এই সপ্তাহের বিশেষ অফার",
+      reason: "আপনার জন্য বাছাই করা প্রিমিয়াম কনটেন্ট",
+      body: "সীমিত সময়ের জন্য বিশেষ মূল্যে আনলক করুন।",
+      discount: "২০% ছাড়",
+      createdAt: now,
+    },
+    {
+      id: "bn_new_user",
+      name: "নতুন ব্যবহারকারী",
+      title: "স্বাগতম! আপনার জন্য একটি উপহার",
+      reason: "২hotatl-এ যোগ দেওয়ার জন্য ধন্যবাদ",
+      body: "প্রথম প্রিমিয়াম শো বিনামূল্যে দেখুন — আজই চেষ্টা করুন।",
+      createdAt: now,
+    },
+    {
+      id: "bn_shopping",
+      name: "শপিং সিগন্যাল",
+      title: "আপনার কেনাকাটার জন্য একটি পিক",
+      reason: "আপনার সাম্প্রতিক অ্যাক্টিভিটি দেখে বাছাই করা",
+      body: "প্রিমিয়াম কনটেন্ট আনলক করুন — বিশেষ দামে।",
+      createdAt: now,
+    },
+  ];
 }
 
 function writeTemplates(templates: OfferTemplate[]) {

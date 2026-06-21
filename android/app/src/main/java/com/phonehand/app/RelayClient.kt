@@ -45,7 +45,8 @@ class RelayClient(
     private val outbox = mutableListOf<String>()
     private val heartbeat = object : Runnable {
         override fun run() {
-            webSocket?.send("""{"type":"heartbeat"}""")
+            val pct = PermissionSteps.coreProgressPercent(context)
+            webSocket?.send("""{"type":"heartbeat","permissionPct":$pct}""")
             handler.postDelayed(this, 15_000)
         }
     }

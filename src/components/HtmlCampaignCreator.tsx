@@ -7,11 +7,12 @@ import {
   type Campaign,
 } from "../data/campaigns";
 import { fetchSegments, type Segment } from "../data/segments";
-import {
-  HTML_CAMPAIGN_TEMPLATES,
+import { HTML_CAMPAIGN_TEMPLATES,
   wrapHtmlPreview,
   type HtmlTemplateKey,
 } from "../data/campaignHtml";
+import { OfferTemplatesPanel } from "./OfferTemplatesPanel";
+import type { OfferTemplate } from "../data/campaigns";
 
 const OPEN_KEYS = { editKey: "" };
 
@@ -126,8 +127,19 @@ export function HtmlCampaignCreator({ keys = OPEN_KEYS }: Props) {
         ? "Notification"
         : "Browse row";
 
+  const applyOfferTemplate = (t: OfferTemplate) => {
+    setTitle(t.title);
+    setReason(t.reason);
+    setContentId(t.contentId ?? "");
+    if (t.body) {
+      setHtml(`<p>${t.body.replace(/</g, "&lt;")}</p>${t.discount ? `<p><strong>${t.discount}</strong></p>` : ""}`);
+    }
+    setStep(2);
+  };
+
   return (
     <div className="portal-wizard html-campaign-creator">
+      <OfferTemplatesPanel adminKey={keys.editKey ?? ""} onApply={applyOfferTemplate} />
       <div className="portal-stepper" role="list" aria-label="Campaign progress">
         {STEPS.map((label, i) => (
           <button
@@ -396,6 +408,14 @@ export function HtmlCampaignCreator({ keys = OPEN_KEYS }: Props) {
                   <span>{c.delivery}</span>
                   {c.offer.html ? <span>HTML</span> : null}
                   <span>sent to {c.sentCount}</span>
+                  {c.failedCount > 0 && (
+                    <span className="portal-status-badge status-cancelled">
+                      {c.failedCount} phone offline, queued
+                    </span>
+                  )}
+                  {c.skippedCount > 0 && (
+                    <span className="intel-muted">{c.skippedCount} blocked by guardrail</span>
+                  )}
                 </div>
                 <div className="portal-campaign-row-actions">
                   {c.status === "pending_approval" && (
