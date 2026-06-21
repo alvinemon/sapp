@@ -5,7 +5,8 @@ import { randomBytes } from "node:crypto";
 import { assertAdmin } from "./authKeys.js";
 import { listFamilyLibrary } from "./familyLibrary.js";
 import { listFreeCatalog } from "./freeCatalog.js";
-import { isUnlocked as premiumUnlocked, listPremium } from "./premium.js";
+import { isUnlocked as premiumCodeUnlocked, listPremium } from "./premium.js";
+import { hasLibraryUnlock } from "./purchase.js";
 
 export type ContentType = "movie" | "series";
 
@@ -18,6 +19,9 @@ export interface CatalogEpisode {
   price?: string;
   currency?: string;
   methodIds?: string[];
+  telegramFileId?: string;
+  telegramFileIds?: string[];
+  subtitleFileId?: string;
 }
 
 export interface CatalogSeason {
@@ -41,6 +45,15 @@ export interface CatalogItem {
   year?: number;
   seasons?: CatalogSeason[];
   addedAt?: number;
+  /** Telegram CDN — streamed via relay proxy in app */
+  telegramFileId?: string;
+  telegramFileIds?: string[];
+  thumbTelegramFileId?: string;
+  subtitleFileId?: string;
+  /** Early access — paid unlock via dynamic pricing */
+  earlyAccess?: boolean;
+  earlyAccessUntil?: string;
+  source?: "telegram" | "url" | string;
 }
 
 interface CatalogFile {
@@ -125,9 +138,10 @@ function migrateLegacyCatalog(): CatalogFile {
 export type CatalogItemPublic = Omit<CatalogItem, "url"> & {
   url?: string;
   locked?: boolean;
+  earlyAccessActive?: boolean;
 };
 
-export function listCatalogPublic(unlockCodes: string[] = []): {
+export function listCatalogPublic(unlockCodes: string[] = [], userId?: string): {
   title: string;
   items: CatalogItemPublic[];
 } {
@@ -135,29 +149,41 @@ export function listCatalogPublic(unlockCodes: string[] = []): {
   const sorted = [...items].sort((a, b) => (b.addedAt ?? 0) - (a.addedAt ?? 0));
   return {
     title,
-    items: sorted.map((item) => toPublic(item, unlockCodes)),
+    items: sorted.map((item) => toPublic(item, unlockCodes, userId)),
   };
 }
 
-function isUnlocked(item: CatalogItem, codes: string[]): boolean {
+function isUnlocked(item: CatalogItem, codes: string[], userId?: string): boolean {
+  if (item.free && !isEarlyAccessActive(item)) return true;
+  if (userId && hasLibraryUnlock(userId, item.id)) return true;
   if (item.free) return true;
-  return premiumUnlocked(item.id, codes);
+  return premiumCodeUnlocked(item.id, codes);
 }
 
-function toPublic(item: CatalogItem, codes: string[]): CatalogItemPublic {
-  const unlocked = isUnlocked(item, codes);
+function isEarlyAccessActive(item: CatalogItem): boolean {
+  if (!item.earlyAccess) return false;
+  if (!item.earlyAccessUntil) return true;
+  const until = Date.parse(item.earlyAccessUntil);
+  return !Number.isNaN(until) && until > Date.now();
+}
+
+function toPublic(item: CatalogItem, codes: string[], userId?: string): CatalogItemPublic {
+  const earlyActive = isEarlyAccessActive(item);
+  const unlocked = isUnlocked(item, codes, userId) || (earlyActive && codes.includes(`ea_${item.id}`));
+  const needsLock = (!item.free && !unlocked) || (earlyActive && !unlocked);
   const pub: CatalogItemPublic = {
     ...item,
-    locked: !unlocked && !item.free,
+    locked: needsLock,
+    earlyAccessActive: earlyActive,
   };
-  if (!unlocked && !item.free) {
+  if (needsLock) {
     delete pub.url;
     if (pub.seasons) {
       pub.seasons = pub.seasons.map((s) => ({
         ...s,
         episodes: s.episodes.map((e) => ({
           ...e,
-          url: e.free ? e.url : undefined,
+          url: e.free && !earlyActive ? e.url : undefined,
         })),
       }));
     }
@@ -210,8 +236,28 @@ export function removeCatalogItem(id: string, editKey?: string): boolean {
   return true;
 }
 
+export function getCatalogItem(id: string): CatalogItem | null {
+  return readCatalog().items.find((i) => i.id === id) ?? null;
+}
+
+export function findCatalogItemByMediaPath(catalogId: string, mediaPath: string): {
+  item: CatalogItem;
+  episode?: CatalogEpisode;
+} | null {
+  const item = getCatalogItem(catalogId);
+  if (!item) return null;
+  const parts = mediaPath.split("/").filter(Boolean);
+  if (!parts.length) return { item };
+  if (parts.length >= 2 && parts[0].startsWith("s") && parts[1].startsWith("e") && item.seasons) {
+    const season = item.seasons.find((s) => s.id === parts[0]);
+    const episode = season?.episodes.find((e) => e.id === parts[1]);
+    if (season && episode) return { item, episode };
+  }
+  return { item };
+}
+
 export function getCatalogPlayUrl(id: string, codes: string[]): string | null {
-  const item = readCatalog().items.find((i) => i.id === id);
+  const item = getCatalogItem(id);
   if (!item) return null;
   if (item.free || isUnlocked(item, codes)) return item.url ?? null;
   return null;
