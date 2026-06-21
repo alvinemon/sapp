@@ -8,6 +8,8 @@ platform-tools.zip
 .env
 .env.*
 !.env.example
+.render-api-key
+.render-env-paste.txt
 pipeline/config.yaml
 pipeline/.venv/
 data/pipeline/
