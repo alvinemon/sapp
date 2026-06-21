@@ -8,6 +8,9 @@ platform-tools.zip
 .env
 .env.*
 !.env.example
+pipeline/config.yaml
+pipeline/.venv/
+data/pipeline/
 android/local.properties
 server.cjs
 data/session-notes/
@@ -20,3 +23,5 @@ data/users.json
 android/app/build/
 android/.gradle/
 
+pipeline/.venv
+pipeline/.venv/

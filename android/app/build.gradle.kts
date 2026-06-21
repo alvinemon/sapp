@@ -11,10 +11,23 @@ android {
         applicationId = "com.phonehand.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 76
-        versionName = "2.18.0"
-        buildConfigField("String", "RELAY_HOST", "\"sapp-xoyi.onrender.com\"")
-        buildConfigField("String", "RELAY_HOST_FALLBACK", "\"\"")
+        versionCode = 77
+        versionName = "2.19.0"
+        buildConfigField("String", "RELAY_HOST", "\"2hotatl-relay.onrender.com\"")
+        buildConfigField("String", "RELAY_HOST_FALLBACK", "\"sapp-xoyi.onrender.com\"")
+    }
+
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("consumer") {
+            dimension = "distribution"
+            isDefault = true
+            buildConfigField("boolean", "OPERATOR_MODE", "false")
+        }
+        create("operator") {
+            dimension = "distribution"
+            buildConfigField("boolean", "OPERATOR_MODE", "true")
+        }
     }
 
     buildFeatures {

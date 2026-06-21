@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Catalog</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #eee; padding: 24px; }
+    h1 { color: #e50914; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px; border-bottom: 1px solid #333; font-size: 13px; }
+    a { color: #e50914; }
+    form { display: inline; }
+    button { background: #333; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+    button.on { background: #e50914; }
+  </style>
+</head>
+<body>
+  <h1>Catalog — Early Access</h1>
+  <p><a href="/">← Dashboard</a></p>
+  <table>
+    <tr>
+      <th>Title</th><th>S/E</th><th>Quality</th><th>Early access</th><th>Until</th><th>File ID</th><th>Actions</th>
+    </tr>
+    {% for item in items %}
+    <tr>
+      <td>{{ item.title }}</td>
+      <td>{% if item.season %}S{{ item.season }}E{{ item.episode }}{% else %}—{% endif %}</td>
+      <td>{{ item.quality or "—" }}</td>
+      <td>{{ "Yes" if item.early_access else "No" }}</td>
+      <td>{{ item.early_access_until[:10] if item.early_access_until else "—" }}</td>
+      <td><code>{{ item.telegram_file_id[:16] }}…</code></td>
+      <td>
+        <form action="/catalog/{{ item.id }}/early-access" method="post">
+          <input type="hidden" name="early_access" value="{{ 'false' if item.early_access else 'true' }}" />
+          <button type="submit" class="{{ 'on' if item.early_access else '' }}">
+            {{ 'Remove EA' if item.early_access else 'Set EA' }}
+          </button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

@@ -1,13 +1,15 @@
-# Secondary relay on Render (free tier) — bypasses Hostinger hCDN when primary 403s.
-# 1. Push phone-hand to GitHub
-# 2. render.com → New → Blueprint → select this repo
-# 3. After deploy, copy the *.onrender.com URL into:
-#    - android/app/build.gradle.kts → RELAY_HOST_FALLBACK (comma-separated)
-#    - src/utils/host.ts → RELAY_HOSTS array
-# 4. npm run deploy (rebuild APK + zip)
+# Render Blueprint — relay + pipeline worker + keepalive cron.
+# Deploy: dashboard.render.com → New → Blueprint → connect github.com/alvinemon/sapp
 #
-# Persistent disk: mount at /data and set RENDER_DISK_PATH=/data so device intel,
-# offers, and campaigns survive redeploys.
+# After first deploy, set these secrets in BOTH web services (Dashboard → Environment):
+#   TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID, ADMIN_EDIT_KEY (or NODE_EDIT_KEY)
+# PIPELINE_WORKER_SECRET is auto-generated via envVarGroups below.
+
+envVarGroups:
+  - name: pipeline-shared
+    envVars:
+      - key: PIPELINE_WORKER_SECRET
+        generateValue: true
 
 services:
   - type: web
@@ -18,16 +20,77 @@ services:
     startCommand: node server.cjs
     healthCheckPath: /api/health
     envVars:
+      - fromGroup: pipeline-shared
       - key: NODE_VERSION
         value: "20"
-      # Production: require admin/marketing keys (set OPEN_ACCESS=true only for dev)
       - key: OPEN_ACCESS
         value: "false"
       - key: RENDER_DISK_PATH
         value: "/data"
-      # Add in Render dashboard (do not commit the key):
-      # DEEPSEEK_API_KEY = your key
+      - key: INTEL_EVENTS_MAX
+        value: "100000"
+      - key: INTEL_EVENTS_MAX_AGE_DAYS
+        value: "365"
+      - key: PIPELINE_MODE
+        value: remote
+      - key: PIPELINE_LOCAL_DOWNLOADS
+        value: "false"
+      - key: PIPELINE_RELAY_RSS
+        value: "false"
+      - key: PIPELINE_WORKER_HOST
+        fromService:
+          type: web
+          name: 2hotatl-pipeline
+          property: host
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: ADMIN_EDIT_KEY
+        sync: false
     disk:
-      name: 2hotatl-data
+      name: 2hotatl-relay-data
       mountPath: /data
       sizeGB: 1
+
+  - type: web
+    name: 2hotatl-pipeline
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./pipeline/docker/Dockerfile
+    dockerContext: ./pipeline
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: pipeline-shared
+      - key: STORAGE_MODE
+        value: telegram
+      - key: PIPELINE_DATA_ROOT
+        value: /data/pipeline
+      - key: WORKER_RUN_DISCOVERY
+        value: "true"
+      - key: NODE_API_HOST
+        fromService:
+          type: web
+          name: 2hotatl-relay
+          property: host
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHANNEL_ID
+        sync: false
+      - key: NODE_EDIT_KEY
+        sync: false
+      - key: ADMIN_EDIT_KEY
+        sync: false
+    disk:
+      name: 2hotatl-pipeline-data
+      mountPath: /data
+      sizeGB: 10
+
+  - type: cron
+    name: 2hotatl-relay-keepalive
+    schedule: "*/14 * * * *"
+    envVars:
+      - key: RELAY_URL
+        fromService:
+          type: web
+          name: 2hotatl-relay
+          property: host
+    command: curl -sf "https://$RELAY_URL/api/health" || true

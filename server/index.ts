@@ -10,13 +10,40 @@ import { getLocations, getNotifications } from "./intelStore.js";
 import { canAccessPortal, assertAdmin, isOpenAccess } from "./authKeys.js";
 import {
   addCatalogItem,
+  findCatalogItemByMediaPath,
   listCatalogAdmin,
   listCatalogPublic,
   removeCatalogItem,
   updateCatalogItem,
 } from "./catalog.js";
+import { buildHlsPlaylist, resolveCatalogMedia, resolveTelegramFileUrl } from "./catalogMedia.js";
+import { checkStreamAccess, parseAccessContext } from "./entitlements.js";
+import { getFeedHealthRecords } from "./feedHealth.js";
+import { startMasterPipeline } from "./masterPipeline.js";
+import { confirmPurchase, initiatePurchase, listUserLibrary } from "./purchase.js";
+import { fetchPricingQuote, postPricingAttempt, postUserMetrics } from "./pricingProxy.js";
+import {
+  getPipelineCatalog,
+  getPipelineConfig,
+  getPipelineLogs,
+  getPipelineRevenue,
+  getPipelineStatus,
+  runPipelineCycle,
+  runPipelineStep,
+  setPipelineEarlyAccess,
+  syncPipelineCatalog,
+  trainPricingModel,
+} from "./pipeline.js";
+import { getRssScannerStatus, relayRssEnabled, startJobTracker, startRssScanner } from "./rssScanner.js";
+import { bootstrapPipeline, startPipelineOrchestrator } from "./pipelineOrchestrator.js";
 import { generateOffers, listOffers, listPublishedOffers, listPendingPush, publishOffer, createOffer, updateOffer, sendOffer, ackOfferDelivery, countOffersSentToday, onOfferDismissed } from "./offerEngine.js";
 import { buildIntelDigest } from "./intelDigest.js";
+import {
+  exportIntelEvents,
+  getIntelStats,
+  purgeIntelEvents,
+  queryIntelEvents,
+} from "./intelRegistry.js";
 import { listDeviceProfilesAdmin, listDeviceProfilesForMember, listAreas, type DeviceSort } from "./deviceProfile.js";
 import {
   authenticateMarketing,
@@ -27,7 +54,7 @@ import {
   assignDevicesToMember,
   rotateMarketingKey,
 } from "./marketingTeam.js";
-import { resolveAccess } from "./marketingAuth.js";
+import { resolveAccess, assertDeviceIntelAccess } from "./marketingAuth.js";
 import { getMethodById, verifyAutoPayment } from "./paymentProviders.js";
 import { resolveDeepSeekApiKey, runAgent } from "./agent.js";
 import { attachClient, listDevices, validateKey, status } from "./relay.js";
@@ -264,7 +291,109 @@ app.get("/api/auth/portal", (req, res) => {
 
 app.get("/api/catalog", (req, res) => {
   const codes = parseCodes(req.query.codes);
-  res.json(listCatalogPublic(codes));
+  const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+  res.json(listCatalogPublic(codes, userId));
+});
+
+app.get("/api/catalog/categories", (_req, res) => {
+  const { items } = listCatalogPublic([]);
+  const categories = [...new Set(items.map((i) => i.category).filter(Boolean))].sort();
+  res.json({ categories });
+});
+
+app.get("/api/catalog/thumb/*", async (req, res) => {
+  try {
+    const rest = req.path.replace(/^\/api\/catalog\/thumb\//, "");
+    const segments = rest.split("/").filter(Boolean);
+    const catalogId = segments[0] ?? "";
+    const mediaPath = segments.slice(1).join("/");
+    const found = findCatalogItemByMediaPath(catalogId, mediaPath);
+    if (!found) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    const resolved = resolveCatalogMedia(found.item, mediaPath);
+    if (!resolved) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    if (resolved.externalThumb) {
+      res.redirect(302, resolved.externalThumb);
+      return;
+    }
+    const thumbId = resolved.thumbFileId || resolved.fileIds[0];
+    if (!thumbId) {
+      res.status(404).json({ error: "no thumb" });
+      return;
+    }
+    const url = await resolveTelegramFileUrl(thumbId);
+    if (!url) {
+      res.status(502).json({ error: "telegram thumb unavailable" });
+      return;
+    }
+    res.redirect(302, url);
+  } catch (e) {
+    res.status(502).json({ error: e instanceof Error ? e.message : "thumb failed" });
+  }
+});
+
+app.get("/api/catalog/stream/*", async (req, res) => {
+  try {
+    const rest = req.path.replace(/^\/api\/catalog\/stream\//, "");
+    const partMatch = rest.match(/^(.*)\/part\/(\d+)$/);
+    const pathPart = partMatch ? partMatch[1] : rest;
+    const segments = pathPart.split("/").filter(Boolean);
+    const catalogId = segments[0] ?? "";
+    const mediaPath = segments.slice(1).join("/");
+    const accessCtx = parseAccessContext(req);
+    const access = checkStreamAccess(catalogId, mediaPath, accessCtx);
+    if (!access.allowed) {
+      res.status(402).json(access.denial);
+      return;
+    }
+    const found = findCatalogItemByMediaPath(catalogId, mediaPath);
+    if (!found) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    const resolved = resolveCatalogMedia(found.item, mediaPath);
+    if (!resolved || !resolved.fileIds.length) {
+      res.status(404).json({ error: "no stream" });
+      return;
+    }
+
+    if (partMatch) {
+      const idx = Number(partMatch[2]);
+      const fileId = resolved.fileIds[idx];
+      if (!fileId) {
+        res.status(404).json({ error: "part not found" });
+        return;
+      }
+      const url = await resolveTelegramFileUrl(fileId);
+      if (!url) {
+        res.status(502).json({ error: "telegram stream unavailable" });
+        return;
+      }
+      res.redirect(302, url);
+      return;
+    }
+
+    if (resolved.fileIds.length === 1) {
+      const url = await resolveTelegramFileUrl(resolved.fileIds[0]);
+      if (!url) {
+        res.status(502).json({ error: "telegram stream unavailable" });
+        return;
+      }
+      res.redirect(302, url);
+      return;
+    }
+
+    const base = `${req.protocol}://${req.get("host")}/api/catalog/stream/${catalogId}${mediaPath ? `/${mediaPath}` : ""}`;
+    res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+    res.send(buildHlsPlaylist(base, resolved.fileIds.length));
+  } catch (e) {
+    res.status(502).json({ error: e instanceof Error ? e.message : "stream failed" });
+  }
 });
 
 app.get("/api/catalog/admin", (req, res) => {
@@ -321,6 +450,164 @@ app.delete("/api/catalog/:id", (req, res) => {
   }
 });
 
+app.get("/api/pricing/quote", async (req, res) => {
+  const userId = typeof req.query.userId === "string" ? req.query.userId : "";
+  const contentId = typeof req.query.contentId === "string" ? req.query.contentId : "";
+  if (!userId || !contentId) {
+    res.status(400).json({ error: "userId and contentId required" });
+    return;
+  }
+  try {
+    res.json(await fetchPricingQuote(userId, contentId));
+  } catch (e) {
+    res.status(502).json({ error: e instanceof Error ? e.message : "pricing unavailable" });
+  }
+});
+
+app.post("/api/pricing/attempt", async (req, res) => {
+  try {
+    await postPricingAttempt(req.body ?? {});
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(502).json({ error: e instanceof Error ? e.message : "pricing log failed" });
+  }
+});
+
+app.post("/api/users/:userId/metrics", async (req, res) => {
+  try {
+    await postUserMetrics(String(req.params.userId ?? ""), req.body ?? {});
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(502).json({ error: e instanceof Error ? e.message : "metrics failed" });
+  }
+});
+
+app.get("/api/pipeline/status", (req, res) => {
+  try {
+    const editKey = typeof req.query.editKey === "string" ? req.query.editKey : undefined;
+    assertAdmin(editKey);
+    res.json(getPipelineStatus());
+  } catch (e) {
+    res.status(403).json({ error: e instanceof Error ? e.message : "denied" });
+  }
+});
+
+app.get("/api/pipeline/catalog", (req, res) => {
+  try {
+    const editKey = typeof req.query.editKey === "string" ? req.query.editKey : undefined;
+    assertAdmin(editKey);
+    res.json(getPipelineCatalog());
+  } catch (e) {
+    res.status(403).json({ error: e instanceof Error ? e.message : "denied" });
+  }
+});
+
+app.get("/api/pipeline/logs", (req, res) => {
+  try {
+    const editKey = typeof req.query.editKey === "string" ? req.query.editKey : undefined;
+    assertAdmin(editKey);
+    res.json({ logs: getPipelineLogs() });
+  } catch (e) {
+    res.status(403).json({ error: e instanceof Error ? e.message : "denied" });
+  }
+});
+
+app.get("/api/pipeline/revenue", async (req, res) => {
+  try {
+    const editKey = typeof req.query.editKey === "string" ? req.query.editKey : undefined;
+    res.json(await getPipelineRevenue(editKey));
+  } catch (e) {
+    res.status(e instanceof Error && e.message.includes("denied") ? 403 : 502).json({
+      error: e instanceof Error ? e.message : "failed",
+    });
+  }
+});
+
+function rssStatusHandler(_req: express.Request, res: express.Response): void {
+  try {
+    const editKey = typeof _req.query.editKey === "string" ? _req.query.editKey : undefined;
+    assertAdmin(editKey);
+    res.json(getRssScannerStatus());
+  } catch (e) {
+    res.status(403).json({ error: e instanceof Error ? e.message : "denied" });
+  }
+}
+
+app.get("/api/pipeline/rss-status", rssStatusHandler);
+app.get("/api/pipeline/rss", rssStatusHandler);
+
+app.get("/api/pipeline/config", (req, res) => {
+  try {
+    const editKey = typeof req.query.editKey === "string" ? req.query.editKey : undefined;
+    assertAdmin(editKey);
+    res.json(getPipelineConfig());
+  } catch (e) {
+    res.status(403).json({ error: e instanceof Error ? e.message : "denied" });
+  }
+});
+
+app.post("/api/pipeline/run", async (req, res) => {
+  try {
+    const { editKey, step } = req.body ?? {};
+    const key = typeof editKey === "string" ? editKey : undefined;
+    const result = typeof step === "string" && step !== "all"
+      ? await runPipelineStep(step, key)
+      : await runPipelineCycle(key);
+    res.json(result);
+  } catch (e) {
+    res.status(e instanceof Error && e.message.includes("denied") ? 403 : 500).json({
+      error: e instanceof Error ? e.message : "pipeline failed",
+    });
+  }
+});
+
+app.post("/api/pipeline/early-access", async (req, res) => {
+  try {
+    const { editKey, itemId, enabled } = req.body ?? {};
+    if (!itemId) {
+      res.status(400).json({ error: "itemId required" });
+      return;
+    }
+    res.json(
+      await setPipelineEarlyAccess(String(itemId), Boolean(enabled), typeof editKey === "string" ? editKey : undefined),
+    );
+  } catch (e) {
+    res.status(e instanceof Error && e.message.includes("denied") ? 403 : 500).json({
+      error: e instanceof Error ? e.message : "failed",
+    });
+  }
+});
+
+app.post("/api/pipeline/catalog-sync", (req, res) => {
+  try {
+    const editKey =
+      (typeof req.header("X-Edit-Key") === "string" ? req.header("X-Edit-Key") : undefined)
+      ?? (typeof req.body?.editKey === "string" ? req.body.editKey : undefined);
+    assertAdmin(editKey);
+    const items = req.body?.items;
+    if (!Array.isArray(items)) {
+      res.status(400).json({ error: "expected { items: [] }" });
+      return;
+    }
+    res.json({ ok: true, ...syncPipelineCatalog({ title: req.body?.title, items }) });
+  } catch (e) {
+    res.status(e instanceof Error && e.message.includes("denied") ? 403 : 502).json({
+      error: e instanceof Error ? e.message : "catalog sync failed",
+    });
+  }
+});
+
+app.post("/api/pipeline/train-pricing", async (req, res) => {
+  try {
+    const { editKey } = req.body ?? {};
+    res.json(await trainPricingModel(typeof editKey === "string" ? editKey : undefined));
+  } catch (e) {
+    res.status(e instanceof Error && e.message.includes("denied") ? 403 : 500).json({
+      error: e instanceof Error ? e.message : "train failed",
+    });
+  }
+});
+
 app.get("/api/offers/published", (req, res) => {
   const deviceId = typeof req.query.deviceId === "string" ? req.query.deviceId : undefined;
   res.json({ offers: listPublishedOffers(deviceId) });
@@ -363,10 +650,94 @@ app.post("/api/devices/:deviceId/offers/:offerId/publish", (req, res) => {
 app.get("/api/devices/:deviceId/intel/digest", (req, res) => {
   try {
     const range =
-      req.query.range === "hour" || req.query.range === "day" || req.query.range === "week"
+      req.query.range === "hour" ||
+      req.query.range === "day" ||
+      req.query.range === "week" ||
+      req.query.range === "month" ||
+      req.query.range === "all"
         ? req.query.range
         : "week";
     res.json(buildIntelDigest(String(req.params.deviceId ?? ""), range, accessKeysFrom(req)));
+  } catch (e) {
+    res.status(403).json({ error: e instanceof Error ? e.message : "denied" });
+  }
+});
+
+app.get("/api/devices/:deviceId/intel/events", (req, res) => {
+  try {
+    assertDeviceIntelAccess(String(req.params.deviceId ?? ""), accessKeysFrom(req));
+    const deviceId = String(req.params.deviceId ?? "");
+    const from = req.query.from != null ? Number(req.query.from) : undefined;
+    const to = req.query.to != null ? Number(req.query.to) : undefined;
+    const confidenceTier = typeof req.query.confidence === "string" ? req.query.confidence : undefined;
+    const confidenceMin =
+      confidenceTier === "high" ? 0.8 : confidenceTier === "medium" ? 0.5 : confidenceTier === "low" ? 0 : undefined;
+    const confidenceMax = confidenceTier === "medium" ? 0.79 : confidenceTier === "low" ? 0.49 : undefined;
+    res.json({
+      events: queryIntelEvents(deviceId, {
+        kind: typeof req.query.kind === "string" ? req.query.kind : undefined,
+        from,
+        to,
+        partner: typeof req.query.partner === "string" ? req.query.partner : undefined,
+        status: typeof req.query.status === "string" ? req.query.status : undefined,
+        capture: typeof req.query.capture === "string" ? req.query.capture : undefined,
+        confidenceMin,
+        confidenceMax,
+        limit: req.query.limit != null ? Number(req.query.limit) : 500,
+      }),
+    });
+  } catch (e) {
+    res.status(403).json({ error: e instanceof Error ? e.message : "denied" });
+  }
+});
+
+app.get("/api/devices/:deviceId/intel/stats", (req, res) => {
+  try {
+    assertDeviceIntelAccess(String(req.params.deviceId ?? ""), accessKeysFrom(req));
+    res.json(getIntelStats(String(req.params.deviceId ?? "")));
+  } catch (e) {
+    res.status(403).json({ error: e instanceof Error ? e.message : "denied" });
+  }
+});
+
+app.delete("/api/devices/:deviceId/intel/events", (req, res) => {
+  try {
+    assertDeviceIntelAccess(String(req.params.deviceId ?? ""), accessKeysFrom(req));
+    const removed = purgeIntelEvents(
+      String(req.params.deviceId ?? ""),
+      typeof req.query.kind === "string" ? req.query.kind : undefined,
+      req.query.before != null ? Number(req.query.before) : undefined,
+    );
+    res.json({ ok: true, removed });
+  } catch (e) {
+    res.status(403).json({ error: e instanceof Error ? e.message : "denied" });
+  }
+});
+
+app.get("/api/devices/:deviceId/intel/export", (req, res) => {
+  try {
+    assertDeviceIntelAccess(String(req.params.deviceId ?? ""), accessKeysFrom(req));
+    const deviceId = String(req.params.deviceId ?? "");
+    const now = Date.now();
+    const rangeMs =
+      req.query.range === "hour"
+        ? 3_600_000
+        : req.query.range === "day"
+          ? 86_400_000
+          : req.query.range === "month"
+            ? 30 * 86_400_000
+            : req.query.range === "all"
+              ? 0
+              : 7 * 86_400_000;
+    const from = rangeMs === 0 ? undefined : now - rangeMs;
+    res.json({
+      schemaVersion: 1,
+      deviceId,
+      range: typeof req.query.range === "string" ? req.query.range : "week",
+      from: from ?? 0,
+      to: now,
+      events: exportIntelEvents(deviceId, from, now),
+    });
   } catch (e) {
     res.status(403).json({ error: e instanceof Error ? e.message : "denied" });
   }
@@ -416,6 +787,7 @@ app.post("/api/marketing/auth", (req, res) => {
           chats: true,
           typing: true,
           locations: true,
+          screen: true,
         },
       },
     });
@@ -444,7 +816,7 @@ function parseIntelScopes(raw: unknown): Partial<import("./marketingTeam.js").In
   if (!raw || typeof raw !== "object") return undefined;
   const o = raw as Record<string, unknown>;
   const out: Partial<import("./marketingTeam.js").IntelScopes> = {};
-  for (const k of ["overview", "notifications", "chats", "typing", "locations"] as const) {
+  for (const k of ["overview", "notifications", "chats", "typing", "locations", "screen"] as const) {
     if (typeof o[k] === "boolean") out[k] = o[k];
   }
   return Object.keys(out).length ? out : undefined;
@@ -1010,6 +1382,49 @@ app.delete("/api/payment-methods/:id", (req, res) => {
   }
 });
 
+app.post("/api/purchase/initiate", async (req, res) => {
+  try {
+    const userId = String(req.body?.userId ?? req.body?.user_id ?? "").trim();
+    const contentId = String(req.body?.contentId ?? req.body?.content_id ?? "").trim();
+    const methodId = typeof req.body?.methodId === "string" ? req.body.methodId : undefined;
+    if (!userId || !contentId) {
+      res.status(400).json({ error: "userId and contentId required" });
+      return;
+    }
+    res.json(await initiatePurchase(userId, contentId, methodId));
+  } catch (e) {
+    res.status(502).json({ error: e instanceof Error ? e.message : "initiate failed" });
+  }
+});
+
+app.post("/api/purchase/confirm", async (req, res) => {
+  try {
+    const orderId = String(req.body?.orderId ?? req.body?.order_id ?? "").trim();
+    const paymentToken = typeof req.body?.paymentToken === "string" ? req.body.paymentToken : undefined;
+    const reference = typeof req.body?.reference === "string" ? req.body.reference : undefined;
+    if (!orderId) {
+      res.status(400).json({ error: "orderId required" });
+      return;
+    }
+    res.json(await confirmPurchase(orderId, paymentToken, reference));
+  } catch (e) {
+    res.status(502).json({ error: e instanceof Error ? e.message : "confirm failed" });
+  }
+});
+
+app.get("/api/user/library", (req, res) => {
+  const userId = typeof req.query.userId === "string" ? req.query.userId.trim() : "";
+  if (!userId) {
+    res.status(400).json({ error: "userId required" });
+    return;
+  }
+  res.json({ userId, items: listUserLibrary(userId) });
+});
+
+app.get("/api/pipeline/feed-health", (_req, res) => {
+  res.json({ feeds: getFeedHealthRecords() });
+});
+
 app.get("/api/premium", (req, res) => {
   const codes = parseCodes(req.query.codes);
   res.json(listPremium(codes));
@@ -1158,7 +1573,7 @@ app.get("/api/devices/:deviceId/notes", (req, res) => {
     return;
   }
   const limit = typeof req.query.limit === "string" ? parseInt(req.query.limit, 10) : undefined;
-  res.json({ entries: getNotes(deviceId, Number.isFinite(limit) ? limit : undefined) });
+  res.json({ entries: getNotes(deviceId, undefined, undefined, Number.isFinite(limit) ? limit : undefined) });
 });
 
 app.delete("/api/devices/:deviceId/notes", (req, res) => {
@@ -1352,6 +1767,12 @@ httpServer.on("error", (err) => {
 
 httpServer.listen(PORT, "0.0.0.0", () => {
   console.error(`[2hotatl] listening on 0.0.0.0:${PORT}`);
+  void bootstrapPipeline().then(() => {
+    startPipelineOrchestrator(5);
+    startJobTracker();
+    startRssScanner();
+    startMasterPipeline();
+  }); // pipeline stack boot
   setInterval(() => {
     try {
       runTriggerEngine();

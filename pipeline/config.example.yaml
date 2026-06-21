@@ -1,0 +1,153 @@
+# Copy to config.yaml and fill in secrets.
+
+# Remote pipeline — torrents run on Render worker, never on your Mac.
+pipeline:
+  mode: remote
+  worker_url: "https://YOUR-PIPELINE-WORKER.onrender.com"
+  worker_secret: "change-me-long-random"
+  local_downloads: false
+
+# Hands-free sourcing — worker queue + Telegram storage; you only set pricing.
+automation:
+  max_concurrent_jobs: 1
+  max_queue_size: 50
+  max_ingests_per_scan: 5
+  max_job_retries: 3
+  retry_delay_seconds: 300
+  job_poll_interval_seconds: 60
+  disk_usage_max_percent: 85
+  upload_chunk_bytes: 49000000
+  upload_delay_seconds: 2
+  telegram_retry_count: 5
+  torrent_poll_seconds: 15
+  torrent_timeout_seconds: 86400
+  qbittorrent_max_active_downloads: 1
+  qbittorrent_max_active_torrents: 2
+  discovery_on_worker: true
+  relay_rss_enabled: false
+  catalog_sync_retries: 5
+  catalog_sync_delay_seconds: 10
+
+discovery:
+  fallback_feeds_url: "https://raw.githubusercontent.com/2hotatl/community-feeds/main/feeds.json"
+  # Local fallback when GitHub unavailable (dev):
+  # fallback_feeds_url: "file://../data/community-feeds.json"
+
+purchase:
+  default_price: 100
+  currency: "BDT"
+
+# Ephemeral temp storage on worker only; files deleted after Telegram upload.
+storage:
+  mode: telegram
+  temp_dir: "/tmp/phone-hand-pipeline"
+  delete_after_upload: true
+  delete_torrent_after_upload: true
+
+rss:
+  scan_interval_minutes: 30
+  orchestrator_interval_minutes: 5
+  feeds:
+    # --- Stable RSS ---
+    - url: "https://eztvx.to/ezrss.xml"
+      name: "EZTV"
+      status: "green"
+    - url: "https://nyaa.si/?page=rss&q=korean+drama+1080p"
+      name: "Nyaa-KDrama"
+      status: "green"
+    - url: "https://subsplease.org/rss/"
+      name: "SubsPlease"
+      status: "green"
+    - url: "https://showrss.info/user/12345.rss"
+      name: "ShowRSS-Custom"
+      status: "green"
+    # --- Proxied ---
+    - url: "https://1337x-proxy.worker.dev/rss/search/hindi+1080p"
+      name: "1337x-Hindi-Proxy"
+      status: "green"
+    - url: "https://tgx-proxy.worker.dev/rss?search=bangla+natok"
+      name: "TGx-Bangla-Proxy"
+      status: "green"
+    # --- Scraped ---
+    - url: "scraper://dramacool.com/latest"
+      name: "Dramacool-Scraper"
+      status: "green"
+    - url: "scraper://bdmusic23.site/video"
+      name: "BDMusic23-Scraper"
+      status: "yellow"
+    # --- Telegram Listeners ---
+    - url: "tg://group/123456"
+      name: "TG-BanglaNatoks"
+      status: "green"
+    - url: "tg://group/789012"
+      name: "TG-SceneReleases"
+      status: "green"
+  keywords:
+    - "Netflix"
+    - "WEBRip"
+    - "WEB-DL"
+    - "1080p"
+    - "x265"
+    - "HEVC"
+    - "Bangla Sub"
+    - "Hindi"
+    - "Korean"
+    - "Chinese"
+    - "Season"
+    - "Complete"
+  blacklist:
+    - "CAM"
+    - "TS"
+    - "HDCAM"
+    - "SCR"
+
+qbittorrent:
+  host: "127.0.0.1"
+  port: 8080
+  username: "admin"
+  password: "adminadmin"
+  category: "AutoFetch"
+
+paths:
+  data_root: "../data/pipeline"
+  incoming: "../data/pipeline/incoming"
+  ready: "../data/pipeline/ready"
+  logs: "../data/pipeline/logs"
+  upload_log: "../data/pipeline/upload_log.json"
+  master_catalog: "../data/pipeline/master_catalog.json"
+  catalog_public_url: "../data/pipeline/catalog_public_url.txt"
+  node_catalog: "../data/catalog.json"
+  state: "../data/pipeline/state.json"
+
+telegram:
+  bot_token: "YOUR_BOT_TOKEN"
+  channel_id: "-1001234567890"
+  max_chunk_bytes: 49000000
+
+publication:
+  dpaste_api: "https://dpaste.com/api/v2/"
+  dpaste_expiry_days: 365
+
+early_access:
+  auto_hours: 72
+
+panel:
+  host: "127.0.0.1"
+  port: 5050
+  password: "change-me"
+  secret_key: "change-me-long-random"
+
+pricing:
+  db_path: "../data/pipeline/pricing.db"
+  currency: "BDT"
+  price_steps: [49, 79, 99, 129, 149, 179, 199, 249, 299, 349, 399]
+  cache_ttl_seconds: 3600
+  train_hour_utc: 3
+
+node:
+  api_base: "https://YOUR-RELAY.onrender.com"
+  edit_key: ""
+
+metadata:
+  tmdb_api_key: "YOUR_TMDB_KEY"
+  tmdb_image_base: "https://image.tmdb.org/t/p/w500"

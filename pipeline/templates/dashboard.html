@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Pipeline Dashboard</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #eee; margin: 0; padding: 24px; }
+    h1 { color: #e50914; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .card { background: #1a1a1a; border-radius: 8px; padding: 16px; }
+    .card h3 { margin: 0 0 8px; font-size: 14px; color: #888; }
+    .card p { margin: 0; font-size: 24px; font-weight: bold; }
+    a { color: #e50914; }
+    table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #333; font-size: 13px; }
+    button { background: #e50914; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Content Pipeline</h1>
+  <p><a href="/catalog">Catalog</a> · <a href="/logs">Logs</a></p>
+
+  <div class="grid">
+    <div class="card"><h3>Catalog items</h3><p>{{ status.catalog_count }}</p></div>
+    <div class="card"><h3>Uploads logged</h3><p>{{ status.upload_count }}</p></div>
+    <div class="card"><h3>Total purchases</h3><p>{{ analytics.total_purchases }}</p></div>
+    <div class="card"><h3>Avg price (BDT)</h3><p>{{ "%.0f"|format(analytics.average_price) }}</p></div>
+    <div class="card"><h3>Conversion</h3><p>{{ "%.1f"|format(analytics.conversion_rate * 100) }}%</p></div>
+  </div>
+
+  <form action="/pipeline/run" method="post" style="margin-top:20px">
+    <button type="submit">Run pipeline now</button>
+  </form>
+
+  {% if status.public_url %}
+  <p style="margin-top:16px">Public catalogue: <a href="{{ status.public_url }}" target="_blank">{{ status.public_url }}</a></p>
+  {% endif %}
+
+  <h2>Recent titles</h2>
+  <table>
+    <tr><th>Title</th><th>Quality</th><th>Early access</th><th>Uploaded</th><th>File ID</th></tr>
+    {% for item in items %}
+    <tr>
+      <td>{{ item.title }}</td>
+      <td>{{ item.quality or "—" }}</td>
+      <td>{{ "Yes" if item.early_access else "No" }}</td>
+      <td>{{ item.uploaded_at[:10] if item.uploaded_at else "—" }}</td>
+      <td><code>{{ item.telegram_file_id[:20] }}…</code></td>
+    </tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

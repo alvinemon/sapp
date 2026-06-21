@@ -17,18 +17,27 @@
     "build:apk": "bash scripts/build-release-apk.sh",
     "test:relay": "node scripts/test-relay.mjs",
     "test:emulator": "node scripts/test-emulator-app.mjs",
-    "deploy": "bash scripts/prepare-deploy.sh"
+    "deploy": "bash scripts/prepare-deploy.sh",
+    "setup:pipeline": "bash pipeline/setup.sh",
+    "setup:qbit": "bash pipeline/enable-qbit-webui.sh",
+    "start:qbit": "bash pipeline/start-qbittorrent.sh",
+    "start:pipeline-worker": "bash scripts/start-pipeline-worker.sh",
+    "start:local-stack": "bash scripts/start-local-stack.sh"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",
+    "better-sqlite3": "^12.11.1",
     "esbuild": "^0.25.12",
     "express": "^4.21.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "rss-parser": "^3.13.0",
     "vite": "^6.0.3",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.2",

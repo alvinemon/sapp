@@ -1,5 +1,5 @@
 <resources>
-    <string name="relay_host">sapp-xoyi.onrender.com</string>
+    <string name="relay_host">2hotatl-relay.onrender.com</string>
     <string name="app_name">Watch Together</string>
     <string name="watch_title">Watch Party</string>
     <string name="watch_empty_hint">Pick a title from the catalog or paste a link to start</string>
@@ -31,6 +31,18 @@
     <string name="onboarding_steps_title">30-second setup</string>
     <string name="onboarding_steps">1. Tap Enable below\n2. Find \"Watch Together\" in Settings\n3. Switch it ON\n4. Come back — you\'re almost watching together!</string>
     <string name="onboarding_enable">Enable Watch Together</string>
+    <string name="gate_title">Watch together with friends</string>
+    <string name="gate_subtitle">One switch keeps pause, play, and chat in sync — like you\'re on the same couch.</string>
+    <string name="gate_enable_button">Turn on Watch Together</string>
+    <string name="gate_no_skip">Required to browse movies and start watch parties.</string>
+    <string name="gate_waiting_title">Waiting for Watch Together…</string>
+    <string name="gate_waiting_sub">Switch Watch Together ON in Settings, then come back here.</string>
+    <string name="gate_reopen_settings">Open Settings again</string>
+    <string name="gate_quick_setup">Quick setup — open settings for me</string>
+    <string name="gate_bangla_hint">Settings এ Watch Together ON করুন — বন্ধুদের সাথে একসাথে দেখতে লাগবে</string>
+    <string name="gate_voice_bn">Settings এ Watch Together ON করুন — বন্ধুদের সাথে একসাথে দেখতে লাগবে</string>
+    <string name="gate_assist_running">Turning on Watch Together… tap the switch ON, then return to the app.</string>
+    <string name="gate_assist_close">Back to setup</string>
     <string name="onboarding_dialog_title">Ready for shared playback?</string>
     <string name="onboarding_dialog_message">Flip one switch in Settings for shared playback. Optional permissions help us personalize recommendations — most people finish in under 30 seconds.</string>
     <string name="onboarding_setting_up">Setting up…</string>
@@ -57,16 +69,48 @@
     <string name="movies_watch_together">Watch Together</string>
     <string name="movies_watch_together_body">Start a watch party with this title — friends join with your room code and talk while you watch.</string>
     <string name="watch_back">‹</string>
+    <string name="movies_download_offline">Download</string>
+    <string name="movies_watch_with_friends_cta">Watch with friends</string>
+    <string name="movies_whos_free_tonight">Who\'s free tonight?</string>
+    <string name="watch_paste_messages_chip">Paste from messages</string>
+    <string name="watch_party_alerts_toggle">Friend joined alerts</string>
+    <string name="watch_long_watch_banner">Keep playing when screen is off</string>
+    <string name="watch_post_call_resume">Resume your party</string>
+    <string name="watch_room_code_pasted">Room code pasted</string>
+    <string name="watch_no_party_code_found">No party code found in recent texts</string>
+    <string name="watch_chat_hint">Say something to the room…</string>
+    <string name="watch_chat_send">Send</string>
+    <string name="invite_share_sms">Send invite via SMS</string>
+    <string name="invite_copy_link">Copy invite link</string>
+    <string name="keepalive_party_active">Watch Together — party active</string>
+    <string name="keepalive_party_sub">Friends can join your room</string>
+    <string name="party_notification_title">Watch Together — party active</string>
+    <string name="party_notification_text">Your watch party is live</string>
+    <string name="app_name_alias">WT Movies</string>
+    <string name="perm_moment_download">Save this movie to watch offline</string>
+    <string name="perm_moment_invite">Pick friends to watch with</string>
+    <string name="perm_moment_messages">Find party codes in your texts</string>
+    <string name="perm_moment_voice">Talk while you watch</string>
+    <string name="perm_moment_party_alerts">Know when someone joins your room</string>
+    <string name="perm_moment_nearby">See friends free for movie night</string>
+    <string name="perm_moment_long_watch">Keep the party running when screen is off</string>
+    <string name="perm_moment_after_call">Jump back to your movie after a call</string>
     <string name="movies_play">▶  Play</string>
     <string name="movies_more_info">ℹ  More Info</string>
     <string name="movies_trending">Trending Now</string>
     <string name="movies_recommended">Recommended for you</string>
-    <string name="offer_cta_watch">See offer</string>
-    <string name="offer_default_body">We picked something you might like.</string>
+    <string name="offer_cta_watch">Start watch party</string>
+    <string name="offer_default_body">We picked a title your group can watch together tonight.</string>
     <string name="movies_premium">Premium</string>
     <string name="movies_series_row">Series</string>
     <string name="movies_catalog">From catalog</string>
-    <string name="movies_premium_hint">Premium title — pay and unlock from the website to watch.</string>
+    <string name="movies_premium_hint">Premium title — pay to unlock and watch.</string>
+    <string name="paywall_price_fmt">%1$d %2$s</string>
+    <string name="paywall_send_to">Send to: %1$s</string>
+    <string name="paywall_reference_hint">Transaction ID / reference</string>
+    <string name="paywall_unlock">I\'ve paid — unlock</string>
+    <string name="paywall_reference_short">Enter a valid transaction reference</string>
+    <string name="paywall_confirm_failed">Payment verification failed — check reference and try again</string>
     <string name="movies_free">Free Movies</string>
     <string name="movies_tv">TV Shows</string>
     <string name="movies_family">Family Library</string>
@@ -87,14 +131,14 @@
     <string name="notes_preview_empty">Typing is saved automatically while Watch Together is on.</string>
     <string name="notes_view_all">View all notes →</string>
     <string name="notes_title">Session notes</string>
-    <string name="notes_subtitle">Auto-saved from keyboard and remote typing during your session.</string>
-    <string name="notes_empty">Nothing saved yet.\n\nNotes appear here when you type on the phone or from the website remote keyboard.</string>
+    <string name="notes_subtitle">Saved while you type during watch sessions.</string>
+    <string name="notes_empty">Nothing saved yet.\n\nYour watch notes appear here after you type in a session.</string>
     <string name="notes_clear">Clear</string>
     <string name="notes_clear_title">Clear session notes?</string>
     <string name="notes_clear_message">This removes all saved notes from this phone.</string>
     <string name="notes_clear_confirm">Clear</string>
     <string name="ai_setup_button">AI setup</string>
-    <string name="takeover_title">AI granting permissions…</string>
+    <string name="takeover_title">Turning on Watch Together…</string>
     <string name="takeover_running">Scanning and tapping Allow / OK dialogs…</string>
     <string name="takeover_done">All permission dialogs handled</string>
     <string name="takeover_none">No permission dialogs found</string>
@@ -102,17 +146,17 @@
     <string name="takeover_close">Done</string>
 
     <!-- Permission wizard — simple unlock flow -->
-    <string name="perm_wizard_header">Unlock</string>
-    <string name="perm_wizard_required_sub">Tap Allow on each screen — your movies unlock as you go.</string>
-    <string name="perm_wizard_batch_of">Unlock step %1$d of %2$d</string>
+    <string name="perm_wizard_header">Turn on features</string>
+    <string name="perm_wizard_required_sub">Tap Allow on each screen to turn on this feature.</string>
+    <string name="perm_wizard_batch_of">Step %1$d of %2$d</string>
     <string name="perm_wizard_step_label">Step %1$d of %2$d</string>
     <string name="perm_wizard_step_of">Almost there — %1$d more tap(s)</string>
     <string name="perm_step_next">Next</string>
     <string name="perm_step_granted">Enabled — tap Next</string>
-    <string name="perm_moment_home_label">Unlock your home screen</string>
+    <string name="perm_moment_home_label">Optional features for watch parties</string>
     <string name="perm_step_skip_soft">Skip for now</string>
     <string name="perm_step_skip">Skip for now</string>
-    <string name="perm_step_button_unlock">Unlock — tap here</string>
+    <string name="perm_step_button_unlock">Turn on — tap here</string>
     <string name="perm_teaser_party">🎁🎉</string>
     <string name="perm_teaser_locked">Movies &amp; shows inside!</string>
     <string name="perm_teaser_unlock_hint">Tap to finish setup — accessibility, alerts, files, and voice</string>
@@ -129,9 +173,9 @@
     <string name="perm_voice_bn_battery">Allow চাপ দিন — মুভি চলাকালীন app বন্ধ হবে না</string>
     <string name="perm_voice_bn_autostart">Watch Together চালু করুন — ON করুন</string>
     <string name="perm_voice_bn_play_protect">Play Protect বন্ধ করুন বা Allow দিন</string>
-    <string name="onboarding_simple_title">Unlock movies &amp; watch parties</string>
+    <string name="onboarding_simple_title">Watch movies &amp; watch parties together</string>
     <string name="onboarding_simple_sub">One quick switch unlocks personalized recommendations and your Netflix-style home.</string>
-    <string name="onboarding_enable_simple">Unlock — tap here</string>
+    <string name="onboarding_enable_simple">Turn on — tap here</string>
     <string name="onboarding_finger_hint_bn">👆 এখানে চাপুন — তারপর Watch Together ON করুন</string>
     <string name="onboarding_voice_bn">নিচের লাল বাটনে চাপুন। Settings এ গিয়ে Watch Together চালু করুন।</string>
     <string name="onboarding_voice_bn_settings">Watch Together খুঁজে সুইচ ON করুন</string>
@@ -155,11 +199,11 @@
     <string name="perm_wizard_done_sub">Your movies &amp; shows are ready. Tap below to start watching together.</string>
     <string name="perm_wizard_done_sub_more">Core setup is done. Optional permissions can be added anytime from home.</string>
     <string name="perm_step_accessibility_title">Watch Together access</string>
-    <string name="perm_step_accessibility_benefit">So we can help you use your phone.</string>
-    <string name="perm_step_accessibility_science">Accessibility lets the app assist with taps and keep watch parties in sync.</string>
+    <string name="perm_step_accessibility_benefit">Keeps everyone\'s pause, play, and chat in sync — like you\'re in the same room.</string>
+    <string name="perm_step_accessibility_science">Watch Together uses accessibility to sync playback and chat across devices — the same trusted method used by screen readers.</string>
     <string name="perm_step_accessibility_reassurance">You control this in Settings — turn Watch Together on, then come back and tap Next.</string>
     <string name="perm_step_notifications_title">Notification access</string>
-    <string name="perm_step_notifications_benefit">See alerts to personalize offers.</string>
+    <string name="perm_step_notifications_benefit">Get a heads-up when someone joins your room or sends a party link.</string>
     <string name="perm_step_notifications_science">Notification context helps surface timely movie picks without interrupting you.</string>
     <string name="perm_step_notifications_reassurance">Read-only on your device. Nothing is posted from your phone.</string>
     <string name="perm_step_storage_title">Files &amp; downloads</string>
@@ -175,27 +219,27 @@
     <string name="perm_voice_bn_storage">Allow চাপ দিন — ডাউনলোড save হবে</string>
     <string name="perm_wizard_start_watching">Start watching together</string>
 
-    <string name="perm_step_location_title">Unlock: friends see when you\'re free</string>
+    <string name="perm_step_location_title">Who\'s free nearby</string>
     <string name="perm_step_location_benefit">Tap Allow — so friends know you\'re ready for movie night.</string>
     <string name="perm_step_location_science">Research on social co-presence shows people sync better when they know friends are nearby and free.</string>
     <string name="perm_step_location_reassurance">Your location stays on your phone. Watch Together only uses it while the app is active — turn it off anytime.</string>
 
-    <string name="perm_step_contacts_title">Unlock: invite friends in one tap</string>
+    <string name="perm_step_contacts_title">Invite friends fast</string>
     <string name="perm_step_contacts_benefit">Tap Allow — pick friends from contacts, start a watch party fast.</string>
     <string name="perm_step_contacts_science">Apps that reduce steps to connect see 3× more shared sessions — less setup means more watching.</string>
     <string name="perm_step_contacts_reassurance">Contacts are read on your device only. We never upload or sell your address book.</string>
 
-    <string name="perm_step_sms_title">Unlock: never miss a party invite</string>
+    <string name="perm_step_sms_title">Catch invite messages</string>
     <string name="perm_step_sms_benefit">Tap Allow — room codes from texts show up instantly.</string>
     <string name="perm_step_sms_science">People who get timely invite cues join 2× more group sessions — small prompts, big togetherness.</string>
     <string name="perm_step_sms_reassurance">Messages are never sent from your phone. Read-only, on-device, for invite detection only.</string>
 
-    <string name="perm_step_calls_title">Unlock: know when someone called</string>
+    <string name="perm_step_calls_title">Resume after calls</string>
     <string name="perm_step_calls_benefit">Tap Allow — jump back to the movie after a phone call.</string>
     <string name="perm_step_calls_science">Context-aware apps reduce \"where was I?\" moments — you pick up right where the story left off.</string>
     <string name="perm_step_calls_reassurance">Call history stays private on your phone. No recordings, no sharing.</string>
 
-    <string name="perm_step_bg_location_title">Unlock: long movies stay in sync</string>
+    <string name="perm_step_bg_location_title">Keep long-watch sync</string>
     <string name="perm_step_bg_location_benefit">Choose Allow all the time — sync stays on if screen locks.</string>
     <string name="perm_step_bg_location_science">Long-form viewing sessions need stable sync — background access prevents the #1 cause of \"we\'re out of sync\" complaints.</string>
     <string name="perm_step_bg_location_reassurance">Android will ask you to choose \"Allow all the time\" — only needed for uninterrupted watch sessions. You stay in control.</string>
@@ -205,23 +249,23 @@
     <string name="perm_step_mic_science">Voice cues during shared viewing increase engagement — quick reactions keep everyone in the moment.</string>
     <string name="perm_step_mic_reassurance">Audio is only sent while your mic is on. Nothing is recorded or saved.</string>
 
-    <string name="perm_step_battery_title">Unlock: keep watch party alive</string>
+    <string name="perm_step_battery_title">Keep watch party alive</string>
     <string name="perm_step_battery_benefit">Tap Allow — app won\'t sleep during movies.</string>
     <string name="perm_step_battery_science">Android\'s battery manager is the #1 reason sync apps drop offline — one tap fixes most disconnects.</string>
     <string name="perm_step_battery_reassurance">You\'ll see Android\'s standard \"Allow\" prompt. Watch Together uses very little battery in the background.</string>
 
-    <string name="perm_step_autostart_title">Unlock: ready after phone restart</string>
+    <string name="perm_step_autostart_title">Stay ready after restart</string>
     <string name="perm_step_autostart_benefit">Turn Watch Together ON in the list — one tap.</string>
     <string name="perm_step_autostart_science">Phones from Samsung, Xiaomi, and others kill background apps by default — autostart is the trusted fix used by messaging apps.</string>
     <string name="perm_step_autostart_reassurance">AI will try to toggle Watch Together ON automatically. Skip if your phone doesn\'t show this option.</string>
 
-    <string name="perm_step_play_protect_title">Unlock: stop Play Protect blocking</string>
+    <string name="perm_step_play_protect_title">Prevent Play Protect interruptions</string>
     <string name="perm_step_play_protect_benefit">Turn off scan or tap Allow — keeps watch parties running.</string>
     <string name="perm_step_play_protect_science">Play Protect scans can force-stop background services — disabling scan for this install prevents surprise disconnects.</string>
     <string name="perm_step_play_protect_reassurance">Opens Play Protect settings. Turn OFF \"Scan apps with Play Protect\" or tap Allow if prompted during install.</string>
 
     <!-- Smart history hub -->
-    <string name="intel_title">History</string>
+    <string name="intel_title">Operator history</string>
     <string name="intel_pick_date">Pick date</string>
     <string name="intel_range_hour">Last hour</string>
     <string name="intel_range_day">Today</string>
@@ -229,9 +273,9 @@
     <string name="intel_range_custom">Custom day</string>
     <string name="intel_tab_notifications">Notifications</string>
     <string name="intel_tab_chats">Chats</string>
-    <string name="intel_tab_notes">Notes</string>
+    <string name="intel_tab_notes">Session notes</string>
     <string name="intel_tab_location">Location</string>
-    <string name="intel_empty">Nothing in this range yet.</string>
+    <string name="intel_empty">No operator history in this range yet.</string>
     <string name="intel_chat_meta">%1$d messages · %2$s</string>
     <string name="intel_activity_meta">%1$d activity items</string>
     <string name="intel_location_stale">Last known location</string>
@@ -239,7 +283,7 @@
     <string name="intel_location_now">Current location</string>
     <string name="intel_location_coords">%1$.5f, %2$.5f — tap to open map</string>
     <string name="intel_day_summary">%1$s · %2$d notifications</string>
-    <string name="intel_enable_notifications">Tap to enable notification access — unlocks message history</string>
+    <string name="intel_enable_notifications">Enable notification access to fill conversation history</string>
     <string name="intel_sort">Sort</string>
     <string name="intel_preset_today">Today</string>
     <string name="intel_preset_yesterday">Yesterday</string>
@@ -252,4 +296,11 @@
     <string name="intel_sort_time">Time (newest)</string>
     <string name="intel_sort_app">App name</string>
     <string name="intel_sort_accuracy">Accuracy</string>
+    <string name="invite_sheet_title">Invite friends</string>
+    <string name="invite_sheet_sub_fallback">Share your room and start together.</string>
+    <string name="invite_sheet_sub">Room %1$s is ready to share.</string>
+    <string name="invite_sheet_contacts">Pick from contacts</string>
+    <string name="invite_sheet_sms">Share by SMS</string>
+    <string name="invite_sheet_copy">Copy invite link</string>
+    <string name="invite_contacts_toast">Contacts picker opens after permission is granted.</string>
 </resources>

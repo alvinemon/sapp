@@ -1,5 +1,5 @@
-/** Production-app host — Render only (2hotatl.com removed). */
-export const RELAY_HOSTS = ["sapp-xoyi.onrender.com"] as const;
+/** Production relay hosts — Render only (no local/Mac pipeline). */
+export const RELAY_HOSTS = ["2hotatl-relay.onrender.com", "sapp-xoyi.onrender.com"] as const;
 
 const STORAGE_KEY = "2hotatl_relay_host";
 

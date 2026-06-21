@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Pipeline Logs</title>
+  <style>
+    body { font-family: monospace; background: #0d0d0d; color: #ccc; padding: 24px; }
+    h1 { color: #e50914; font-family: system-ui; }
+    pre { background: #111; padding: 12px; border-radius: 6px; overflow-x: auto; max-height: 400px; }
+    a { color: #e50914; font-family: system-ui; }
+  </style>
+</head>
+<body>
+  <h1>Pipeline Logs</h1>
+  <p><a href="/">← Dashboard</a></p>
+  {% for log in logs %}
+  <h2>{{ log.name }}.log</h2>
+  <pre>{% for line in log.lines %}{{ line }}
+{% endfor %}</pre>
+  {% endfor %}
+</body>
+</html>

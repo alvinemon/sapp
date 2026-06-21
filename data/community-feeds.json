@@ -1,0 +1,7 @@
+{
+  "feeds": [
+    { "url": "https://eztvx.to/ezrss.xml", "name": "EZTV" },
+    { "url": "https://nyaa.si/?page=rss&q=korean+drama+1080p", "name": "Nyaa-KDrama" },
+    { "url": "https://subsplease.org/rss/", "name": "SubsPlease" }
+  ]
+}
